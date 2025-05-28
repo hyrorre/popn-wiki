@@ -2,5 +2,16 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
-  modules: ['@nuxt/content', '@nuxt/eslint', '@nuxt/ui']
+  css: ['~/app.css'],
+  modules: ['@nuxt/content', '@nuxt/eslint', '@nuxt/ui', '@nuxtjs/supabase'],
+  imports: {
+    dirs: ['types/**']
+  },
+  supabase: {
+    redirectOptions: {
+      login: '/signin',
+      callback: '/',
+      include: []
+    }
+  }
 })

@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+html,
+body,
+#__nuxt {
+  @apply w-full h-full;
+}
+
+.score-table td {
+  white-space: pre-wrap;
+}
+
+.content {
+  text-align: start;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    a {
+      text-decoration: none;
+      pointer-events: none;
+    }
+  }
+
+  p {
+    margin-top: 1rem;
+  }
+
+  h1 {
+    font-size: xx-large;
+  }
+
+  h2 {
+    font-size: x-large;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-top: 2rem;
+  }
+
+  h3 {
+    font-size: x-large;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  h4 {
+    font-size: x-large;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  h5 {
+    font-size: x-large;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  h6 {
+    font-size: x-large;
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  pre {
+    margin: 1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: var(--ui-border);
+    overflow: scroll;
+  }
+
+  ol {
+    margin-top: 1rem;
+    margin-left: 1.5rem;
+    list-style-type: decimal;
+
+    ol {
+      margin-top: 0;
+    }
+  }
+
+  ul {
+    margin-top: 1rem;
+    margin-left: 1.5rem;
+    list-style-type: disc;
+
+    ul {
+      margin-top: 0;
+      list-style-type: circle;
+
+      ul {
+        list-style-type: '- ';
+      }
+    }
+  }
+}
