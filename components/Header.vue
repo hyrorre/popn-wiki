@@ -1,45 +1,26 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 
-const { data: config } = await useFetch('/api/config')
+const { app } = useAppConfig()
 
 const signOut = () => {
   const supabase = useSupabaseClient()
   supabase.auth.signOut().then(() => useRouter().push('/'))
 }
 
-const id = useRoute().params.id
 const user = useSupabaseUser()
-const { data: profile } = await useFetch('/api/profile')
+const { data: profile } = user.value ? await useFetch('/api/profile') : { data: ref(null) }
 
 const items = computed((): NavigationMenuItem[][] => [
-  (
-    [
-      {
-        label: config.value?.title || '',
-        icon: 'i-public-icon',
-        to: '/',
-        active: false,
-        class: 'site-title'
-      }
-    ] as NavigationMenuItem[]
-  ).concat(
-    user.value || id
-      ? [
-          {},
-          {
-            label: 'Score',
-            icon: 'i-tabler-table',
-            to: id ? `/user/${id}` : '/my'
-          },
-          {
-            label: 'Stat',
-            icon: 'i-tabler-chart-bar',
-            to: id ? `/user/${id}/stat` : '/my/stat'
-          }
-        ]
-      : []
-  ),
+  [
+    {
+      label: app.title,
+      icon: 'i-public-icon',
+      to: '/',
+      active: false,
+      class: 'site-title'
+    }
+  ],
   user.value
     ? [
         {
@@ -49,7 +30,7 @@ const items = computed((): NavigationMenuItem[][] => [
           children: [
             {
               label: 'Profile',
-              to: '/my/profile'
+              to: '/profile'
             },
             {
               label: 'Sign Out',
