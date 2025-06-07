@@ -1,11 +1,11 @@
 <script setup lang="ts">
-const { data: config } = await useFetch('/api/config')
+const { app } = useAppConfig()
 useHead({
   htmlAttrs: {
-    lang: config.value?.lang || ''
+    lang: app.lang
   },
-  title: config.value?.title || '',
-  titleTemplate: '%s - ' + (config.value?.title || ''),
+  title: app.title,
+  titleTemplate: '%s - ' + app.title,
   meta: [
     // TODO: set meta tags
     // { property: 'og:type', content: 'website' },

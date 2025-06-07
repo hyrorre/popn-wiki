@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { data: config } = await useFetch('/api/config')
+const { app } = useAppConfig()
 
 useHead({
   title: 'SIGN IN'
@@ -26,7 +26,7 @@ const submit = async () => {
 
 <template>
   <u-container class="text-center h-full flex flex-col justify-center">
-    <h1 class="text-4xl">{{ config?.title || '' }}</h1>
+    <h1 class="text-4xl">{{ app.title }}</h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
         <u-form :state="form" @submit="submit">
