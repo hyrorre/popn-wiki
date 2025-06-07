@@ -9,7 +9,7 @@ const signOut = () => {
 }
 
 const user = useSupabaseUser()
-const { data: profile } = user.value ? await useFetch('/api/profile') : { data: ref(null) }
+const { data: profile } = await useFetch('/api/profile')
 
 const items = computed((): NavigationMenuItem[][] => [
   [
