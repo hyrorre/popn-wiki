@@ -12,7 +12,12 @@ const { data: page } = await useFetch('/api/page', {
 </script>
 
 <template>
-  <u-container>
-    <MDC v-if="page" :value="page.body" class="content" />
+  <Header />
+  <u-container class="flex">
+    <Sidebar class="border-r border-(--ui-border) max-w-[200px]" />
+    <main>
+      <MDC v-if="page" :value="page.body" class="content" />
+    </main>
   </u-container>
+  <Footer />
 </template>

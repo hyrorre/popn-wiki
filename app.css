@@ -97,4 +97,12 @@ body,
       }
     }
   }
+
+  th, td {
+    @apply border;
+  }
+
+  hr {
+    @apply border-(--ui-border);
+  }
 }

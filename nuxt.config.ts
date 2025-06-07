@@ -7,6 +7,14 @@ export default defineNuxtConfig({
   imports: {
     dirs: ['types/**']
   },
+  icon: {
+    customCollections: [
+      {
+        prefix: 'public',
+        dir: './public'
+      }
+    ]
+  },
   supabase: {
     redirectOptions: {
       login: '/signin',
