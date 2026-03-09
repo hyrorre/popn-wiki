@@ -17,7 +17,7 @@ const { data: page } = await useAsyncData(route.path, () => {
 <template>
   <Header />
   <u-container class="flex">
-    <Sidebar class="border-r border-(--ui-border) max-w-[200px]" />
+    <Sidebar class="border-r border-default max-w-[200px]" />
     <main>
       <ContentRenderer v-if="page" :value="page.body" class="content" />
     </main>

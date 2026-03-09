@@ -18,9 +18,9 @@ const {
     if (error2) {
       throw error
     }
-    return data as any
+    return data
   }
-  return data as any
+  return data
 })
 
 const message = ref('')
@@ -29,7 +29,7 @@ const submit = () => {
   form.value!.updated_at = new Date().toISOString()
   supabase
     .from('profiles')
-    .upsert(form.value as any)
+    .upsert(form.value)
     .then(async ({ error }) => {
       message.value = error ? error.message : 'Saved.'
     })

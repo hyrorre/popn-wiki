@@ -1,25 +1,20 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
-
-const visible = ref(false)
+const supabase = useSupabaseClient()
 const message = ref('')
 const form = reactive({
   del: ''
 })
 
-const submit = () => {
-  if (form.del.includes('Delete')) {
-    message.value = 'Please enter "Delete" to confirm.'
-    return
-  }
-  useFetch('/api/user/delete', {
+const submit = async () => {
+  await $fetch('/api/user/delete', {
     method: 'POST'
   })
-    .then(() => {
-      message.value = 'Account Deleted.'
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 2000)
+    .then(async () => {
+      supabase.auth.signOut().finally(() => {
+        message.value = 'Account deleted.'
+        alert('Account deleted.')
+        useRouter().push('/')
+      })
     })
     .catch((error) => {
       message.value = error.message
@@ -33,7 +28,7 @@ const submit = () => {
       <h3>{{ $t('delete_account') }}</h3>
     </template>
     <div>{{ $t('delete_account_description') }}</div>
-    <u-modal>
+    <u-modal :title="$t('delete_account')" :description="$t('delete_account_confirm')">
       <u-button color="error" class="mt-4">{{ $t('delete_account') }}</u-button>
       <template #body>
         <u-form :state="form" @submit="submit">
@@ -43,7 +38,14 @@ const submit = () => {
           </u-form-field>
           <div class="mt-4 flex justify-end items-center">
             <div class="mr-4">{{ message }}</div>
-            <u-button color="error" type="submit">{{ $t('delete_account') }}</u-button>
+            <u-button
+              color="error"
+              type="submit"
+              :variant="!form.del.includes('Delete') ? 'outline' : 'solid'"
+              :disabled="!form.del.includes('Delete')"
+            >
+              {{ $t('delete_account') }}
+            </u-button>
           </div>
         </u-form>
       </template>
