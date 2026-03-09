@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
   css: ['~/app.css'],
-  modules: ['@nuxt/content', '@nuxt/eslint', '@nuxt/ui', '@nuxtjs/supabase', '@nuxtjs/i18n'],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/mdc'],
   i18n: {
     locales: [
       { code: 'ja', name: '日本語', file: 'ja.json' },

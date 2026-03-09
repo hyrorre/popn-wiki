@@ -5,12 +5,8 @@ useHead({
   titleTemplate: '%s'
 })
 
-// const { data: page } = await useFetch('/api/page', {
-//   query: { path: route.params.path || '/' }
-// })
-
-const { data: page } = await useAsyncData(route.path, () => {
-  return queryCollection('content').path(route.path).first()
+const { data: page } = await useFetch('/api/page', {
+  query: { path: route.params.path || '/' }
 })
 </script>
 
@@ -19,7 +15,7 @@ const { data: page } = await useAsyncData(route.path, () => {
   <u-container class="flex">
     <Sidebar class="border-r border-default max-w-[200px]" />
     <main>
-      <ContentRenderer v-if="page" :value="page.body" class="content" />
+      <MDC v-if="page" :value="page.body" class="content" />
     </main>
   </u-container>
   <Footer />
