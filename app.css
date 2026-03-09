@@ -98,11 +98,12 @@ body,
     }
   }
 
-  th, td {
+  th,
+  td {
     @apply border;
   }
 
   hr {
-    @apply border-(--ui-border);
+    @apply border-default;
   }
 }

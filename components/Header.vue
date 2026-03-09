@@ -55,7 +55,7 @@ const items = computed((): NavigationMenuItem[][] => [
 </script>
 
 <template>
-  <header class="border-b border-(--ui-border) mb-8">
+  <header class="border-b border-default mb-8">
     <u-navigation-menu :items="items" content-orientation="vertical" />
   </header>
 </template>
