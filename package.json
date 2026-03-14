@@ -15,14 +15,17 @@
     "@nuxtjs/i18n": "10.2.3",
     "@nuxtjs/mdc": "0.20.2",
     "@nuxtjs/supabase": "2.0.4",
-    "unist-util-visit": "^5.0.0",
+    "unist-util-visit": "^5.1.0",
     "eslint": "^10.0.3",
-    "nuxt": "^4.3.1",
+    "nuxt": "^4.4.2",
     "typescript": "^5.9.3",
-    "vue": "^3.5.29",
+    "vue": "^3.5.30",
     "vue-router": "^5.0.3"
   },
   "devDependencies": {
     "prettier": "3.8.1"
+  },
+  "overrides": {
+    "chokidar": "3.6.0"
   }
 }
