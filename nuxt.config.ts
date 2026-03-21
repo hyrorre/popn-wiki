@@ -9,14 +9,6 @@ export default defineNuxtConfig({
       breaks: {
         src: 'remark-breaks'
       },
-      dokuwikiLinks: {
-        src: '~/utils/remark-dokuwiki-links',
-        options: {
-          // DokuWiki の内部リンク [[page]] をどのパスに飛ばすか
-          // 例: /wiki/page にしたければ '/wiki/' に変更
-          basePath: '/'
-        }
-      },
       tableMerge: {
         src: '~/utils/remark-table-merge'
       }
