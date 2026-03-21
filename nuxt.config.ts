@@ -16,6 +16,9 @@ export default defineNuxtConfig({
           // 例: /wiki/page にしたければ '/wiki/' に変更
           basePath: '/'
         }
+      },
+      tableMerge: {
+        src: '~/utils/remark-table-merge'
       }
     }
   },
