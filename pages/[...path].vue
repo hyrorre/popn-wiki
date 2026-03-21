@@ -31,13 +31,25 @@ const reloadLatest = async () => {
   conflictMessage.value = ''
   await refresh()
 }
+
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+
+// @nuxtjs/mdc の公式パーサを利用して Frontmatter を安全に解析
+const { data: mdcAst } = await useAsyncData(`page-ast-${path}`, async () => {
+  if (!page.value?.body) return null
+  return await parseMarkdown(page.value.body)
+}, { watch: [page] })
+
+const hasDiscussion = computed(() => {
+  return mdcAst.value?.data?.discussion === true
+})
 </script>
 
 <template>
   <Header />
   <u-container class="flex">
     <Sidebar class="border-r border-default max-w-[200px]" />
-    <main class="w-full pl-4">
+    <main class="w-full pl-4 pb-12">
       <div v-if="user && page" class="mb-4 flex items-center gap-2">
         <button class="border px-3 py-1 rounded" @click="editMode = !editMode">
           {{ editMode ? '閲覧に戻る' : '編集する' }}
@@ -59,7 +71,13 @@ const reloadLatest = async () => {
         @cancel="editMode = false"
         @conflict="onConflict"
       />
+      
       <MDC v-else-if="page" :value="page.body" class="content" />
+
+      <!-- ディスカッション機能 -->
+      <div v-if="hasDiscussion && page && !editMode" class="mt-8 pt-8 border-t border-default">
+        <Discussion :path="path" />
+      </div>
     </main>
   </u-container>
   <Footer />
