@@ -102,7 +102,7 @@ const formatDate = (dateStr: string) => {
     
     <!-- 編集モード -->
     <div v-if="isEditingOpen" class="mt-2">
-      <u-textarea v-model="editBody" :rows="3" />
+      <u-textarea v-model="editBody" :rows="3" class="w-full" />
       <div v-if="editBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
@@ -126,7 +126,7 @@ const formatDate = (dateStr: string) => {
     <!-- アクションボタン群 -->
     <div class="flex justify-end gap-3 mt-3 text-sm" v-if="user && !isEditingOpen">
       <!-- ユーザーIDチェック -->
-      <button v-if="comment.user_id === user.id" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
+      <button v-if="comment.user_id === user.sub" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
@@ -136,7 +136,7 @@ const formatDate = (dateStr: string) => {
 
     <!-- 返信フォーム -->
     <div v-if="isReplyingOpen" class="mt-4 pl-4 border-l-2 border-primary">
-      <u-textarea v-model="replyBody" placeholder="Markdownで返信を入力..." :rows="2" />
+      <u-textarea v-model="replyBody" placeholder="Markdownで返信を入力..." :rows="3" class="w-full" />
       <div v-if="replyBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー

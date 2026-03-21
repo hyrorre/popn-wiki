@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       path,
       body,
       reply_to,
-      user_id: user.id
+      user_id: user.sub
     })
     .select('*, profiles:user_id(id, name)')
     .single<Comment>()

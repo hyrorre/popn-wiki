@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   const client = await serverSupabaseClient(event)
   
-  // DB level RLS should ensure users can only update their own comments, or eq('user_id', user.id)
+  // DB level RLS should ensure users can only update their own comments, or eq('user_id', user.sub)
   const { data, error } = await client
     .from('comments')
     .update({ 
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
       updated_at: new Date().toISOString() 
     })
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .select('*, profiles:user_id(id, name)')
     .single<Comment>()
 
