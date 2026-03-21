@@ -18,7 +18,7 @@ const submit = async () => {
     if (error) {
       error_message.value = error.message
     } else {
-      useRouter().push('/my')
+      useRouter().push('/')
     }
   })
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { data: page } = await useFetch('/api/page', {
-  query: { path: '/sidebar' }
+  query: { path: 'sidebar' }
 })
 </script>
 
