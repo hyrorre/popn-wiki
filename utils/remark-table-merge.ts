@@ -73,9 +73,11 @@ export default function remarkTableMerge() {
           } else {
             if (info.colSpan > 1) {
               node.data.hProperties.colspan = info.colSpan
+              node.data.hProperties.style = 'text-align: center;'
             }
             if (info.rowSpan > 1) {
               node.data.hProperties.rowspan = info.rowSpan
+              node.data.hProperties.style = 'vertical-align: middle;'
             }
           }
         }
