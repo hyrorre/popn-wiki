@@ -7,12 +7,10 @@ useHead({
 
 // Nuxt の catch-all は `route.params.path` が `string | string[]` になり得ます。
 // `/aaa/bbb` -> `['aaa', 'bbb']` となるため、API には `aaa/bbb` を渡します。
-const requestedPath = Array.isArray(route.params.path)
-  ? route.params.path.join('/')
-  : (route.params.path ?? '/')
+const requestedPath = Array.isArray(route.params.path) ? route.params.path.join('/') : route.params.path
 
 const { data: page } = await useFetch('/api/page', {
-  query: { path: requestedPath }
+  query: { path: requestedPath || '/' }
 })
 </script>
 
