@@ -11,6 +11,9 @@ export default defineNuxtConfig({
       },
       tableMerge: {
         src: '~/utils/remark-table-merge'
+      },
+      tableColor: {
+        src: '~/utils/remark-table-color'
       }
     }
   },
