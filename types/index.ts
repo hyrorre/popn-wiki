@@ -23,6 +23,7 @@ export type Page = {
   path: string
   revision: number
   body: string
+  message?: string | null
   created_by: Profile | string
   updated_by: Profile | string
   created_at: string
