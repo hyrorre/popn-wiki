@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-app",
+  "name": "serverless-wiki",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,14 +15,15 @@
     "@nuxtjs/i18n": "10.2.3",
     "@nuxtjs/mdc": "0.20.2",
     "@nuxtjs/supabase": "2.0.4",
-    "unist-util-visit": "^5.1.0",
     "eslint": "^10.0.3",
     "nuxt": "^4.4.2",
     "typescript": "^5.9.3",
+    "unist-util-visit": "^5.1.0",
     "vue": "^3.5.30",
     "vue-router": "^5.0.3"
   },
   "devDependencies": {
+    "fast-csv": "^5.0.5",
     "prettier": "3.8.1"
   },
   "overrides": {
