@@ -6,6 +6,9 @@ export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/mdc'],
   mdc: {
     remarkPlugins: {
+      breaks: {
+        src: 'remark-breaks'
+      },
       dokuwikiLinks: {
         src: '~/utils/remark-dokuwiki-links',
         options: {
