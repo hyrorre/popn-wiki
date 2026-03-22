@@ -15,6 +15,15 @@ export default defineNuxtConfig({
       tableColor: {
         src: '~/utils/remark-table-color'
       }
+    },
+    rehypePlugins: {
+      'rehype-external-links': {
+        src: 'rehype-external-links',
+        options: {
+          target: '_blank',
+          rel: ['noopener', 'noreferrer']
+        }
+      }
     }
   },
   i18n: {

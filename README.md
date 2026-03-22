@@ -5,7 +5,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 (WIP)
 
 ## TODO
-- [ ] Fix: external link
+- [x] Fix: external link
 - [ ] definition list
 - [ ] page create/delete
 - [ ] image upload

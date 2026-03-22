@@ -12,6 +12,7 @@
         "@nuxtjs/supabase": "2.0.4",
         "eslint": "^10.0.3",
         "nuxt": "^4.4.2",
+        "rehype-external-links": "^3.0.0",
         "remark-breaks": "^4.0.0",
         "typescript": "^5.9.3",
         "unist-util-visit": "^5.1.0",
