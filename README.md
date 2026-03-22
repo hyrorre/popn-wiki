@@ -1,6 +1,34 @@
-# Nuxt Minimal Starter
+# Serverless Wiki
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Sample : https://popnwiki.hyrorre.workers.dev/
+
+(WIP)
+
+## TODO
+- [ ] Fix: external link
+- [ ] definition list
+- [ ] page create/delete
+- [ ] image upload
+- [ ] table sort
+- [ ] convert comments
+- [ ] comment paging
+- [ ] recent edit/comment
+- [ ] NOTOC/TOC
+- [ ] NOCACHE
+- [ ] edit page layout (vertical/horizontal)
+- [ ] sidebar layout
+
+## Feature
+- Markdown based syntax
+- Auth
+- Fast response
+- Customizable
+
+## Powered by
+- [Nuxt](https://nuxt.com) : SSR Framework
+- [@nuxtjs/mdc](https://nuxt.com/modules/mdc) : Markdown parser
+- [Supabase](https://supabase.com) : DB, Auth, Storage
+- [Cloudflare Workers](https://www.cloudflare.com/developer-platform/products/workers/) : Hosting, Edge Functions
 
 ## Setup
 
