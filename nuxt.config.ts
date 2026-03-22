@@ -3,7 +3,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
   css: ['~/app.css'],
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/mdc'],
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    '@nuxtjs/supabase',
+    '@nuxtjs/i18n',
+    '@nuxtjs/mdc',
+    'nuxt-gtag',
+    '@nuxtjs/google-adsense'
+  ],
   mdc: {
     remarkPlugins: {
       breaks: {
@@ -55,6 +63,11 @@ export default defineNuxtConfig({
   router: {
     options: {
       scrollBehaviorType: 'smooth'
+    }
+  },
+  runtimeConfig: {
+    googleAdsense: {
+      id: process.env.GOOGLE_ADSENSE_ID
     }
   }
 })
