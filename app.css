@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body,
 #__nuxt {

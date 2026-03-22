@@ -51,5 +51,10 @@ export default defineNuxtConfig({
       include: ['/profile'],
       exclude: []
     }
+  },
+  router: {
+    options: {
+      scrollBehaviorType: 'smooth'
+    }
   }
 })
