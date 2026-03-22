@@ -8,6 +8,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] Fix: external link
 - [x] page create/delete
 - [ ] image upload
+- [ ] Fix: converting link (pagename)
 - [ ] table sort
 - [ ] convert comments
 - [ ] comment paging
