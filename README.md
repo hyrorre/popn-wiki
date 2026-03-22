@@ -8,11 +8,12 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] Fix: external link
 - [x] page create/delete
 - [ ] image upload
+- [ ] recent edit/comment
 - [ ] Fix: converting link (pagename)
+- [ ] Fix: google-analytics
 - [ ] table sort
 - [ ] convert comments
 - [ ] comment paging
-- [ ] recent edit/comment
 - [ ] NOTOC/TOC
 - [ ] NOCACHE
 - [ ] edit page layout (vertical/horizontal)
