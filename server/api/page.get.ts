@@ -2,12 +2,14 @@ import { serverSupabaseClient } from '#supabase/server'
 import type { Page } from '~/types'
 
 export default defineEventHandler(async (event) => {
-  const query = (await getQuery(event)) as { path?: string; revision?: string }
+  const query = (await getQuery(event)) as { path?: string; revision?: string; includeDeleted?: string }
   if (!query.path) {
     throw createError({ status: 400 })
   }
 
+  const includeDeleted = query.includeDeleted === 'true'
   const client = await serverSupabaseClient(event)
+
   if (query.revision !== undefined) {
     const requestedRevision = Number.parseInt(query.revision, 10)
     if (!Number.isInteger(requestedRevision) || requestedRevision < 1) {
@@ -46,6 +48,11 @@ export default defineEventHandler(async (event) => {
 
   if (!data) {
     throw createError({ statusCode: 404, message: 'Page not found.' })
+  }
+
+  // 最新リビジョンの body が空 = 論理削除済み
+  if (!includeDeleted && data.body === '') {
+    throw createError({ statusCode: 404, message: 'Page has been deleted.' })
   }
 
   return data

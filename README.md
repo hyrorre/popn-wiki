@@ -6,8 +6,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 
 ## TODO
 - [x] Fix: external link
-- [ ] definition list
-- [ ] page create/delete
+- [x] page create/delete
 - [ ] image upload
 - [ ] table sort
 - [ ] convert comments
@@ -17,6 +16,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [ ] NOCACHE
 - [ ] edit page layout (vertical/horizontal)
 - [ ] sidebar layout
+- [ ] definition list
 
 ## Feature
 - Markdown based syntax
