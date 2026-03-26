@@ -1,7 +1,13 @@
 export default defineAppConfig({
   app: {
+    lang: 'ja',
     title: 'ポップンミュージック上級攻略Wiki',
-    lang: 'ja'
+    description: 'ポップンミュージック中級・上級・超上級曲の難易度表・攻略情報をまとめるサイト',
+    type: 'website',
+    url: 'https://popn.wiki',
+    image: 'https://popn.wiki/icon.svg',
+    twitter: '@hyrorre',
+    card: 'summary'
   },
   format: {
     locale: 'ja-JP',
