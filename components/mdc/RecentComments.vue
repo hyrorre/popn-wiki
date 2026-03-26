@@ -7,8 +7,10 @@ type RecentComment = {
 
 const props = withDefaults(defineProps<{
   limit?: number
+  hideDetail?: boolean
 }>(), {
-  limit: 10
+  limit: 10,
+  hideDetail: false
 })
 
 const { data: comments, status } = await useFetch<RecentComment[]>('/api/comment/recent', {
@@ -38,7 +40,7 @@ const formatDate = (dateStr: string) => {
         <NuxtLink :to="`/${comment.path}`" class="hover:underline text-primary truncate">
           {{ comment.path }}
         </NuxtLink>
-        <span class="text-xs text-muted whitespace-nowrap">
+        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">
           {{ comment.commenter }} · {{ formatDate(comment.created_at) }}
         </span>
       </li>

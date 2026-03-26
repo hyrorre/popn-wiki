@@ -5,8 +5,10 @@ type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updated_by' | 'u
 
 const props = withDefaults(defineProps<{
   limit?: number
+  hideDetail?: boolean
 }>(), {
-  limit: 10
+  limit: 10,
+  hideDetail: false
 })
 
 const { data: pages, status } = await useFetch<RecentPage[]>('/api/page/recent', {
@@ -36,7 +38,7 @@ const formatDate = (dateStr: string) => {
         <NuxtLink :to="`/${page.path}`" class="hover:underline text-primary truncate">
           {{ page.path }}
         </NuxtLink>
-        <span class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updated_at) }}</span>
+        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updated_at) }}</span>
       </li>
     </ul>
   </div>
