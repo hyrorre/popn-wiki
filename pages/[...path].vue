@@ -9,10 +9,6 @@ const createMode = ref(false)
 const conflictMessage = ref('')
 const deleting = ref(false)
 
-useHead({
-  titleTemplate: '%s'
-})
-
 const path = (typeof(route.params.path) === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
 
 // includeDeleted=true で取得し、フロントで状態を判定
@@ -78,6 +74,12 @@ const { data: mdcAst } = await useAsyncData(`page-ast-${path}`, async () => {
 const hasDiscussion = computed(() => {
   return mdcAst.value?.data?.discussion === true
 })
+
+// TODO: 見出しより前にアンカーなどがあると機能しない不具合を修正
+useHead({
+  title: mdcAst.value?.data?.title || ''
+})
+
 </script>
 
 <template>
