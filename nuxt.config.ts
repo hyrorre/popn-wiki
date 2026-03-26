@@ -9,7 +9,8 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase',
     '@nuxtjs/i18n',
     '@nuxtjs/mdc',
-    '@nuxt/scripts'
+    '@nuxt/scripts',
+    '@nuxthub/core'
   ],
   mdc: {
     remarkPlugins: {
@@ -61,6 +62,18 @@ export default defineNuxtConfig({
       exclude: []
     }
   },
+  hub: {
+    blob: {
+      driver: 'cloudflare-r2',
+      bucketName: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET!,
+      binding: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BINDING!
+    },
+    db: {
+      dialect: 'sqlite',
+      driver: 'd1-http',
+      casing: 'snake_case'
+    }
+  },
   router: {
     options: {
       scrollBehaviorType: 'smooth'
@@ -70,6 +83,11 @@ export default defineNuxtConfig({
     public: {
       googleTagManagerId: process.env.NUXT_PUBLIC_GTAG_ID,
       googleAdsenseId: process.env.NUXT_PUBLIC_GOOGLE_ADSENSE_ID
+    }
+  },
+  vite: {
+    optimizeDeps: {
+      include: ['@vue/devtools-core', '@vue/devtools-kit']
     }
   }
 })

@@ -10,12 +10,16 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
     "@nuxt/eslint": "1.15.2",
     "@nuxt/scripts": "^0.13.2",
     "@nuxt/ui": "4.5.1",
+    "@nuxthub/core": "0.10.7",
     "@nuxtjs/i18n": "10.2.3",
     "@nuxtjs/mdc": "0.20.2",
     "@nuxtjs/supabase": "2.0.4",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.1",
     "eslint": "^10.0.3",
     "nuxt": "^4.4.2",
     "rehype-external-links": "^3.0.0",
