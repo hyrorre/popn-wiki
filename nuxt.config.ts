@@ -9,8 +9,7 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase',
     '@nuxtjs/i18n',
     '@nuxtjs/mdc',
-    'nuxt-gtag',
-    '@nuxtjs/google-adsense'
+    '@nuxt/scripts'
   ],
   mdc: {
     remarkPlugins: {
@@ -68,8 +67,9 @@ export default defineNuxtConfig({
     }
   },
   runtimeConfig: {
-    googleAdsense: {
-      id: process.env.GOOGLE_ADSENSE_ID
+    public: {
+      googleTagManagerId: process.env.NUXT_PUBLIC_GTAG_ID,
+      googleAdsenseId: process.env.NUXT_PUBLIC_GOOGLE_ADSENSE_ID
     }
   }
 })
