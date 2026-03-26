@@ -4,7 +4,7 @@ import type { Page } from '~/types'
 type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updated_by' | 'updated_at'>
 
 const props = withDefaults(defineProps<{
-  limit?: number
+  limit?: number | string
   hideDetail?: boolean
 }>(), {
   limit: 10,
@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { data: pages, status } = await useFetch<RecentPage[]>('/api/page/recent', {
-  query: { limit: props.limit }
+  query: { limit: Number(props.limit) }
 })
 
 const {format} = useAppConfig()
