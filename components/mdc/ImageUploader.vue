@@ -59,7 +59,7 @@ const copyMarkdown = async () => {
       accept="image/png,image/jpeg,image/gif,image/webp"
       class="hidden"
       @change="upload"
-    />
+    >
 
     <button
       class="border px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

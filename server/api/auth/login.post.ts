@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Omit password from session
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const { password: _, ...userWithoutPassword } = user
 
   await setUserSession(event, {

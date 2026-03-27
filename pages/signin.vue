@@ -22,8 +22,9 @@ const submit = async () => {
     })
     await refreshSession()
     useRouter().push('/')
-  } catch (e: any) {
-    error_message.value = e.data?.message || 'Login failed'
+  } catch (err) {
+    const fetchError = err as { data?: { message?: string } }
+    error_message.value = fetchError.data?.message || 'Login failed'
   }
 }
 </script>

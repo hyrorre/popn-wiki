@@ -15,8 +15,9 @@ const submit = async () => {
     message.value = 'Account deleted.'
     alert('Account deleted.')
     useRouter().push('/')
-  } catch (error: any) {
-    message.value = error.message
+  } catch (err) {
+    const error = err as { message?: string }
+    message.value = error.message || 'Deletion failed'
   }
 }
 </script>

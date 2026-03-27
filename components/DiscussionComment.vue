@@ -2,7 +2,7 @@
 import type { Comment } from '~/types'
 
 const props = defineProps<{
-  comment: any
+  comment: Comment
   path: string
 }>()
 
@@ -124,7 +124,7 @@ const formatDate = (dateStr: string) => {
     </div>
     
     <!-- アクションボタン群 -->
-    <div class="flex justify-end gap-3 mt-3 text-sm" v-if="user && !isEditingOpen">
+    <div v-if="user && !isEditingOpen" class="flex justify-end gap-3 mt-3 text-sm">
       <!-- ユーザーIDチェック -->
       <button v-if="comment.userId === user.id" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
@@ -150,7 +150,7 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- 子コメント（再帰呼び出し） -->
-    <div v-if="comment.children?.length > 0" class="mt-5 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700 flex flex-col gap-4">
+    <div v-if="comment.children && comment.children.length > 0" class="mt-5 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700 flex flex-col gap-4">
       <DiscussionComment 
         v-for="child in comment.children" 
         :key="child.id" 

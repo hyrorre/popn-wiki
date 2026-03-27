@@ -103,7 +103,7 @@ await loadHistory()
         type="text"
         class="border rounded px-2 py-1 flex-1"
         placeholder="変更メッセージ（任意）"
-      />
+      >
     </div>
 
     <p v-if="errorMessage" class="text-red-600">{{ errorMessage }}</p>

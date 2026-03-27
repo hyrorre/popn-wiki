@@ -38,8 +38,8 @@ const submitComment = async () => {
 // Flatなコメント一覧を、親コメントと子コメント（返信）のツリー構造に変換
 const threadedComments = computed(() => {
   if (!comments.value) return []
-  const map = new Map()
-  const roots: any[] = []
+  const map = new Map<number, Comment & { children: Comment[] }>()
+  const roots: Comment[] = []
   
   // マップに事前にセット
   comments.value.forEach(c => {
@@ -49,9 +49,10 @@ const threadedComments = computed(() => {
   // 親子関係を構築
   comments.value.forEach(c => {
     if (c.replyTo && map.has(c.replyTo)) {
-      map.get(c.replyTo).children.push(map.get(c.id))
+      map.get(c.replyTo)?.children.push(map.get(c.id)!)
     } else {
-      roots.push(map.get(c.id))
+      const root = map.get(c.id)
+      if (root) roots.push(root)
     }
   })
 
@@ -60,7 +61,7 @@ const threadedComments = computed(() => {
 </script>
 
 <template>
-  <div class="discussion-container" id="discussion">
+  <div id="discussion" class="discussion-container">
     <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
       <u-icon name="i-heroicons-chat-bubble-left-right" class="w-6 h-6" />
       コメント

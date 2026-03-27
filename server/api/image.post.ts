@@ -42,13 +42,14 @@ export default defineEventHandler(async (event) => {
       url: putBlob.pathname,
       filename: file.filename
     }
-  } catch (e: any) {
-    if (e.message?.includes('already exists')) {
+  } catch (err) {
+    const error = err as { message?: string }
+    if (error.message?.includes('already exists')) {
       throw createError({
         statusCode: 409,
         message: `同名のファイルが既に存在します: ${file.filename}`
       })
     }
-    throw createError({ statusCode: 500, message: e.message })
+    throw createError({ statusCode: 500, message: error.message || 'Internal Server Error' })
   }
 })

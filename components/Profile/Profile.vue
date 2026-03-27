@@ -1,25 +1,29 @@
 <script setup lang="ts">
-const { user } = useUserSession()
-
 const {
   data: form,
   error,
   status
-} = useAsyncData<any>(async () => {
-  return await $fetch('/api/profile')
+} = useAsyncData(async () => {
+  const profile = await $fetch('/api/profile')
+  return {
+    ...profile,
+    name: profile.name ?? ''
+  }
 })
 
 const message = ref('')
 
 const submit = async () => {
+  if (!form.value) return
   try {
     await $fetch('/api/profile', {
       method: 'POST',
       body: form.value
     })
     message.value = 'Saved.'
-  } catch (e: any) {
-    message.value = e.data?.message || 'Save failed'
+  } catch (err) {
+    const fetchError = err as { data?: { message?: string } }
+    message.value = fetchError.data?.message || 'Save failed'
   }
 }
 </script>

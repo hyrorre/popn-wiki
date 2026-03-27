@@ -1,5 +1,4 @@
 import { profilesTable } from '../db/schema'
-import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {

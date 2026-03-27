@@ -22,8 +22,9 @@ const submit = async () => {
     })
     error_message.value = ''
     open.value = true // open modal
-  } catch (e: any) {
-    error_message.value = e.data?.message || 'Registration failed'
+  } catch (err) {
+    const fetchError = err as { data?: { message?: string } }
+    error_message.value = fetchError.data?.message || 'Registration failed'
   }
 }
 </script>

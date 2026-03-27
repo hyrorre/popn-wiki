@@ -1,7 +1,7 @@
 
 import { blob } from '@nuxthub/blob'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async () => {
   const { blobs } = await blob.list()
 
   return blobs.map((b) => {

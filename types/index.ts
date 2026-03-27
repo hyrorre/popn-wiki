@@ -14,7 +14,8 @@ export type Config = {
 
 export type Profile = {
   id: string
-  name: string
+  name: string | null
+  avatar: string | null
   createdAt: string
   updatedAt: string
 }
@@ -37,12 +38,14 @@ export type Comment = {
   body: string
   userId: string
   replyTo: number | null
+  replyToName?: string
   createdAt: string
   updatedAt: string
   profiles?: {
     id: string
     name: string | null
   }
+  children?: Comment[]
 }
 
 export type Permission = {
