@@ -1,0 +1,944 @@
+import fs from 'fs'
+import path from 'path'
+import { db, schema } from '@nuxthub/db'
+
+const specialCharacters = [
+  '\u{1a}', // 
+  '\u{1b}', // 
+  '\u{1c}', // 
+  '\u{1d}', // 
+  '\u{1e}', // 
+  '\u{1f}', // 
+  '\u{20}', // <space>
+  '\u{21}', // !
+  '\u{22}', // "
+  '\u{23}', // #
+  '\u{24}', // $
+  '\u{25}', // %
+  '\u{26}', // &
+  '\u{27}', // '
+  '\u{28}', // (
+  '\u{29}', // )
+  '\u{2b}', // +
+  '\u{2c}', // ,
+  '\u{2f}', // /
+  '\u{3b}', // ;
+  '\u{3c}', // <
+  '\u{3d}', // =
+  '\u{3e}', // >
+  '\u{3f}', // ?
+  '\u{40}', // @
+  '\u{5b}', // [
+  '\u{5c}', // \
+  '\u{5d}', // ]
+  '\u{5e}', // ^
+  '\u{60}', // `
+  '\u{7b}', // {
+  '\u{7c}', // |
+  '\u{7d}', // }
+  '\u{7e}', // ~
+  '\u{7f}', // 
+  '\u{80}', // 
+  '\u{81}', // 
+  '\u{82}', // 
+  '\u{83}', // 
+  '\u{84}', // 
+  '\u{85}', // 
+  '\u{86}', // 
+  '\u{87}', // 
+  '\u{88}', // 
+  '\u{89}', // 
+  '\u{8a}', // 
+  '\u{8b}', // 
+  '\u{8c}', // 
+  '\u{8d}', // 
+  '\u{8e}', // 
+  '\u{8f}', // 
+  '\u{90}', // 
+  '\u{91}', // 
+  '\u{92}', // 
+  '\u{93}', // 
+  '\u{94}', // 
+  '\u{95}', // 
+  '\u{96}', // 
+  '\u{97}', // 
+  '\u{98}', // 
+  '\u{99}', // 
+  '\u{9a}', // 
+  '\u{9b}', // 
+  '\u{9c}', // 
+  '\u{9d}', // 
+  '\u{9e}', // 
+  '\u{9f}', // 
+  '\u{a0}', //
+  '\u{a1}', // ¡
+  '\u{a2}', // ¢
+  '\u{a3}', // £
+  '\u{a4}', // ¤
+  '\u{a5}', // ¥
+  '\u{a6}', // ¦
+  '\u{a7}', // §
+  '\u{a8}', // ¨
+  '\u{a9}', // ©
+  '\u{aa}', // ª
+  '\u{ab}', // «
+  '\u{ac}', // ¬
+  '\u{ad}', // ­
+  '\u{ae}', // ®
+  '\u{af}', // ¯
+  '\u{b0}', // °
+  '\u{b1}', // ±
+  '\u{b2}', // ²
+  '\u{b3}', // ³
+  '\u{b4}', // ´
+  '\u{b5}', // µ
+  '\u{b6}', // ¶
+  '\u{b7}', // ·
+  '\u{b8}', // ¸
+  '\u{b9}', // ¹
+  '\u{ba}', // º
+  '\u{bb}', // »
+  '\u{bc}', // ¼
+  '\u{bd}', // ½
+  '\u{be}', // ¾
+  '\u{bf}', // ¿
+  '\u{d7}', // ×
+  '\u{f7}', // ÷
+  '\u{2c7}', // ˇ
+  '\u{2d8}', // ˘
+  '\u{2d9}', // ˙
+  '\u{2da}', // ˚
+  '\u{2db}', // ˛
+  '\u{2dc}', // ˜
+  '\u{2dd}', // ˝
+  '\u{300}', // ̀
+  '\u{301}', // ́
+  '\u{303}', // ̃
+  '\u{309}', // ̉
+  '\u{323}', // ̣
+  '\u{384}', // ΄
+  '\u{385}', // ΅
+  '\u{387}', // ·
+  '\u{5b0}', // ְ
+  '\u{5b1}', // ֱ
+  '\u{5b2}', // ֲ
+  '\u{5b3}', // ֳ
+  '\u{5b4}', // ִ
+  '\u{5b5}', // ֵ
+  '\u{5b6}', // ֶ
+  '\u{5b7}', // ַ
+  '\u{5b8}', // ָ
+  '\u{5b9}', // ֹ
+  '\u{5bb}', // ֻ
+  '\u{5bc}', // ּ
+  '\u{5bd}', // ֽ
+  '\u{5be}', // ־
+  '\u{5bf}', // ֿ
+  '\u{5c0}', // ׀
+  '\u{5c1}', // ׁ
+  '\u{5c2}', // ׂ
+  '\u{5c3}', // ׃
+  '\u{5f3}', // ׳
+  '\u{5f4}', // ״
+  '\u{60c}', // ،
+  '\u{61b}', // ؛
+  '\u{61f}', // ؟
+  '\u{640}', // ـ
+  '\u{64b}', // ً
+  '\u{64c}', // ٌ
+  '\u{64d}', // ٍ
+  '\u{64e}', // َ
+  '\u{64f}', // ُ
+  '\u{650}', // ِ
+  '\u{651}', // ّ
+  '\u{652}', // ْ
+  '\u{66a}', // ٪
+  '\u{e3f}', // ฿
+  '\u{200c}', // ‌
+  '\u{200d}', // ‍
+  '\u{200e}', // ‎
+  '\u{200f}', // ‏
+  '\u{2013}', // –
+  '\u{2014}', // —
+  '\u{2015}', // ―
+  '\u{2017}', // ‗
+  '\u{2018}', // ‘
+  '\u{2019}', // ’
+  '\u{201a}', // ‚
+  '\u{201c}', // “
+  '\u{201d}', // ”
+  '\u{201e}', // „
+  '\u{2020}', // †
+  '\u{2021}', // ‡
+  '\u{2022}', // •
+  '\u{2026}', // …
+  '\u{2030}', // ‰
+  '\u{2032}', // ′
+  '\u{2033}', // ″
+  '\u{2039}', // ‹
+  '\u{203a}', // ›
+  '\u{2044}', // ⁄
+  '\u{20a7}', // ₧
+  '\u{20aa}', // ₪
+  '\u{20ab}', // ₫
+  '\u{20ac}', // €
+  '\u{2116}', // №
+  '\u{2118}', // ℘
+  '\u{2122}', // ™
+  '\u{2126}', // Ω
+  '\u{2135}', // ℵ
+  '\u{2190}', // ←
+  '\u{2191}', // ↑
+  '\u{2192}', // →
+  '\u{2193}', // ↓
+  '\u{2194}', // ↔
+  '\u{2195}', // ↕
+  '\u{21b5}', // ↵
+  '\u{21d0}', // ⇐
+  '\u{21d1}', // ⇑
+  '\u{21d2}', // ⇒
+  '\u{21d3}', // ⇓
+  '\u{21d4}', // ⇔
+  '\u{2200}', // ∀
+  '\u{2202}', // ∂
+  '\u{2203}', // ∃
+  '\u{2205}', // ∅
+  '\u{2206}', // ∆
+  '\u{2207}', // ∇
+  '\u{2208}', // ∈
+  '\u{2209}', // ∉
+  '\u{220b}', // ∋
+  '\u{220f}', // ∏
+  '\u{2211}', // ∑
+  '\u{2212}', // −
+  '\u{2215}', // ∕
+  '\u{2217}', // ∗
+  '\u{2219}', // ∙
+  '\u{221a}', // √
+  '\u{221d}', // ∝
+  '\u{221e}', // ∞
+  '\u{2220}', // ∠
+  '\u{2227}', // ∧
+  '\u{2228}', // ∨
+  '\u{2229}', // ∩
+  '\u{222a}', // ∪
+  '\u{222b}', // ∫
+  '\u{2234}', // ∴
+  '\u{223c}', // ∼
+  '\u{2245}', // ≅
+  '\u{2248}', // ≈
+  '\u{2260}', // ≠
+  '\u{2261}', // ≡
+  '\u{2264}', // ≤
+  '\u{2265}', // ≥
+  '\u{2282}', // ⊂
+  '\u{2283}', // ⊃
+  '\u{2284}', // ⊄
+  '\u{2286}', // ⊆
+  '\u{2287}', // ⊇
+  '\u{2295}', // ⊕
+  '\u{2297}', // ⊗
+  '\u{22a5}', // ⊥
+  '\u{22c5}', // ⋅
+  '\u{2310}', // ⌐
+  '\u{2320}', // ⌠
+  '\u{2321}', // ⌡
+  '\u{2329}', // 〈
+  '\u{232a}', // 〉
+  '\u{2469}', // ⑩
+  '\u{2500}', // ─
+  '\u{2502}', // │
+  '\u{250c}', // ┌
+  '\u{2510}', // ┐
+  '\u{2514}', // └
+  '\u{2518}', // ┘
+  '\u{251c}', // ├
+  '\u{2524}', // ┤
+  '\u{252c}', // ┬
+  '\u{2534}', // ┴
+  '\u{253c}', // ┼
+  '\u{2550}', // ═
+  '\u{2551}', // ║
+  '\u{2552}', // ╒
+  '\u{2553}', // ╓
+  '\u{2554}', // ╔
+  '\u{2555}', // ╕
+  '\u{2556}', // ╖
+  '\u{2557}', // ╗
+  '\u{2558}', // ╘
+  '\u{2559}', // ╙
+  '\u{255a}', // ╚
+  '\u{255b}', // ╛
+  '\u{255c}', // ╜
+  '\u{255d}', // ╝
+  '\u{255e}', // ╞
+  '\u{255f}', // ╟
+  '\u{2560}', // ╠
+  '\u{2561}', // ╡
+  '\u{2562}', // ╢
+  '\u{2563}', // ╣
+  '\u{2564}', // ╤
+  '\u{2565}', // ╥
+  '\u{2566}', // ╦
+  '\u{2567}', // ╧
+  '\u{2568}', // ╨
+  '\u{2569}', // ╩
+  '\u{256a}', // ╪
+  '\u{256b}', // ╫
+  '\u{256c}', // ╬
+  '\u{2580}', // ▀
+  '\u{2584}', // ▄
+  '\u{2588}', // █
+  '\u{258c}', // ▌
+  '\u{2590}', // ▐
+  '\u{2591}', // ░
+  '\u{2592}', // ▒
+  '\u{2593}', // ▓
+  '\u{25a0}', // ■
+  '\u{25b2}', // ▲
+  '\u{25bc}', // ▼
+  '\u{25c6}', // ◆
+  '\u{25ca}', // ◊
+  '\u{25cf}', // ●
+  '\u{25d7}', // ◗
+  '\u{2605}', // ★
+  '\u{260e}', // ☎
+  '\u{261b}', // ☛
+  '\u{261e}', // ☞
+  '\u{2660}', // ♠
+  '\u{2663}', // ♣
+  '\u{2665}', // ♥
+  '\u{2666}', // ♦
+  '\u{2701}', // ✁
+  '\u{2702}', // ✂
+  '\u{2703}', // ✃
+  '\u{2704}', // ✄
+  '\u{2706}', // ✆
+  '\u{2707}', // ✇
+  '\u{2708}', // ✈
+  '\u{2709}', // ✉
+  '\u{270c}', // ✌
+  '\u{270d}', // ✍
+  '\u{270e}', // ✎
+  '\u{270f}', // ✏
+  '\u{2710}', // ✐
+  '\u{2711}', // ✑
+  '\u{2712}', // ✒
+  '\u{2713}', // ✓
+  '\u{2714}', // ✔
+  '\u{2715}', // ✕
+  '\u{2716}', // ✖
+  '\u{2717}', // ✗
+  '\u{2718}', // ✘
+  '\u{2719}', // ✙
+  '\u{271a}', // ✚
+  '\u{271b}', // ✛
+  '\u{271c}', // ✜
+  '\u{271d}', // ✝
+  '\u{271e}', // ✞
+  '\u{271f}', // ✟
+  '\u{2720}', // ✠
+  '\u{2721}', // ✡
+  '\u{2722}', // ✢
+  '\u{2723}', // ✣
+  '\u{2724}', // ✤
+  '\u{2725}', // ✥
+  '\u{2726}', // ✦
+  '\u{2727}', // ✧
+  '\u{2729}', // ✩
+  '\u{272a}', // ✪
+  '\u{272b}', // ✫
+  '\u{272c}', // ✬
+  '\u{272d}', // ✭
+  '\u{272e}', // ✮
+  '\u{272f}', // ✯
+  '\u{2730}', // ✰
+  '\u{2731}', // ✱
+  '\u{2732}', // ✲
+  '\u{2733}', // ✳
+  '\u{2734}', // ✴
+  '\u{2735}', // ✵
+  '\u{2736}', // ✶
+  '\u{2737}', // ✷
+  '\u{2738}', // ✸
+  '\u{2739}', // ✹
+  '\u{273a}', // ✺
+  '\u{273b}', // ✻
+  '\u{273c}', // ✼
+  '\u{273d}', // ✽
+  '\u{273e}', // ✾
+  '\u{273f}', // ✿
+  '\u{2740}', // ❀
+  '\u{2741}', // ❁
+  '\u{2742}', // ❂
+  '\u{2743}', // ❃
+  '\u{2744}', // ❄
+  '\u{2745}', // ❅
+  '\u{2746}', // ❆
+  '\u{2747}', // ❇
+  '\u{2748}', // ❈
+  '\u{2749}', // ❉
+  '\u{274a}', // ❊
+  '\u{274b}', // ❋
+  '\u{274d}', // ❍
+  '\u{274f}', // ❏
+  '\u{2750}', // ❐
+  '\u{2751}', // ❑
+  '\u{2752}', // ❒
+  '\u{2756}', // ❖
+  '\u{2758}', // ❘
+  '\u{2759}', // ❙
+  '\u{275a}', // ❚
+  '\u{275b}', // ❛
+  '\u{275c}', // ❜
+  '\u{275d}', // ❝
+  '\u{275e}', // ❞
+  '\u{2761}', // ❡
+  '\u{2762}', // ❢
+  '\u{2763}', // ❣
+  '\u{2764}', // ❤
+  '\u{2765}', // ❥
+  '\u{2766}', // ❦
+  '\u{2767}', // ❧
+  '\u{277f}', // ❿
+  '\u{2789}', // ➉
+  '\u{2793}', // ➓
+  '\u{2794}', // ➔
+  '\u{2798}', // ➘
+  '\u{2799}', // ➙
+  '\u{279a}', // ➚
+  '\u{279b}', // ➛
+  '\u{279c}', // ➜
+  '\u{279d}', // ➝
+  '\u{279e}', // ➞
+  '\u{279f}', // ➟
+  '\u{27a0}', // ➠
+  '\u{27a1}', // ➡
+  '\u{27a2}', // ➢
+  '\u{27a3}', // ➣
+  '\u{27a4}', // ➤
+  '\u{27a5}', // ➥
+  '\u{27a6}', // ➦
+  '\u{27a7}', // ➧
+  '\u{27a8}', // ➨
+  '\u{27a9}', // ➩
+  '\u{27aa}', // ➪
+  '\u{27ab}', // ➫
+  '\u{27ac}', // ➬
+  '\u{27ad}', // ➭
+  '\u{27ae}', // ➮
+  '\u{27af}', // ➯
+  '\u{27b1}', // ➱
+  '\u{27b2}', // ➲
+  '\u{27b3}', // ➳
+  '\u{27b4}', // ➴
+  '\u{27b5}', // ➵
+  '\u{27b6}', // ➶
+  '\u{27b7}', // ➷
+  '\u{27b8}', // ➸
+  '\u{27b9}', // ➹
+  '\u{27ba}', // ➺
+  '\u{27bb}', // ➻
+  '\u{27bc}', // ➼
+  '\u{27bd}', // ➽
+  '\u{27be}', // ➾
+  '\u{3000}', //
+  '\u{3001}', // 、
+  '\u{3002}', // 。
+  '\u{3003}', // 〃
+  '\u{3008}', // 〈
+  '\u{3009}', // 〉
+  '\u{300a}', // 《
+  '\u{300b}', // 》
+  '\u{300c}', // 「
+  '\u{300d}', // 」
+  '\u{300e}', // 『
+  '\u{300f}', // 』
+  '\u{3010}', // 【
+  '\u{3011}', // 】
+  '\u{3012}', // 〒
+  '\u{3014}', // 〔
+  '\u{3015}', // 〕
+  '\u{3016}', // 〖
+  '\u{3017}', // 〗
+  '\u{3018}', // 〘
+  '\u{3019}', // 〙
+  '\u{301a}', // 〚
+  '\u{301b}', // 〛
+  '\u{3036}', // 〶
+  '\u{f6d9}', // 
+  '\u{f6da}', // 
+  '\u{f6db}', // 
+  '\u{f8d7}', // 
+  '\u{f8d8}', // 
+  '\u{f8d9}', // 
+  '\u{f8da}', // 
+  '\u{f8db}', // 
+  '\u{f8dc}', // 
+  '\u{f8dd}', // 
+  '\u{f8de}', // 
+  '\u{f8df}', // 
+  '\u{f8e0}', // 
+  '\u{f8e1}', // 
+  '\u{f8e2}', // 
+  '\u{f8e3}', // 
+  '\u{f8e4}', // 
+  '\u{f8e5}', // 
+  '\u{f8e6}', // 
+  '\u{f8e7}', // 
+  '\u{f8e8}', // 
+  '\u{f8e9}', // 
+  '\u{f8ea}', // 
+  '\u{f8eb}', // 
+  '\u{f8ec}', // 
+  '\u{f8ed}', // 
+  '\u{f8ee}', // 
+  '\u{f8ef}', // 
+  '\u{f8f0}', // 
+  '\u{f8f1}', // 
+  '\u{f8f2}', // 
+  '\u{f8f3}', // 
+  '\u{f8f4}', // 
+  '\u{f8f5}', // 
+  '\u{f8f6}', // 
+  '\u{f8f7}', // 
+  '\u{f8f8}', // 
+  '\u{f8f9}', // 
+  '\u{f8fa}', // 
+  '\u{f8fb}', // 
+  '\u{f8fc}', // 
+  '\u{f8fd}', // 
+  '\u{f8fe}', // 
+  '\u{fe7c}', // ﹼ
+  '\u{fe7d}', // ﹽ
+  '\u{ff01}', // ！
+  '\u{ff02}', // ＂
+  '\u{ff03}', // ＃
+  '\u{ff04}', // ＄
+  '\u{ff05}', // ％
+  '\u{ff06}', // ＆
+  '\u{ff07}', // ＇
+  '\u{ff08}', // （
+  '\u{ff09}', // ）
+  '\u{ff09}', // ）
+  '\u{ff0a}', // ＊
+  '\u{ff0b}', // ＋
+  '\u{ff0c}', // ，
+  '\u{ff0d}', // －
+  '\u{ff0e}', // ．
+  '\u{ff0f}', // ／
+  '\u{ff1a}', // ：
+  '\u{ff1b}', // ；
+  '\u{ff1c}', // ＜
+  '\u{ff1d}', // ＝
+  '\u{ff1e}', // ＞
+  '\u{ff1f}', // ？
+  '\u{ff20}', // ＠
+  '\u{ff3b}', // ［
+  '\u{ff3c}', // ＼
+  '\u{ff3d}', // ］
+  '\u{ff3e}', // ＾
+  '\u{ff40}', // ｀
+  '\u{ff5b}', // ｛
+  '\u{ff5c}', // ｜
+  '\u{ff5d}', // ｝
+  '\u{ff5e}', // ～
+  '\u{ff5f}', // ｟
+  '\u{ff60}', // ｠
+  '\u{ff61}', // ｡
+  '\u{ff62}', // ｢
+  '\u{ff63}', // ｣
+  '\u{ff64}', // ､
+  '\u{ff65}', // ･
+  '\u{ffe0}', // ￠
+  '\u{ffe1}', // ￡
+  '\u{ffe2}', // ￢
+  '\u{ffe3}', // ￣
+  '\u{ffe4}', // ￤
+  '\u{ffe5}', // ￥
+  '\u{ffe6}', // ￦
+  '\u{ffe8}', // ￨
+  '\u{ffe9}', // ￩
+  '\u{ffea}', // ￪
+  '\u{ffeb}', // ￫
+  '\u{ffec}', // ￬
+  '\u{ffed}', // ￭
+  '\u{ffee}', // ￮
+  '\u{1d6fc}', // 𝛼
+  '\u{1d6fd}', // 𝛽
+  '\u{1d6fe}', // 𝛾
+  '\u{1d6ff}', // 𝛿
+  '\u{1d700}', // 𝜀
+  '\u{1d701}', // 𝜁
+  '\u{1d702}', // 𝜂
+  '\u{1d703}', // 𝜃
+  '\u{1d704}', // 𝜄
+  '\u{1d705}', // 𝜅
+  '\u{1d706}', // 𝜆
+  '\u{1d707}', // 𝜇
+  '\u{1d708}', // 𝜈
+  '\u{1d709}', // 𝜉
+  '\u{1d70a}', // 𝜊
+  '\u{1d70b}', // 𝜋
+  '\u{1d70c}', // 𝜌
+  '\u{1d70d}', // 𝜍
+  '\u{1d70e}', // 𝜎
+  '\u{1d70f}', // 𝜏
+  '\u{1d710}', // 𝜐
+  '\u{1d711}', // 𝜑
+  '\u{1d712}', // 𝜒
+  '\u{1d713}', // 𝜓
+  '\u{1d714}', // 𝜔
+  '\u{1d715}', // 𝜕
+  '\u{1d716}', // 𝜖
+  '\u{1d717}', // 𝜗
+  '\u{1d718}', // 𝜘
+  '\u{1d719}', // 𝜙
+  '\u{1d71a}', // 𝜚
+  '\u{1d71b}', // 𝜛
+  '\u{c2a0}' // 슠
+  // '\u{e28087}', //
+  // '\u{e280af}', //
+  // '\u{e281a0}', //
+  // '\u{efbbbf}' //
+]
+
+function getFilesRecursively(dir: string): string[] {
+  let results: string[] = []
+  const list = fs.readdirSync(dir)
+
+  list.forEach((file) => {
+    file = path.resolve(dir, file)
+    const stat = fs.statSync(file)
+    if (stat && stat.isDirectory()) {
+      // ディレクトリなら再帰的に取得
+      results = results.concat(getFilesRecursively(file))
+    } else {
+      // ファイルなら追加
+      results.push(file)
+    }
+  })
+  return results
+}
+
+function convertDokuwikiToMarkdown(input: string): string {
+  let text = input
+
+  // 単一の [ または ] をエスケープ (DokuWiki のリンク [[...]] を除く)
+  text = text.replace(/(?<!\[)\[(?!\[)/g, '\\[')
+  text = text.replace(/(?<!\])\](?!\])/g, '\\]')
+
+  // 特殊コメントマーカー: %%//%% 以降をコメント扱い -> <!-- ... -->
+  // 例: "text %%//%% comment" -> "text <!-- comment -->"
+  text = text.replace(/^(.*)%%\/\/%%(.*)$/gm, (_m, before, comment) => {
+    return `${before}<!--${comment}-->`
+  })
+
+  // 整形の無効化: %%...%% に対応（中身はそのまま表示し、他の変換の対象外にする）
+  // 最後に Markdown のインラインコードとして復元する
+  const nowikiPlaceholders: string[] = []
+  text = text.replace(/%%([\s\S]*?)%%/g, (_m, inner) => {
+    const idx = nowikiPlaceholders.length
+    nowikiPlaceholders.push(inner)
+    return `__DOKU_NOWIKI_${idx}__`
+  })
+
+  // C言語スタイルコメント: /* ... */ -> <!-- ... -->
+  text = text.replace(/\/\*([\s\S]*?)\*\//g, '<!--$1-->')
+
+  // 強制改行: \\ -> スペース2個 + 改行
+  text = text.replace(/\\\\([ \t]*)/g, '\n')
+
+  // 見出し: ====== Title ====== など -> # Title
+  text = text.replace(/^(={2,6})\s*(.*?)\s*\1\s*$/gm, (_m, eq, title) => {
+    const dokuwikiLevel = Math.min(eq.length, 6)
+    const mdLevel = Math.min(Math.max(7 - dokuwikiLevel, 1), 6) // 6->1,5->2,...,2->5
+    return '#'.repeat(mdLevel) + ' ' + title
+  })
+
+  // アンカー: &aname(id);
+  // まず「見出し直前」のケースを優先し、見出し行に埋め込んでpage titleを確実に取得する
+  // 例:
+  // &aname(sec1);
+  // # Title
+  // -> # Title[]{#sec1}
+  text = text.replace(
+    /&aname\(([A-Za-z0-9_-]+)\);\s*\r?\n(#{1,6}\s+)(.*)$/gm,
+    (_m, id, hashes, title) => `${hashes}${title}[]{#${id}}`
+  )
+
+  // 残ったアンカーはインライン要素として変換
+  // id には英数字と - _ のみ許可
+  text = text.replace(/&aname\(([A-Za-z0-9_-]+)\);/g, '[]{#$1}')
+
+  // カラータグ: <color /#ffff77>テキスト</color> など -> <span style="color: #ffff77">テキスト</span>
+  // / の有無や色名（pink など）もそのまま style の color 値として利用する
+  text = text.replace(
+    /<color\s+\/?([#A-Za-z0-9_-]+)\s*>([\s\S]*?)<\/color>/gi,
+    (_m, color, content) => `[${content}]{style="color: ${color}"}`
+  )
+
+  // Fontsize2プラグイン: <fs size>テキスト</fs> -> <span style="font-size: size">テキスト</span>
+  text = text.replace(
+    /<fs\s+([^>]+?)\s*>([\s\S]*?)<\/fs>/gi,
+    (_m, size, content) => `[${content}]{style="font-size: ${size}"}`
+  )
+
+  // NEWタグ: &new{text}; -> [text]{.andnew}
+  text = text.replace(/&new\{([^}]+)\};/g, '[$1]{.andnew}')
+
+  // CommentIDタグ: &commentid{id}; -> [id]{.commentid}
+  text = text.replace(/&commentid\{([^}]+)\};/g, '[$1]{.commentid}')
+
+  // リストマーカー: 行頭が * または - で、直後にスペースがない場合にスペースを追加
+  // 例: "*item" -> "* item", "-item" -> "- item"
+  text = text.replace(/^([ \t]*)([*-])(?!\s)(.+)$/gm, (_m, indent, marker, rest) => {
+    return `${indent}${marker} ${rest}`
+  })
+
+  // 1行コメント: // ... -> <!-- ... -->
+  // 行頭（空白のみ許可）にある // を対象とし、URL (http:// など) は変換しない
+  text = text.replace(/^(\s*)\/\/(.*)$/gm, (_m, indent, content) => {
+    // http://, https:// で始まる行はスキップ
+    const trimmed = content.trimStart()
+    if (/^https?:\/\//.test(trimmed)) return _m
+    return `${indent}<!--${content}-->`
+  })
+
+  // コードブロック: <code>...</code> -> ```...```
+  text = text.replace(/<code(?: [^>]*)?>([\s\S]*?)<\/code>/gi, (_m, code) => {
+    // 先頭と末尾の改行を整える
+    const trimmed = code.replace(/^\n+/, '').replace(/\n+$/, '')
+    return '```\n' + trimmed + '\n```'
+  })
+
+  // イタリック: //text// -> *text*
+  // URL (http://, https://) に影響しないように http(s): の直後は除外
+  text = text.replace(/(^|[^\w:])\/\/(.+?)\/\//g, (_m, prefix, content) => {
+    return prefix + '*' + content + '*'
+  })
+
+  // インラインコード: ''code'' -> `code`
+  text = text.replace(/''(.*?)''/g, '`$1`')
+
+  // フォントサイズショートカット
+  // 160%
+  text = text.replace(/#{4}(.+?)#{4}/g, '[$1]{.text-2xl}')
+  // 140%
+  text = text.replace(/#{3}(.+?)#{3}/g, '[$1]{.text-xl}')
+  // 120%
+  text = text.replace(/#{2}(.+?)#{2}/g, '[$1]{.text-lg}')
+  // 60%
+  text = text.replace(/,{3}(.+?),{3}/g, '[$1]{.text-xs}')
+  // 80%
+  text = text.replace(/,{2}(.+?),{2}/g, '[$1]{.text-sm}')
+
+  // 内部/外部リンク: [[target|label]] / [[target]] -> [label](url)
+  text = text.replace(/\[\[(.+?)\]\]/g, (_m, inner: string) => {
+    let target = inner
+    let label = inner
+
+    const pipeIndex = inner.indexOf('|')
+    if (pipeIndex !== -1) {
+      target = inner.slice(0, pipeIndex)
+      label = inner.slice(pipeIndex + 1)
+    }
+
+    let url = target.trim()
+
+    // 内部リンク
+    if (!url.startsWith('http')) {
+      // dokuwiki の名前空間区切り : をパスの / に変換
+      url = url.replace(/:/g, '/')
+
+      // 先頭がスキームでなければルート相対パスにしておく
+      if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
+        url = '/' + url
+      }
+
+      // スペースを'+'に変換
+      // url = url.replaceAll(' ', '+')
+
+      // specialCharactersを_に変換
+      url = url.replace(new RegExp(`[${specialCharacters.map(c => c.replace(/[\\^\]-]/g, '\\$&')).join('')}]`, 'g'), '_')
+
+      // 連続した_を1つにまとめる
+      url = url.replace(/_+/g, '_')
+
+      // 先頭と末尾の_を削除
+      url = url.replace(/^_/, '').replace(/_$/, '')
+
+      // urlを小文字に変換
+      url = url.toLowerCase()
+    }
+
+    label = label.trim()
+
+    // labelの先頭が:だったらそれを削除
+    label = label.replace(/^:/, '')
+
+    // labelの:を/に置換
+    label = label.replace(/:/g, '/')
+
+    return `[${label.trim()}](${url})`
+  })
+
+  // 画像: {{path|alt}} / {{path}} -> ![alt](url)
+  text = text.replace(/\{\{([^|}]+?)(?:\|([^}]*))?\}\}/g, (_m, src, alt) => {
+    let url = src.trim().replace(/:/g, '/')
+    if (!/^[a-z]+:\/\/|^\//i.test(url)) {
+      url = '/' + url
+    }
+    const altText = (alt || '').trim()
+    const prefix = url.endsWith('?linkonly') ? '' : '!'
+    return `${prefix}[${altText}](${url})`
+  })
+
+  // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
+  // 連続するテーブル行のまとまりごとに処理する
+  text = text.replace(/(^[ \t]*[\^|].*(?:\n[ \t]*[\^|].*)*)/gm, (block) => {
+    const lines = block
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('^') || l.startsWith('|'))
+
+    if (lines.length === 0) return block
+
+    // 1行をセル配列に変換
+    // 空白なしの空セル (||) は結合マーカー ">" にする
+    const parseRow = (line: string) => {
+      const marker = line[0] as string // '^' または '|'
+      const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
+      return inner.split(marker).map((cell) => {
+        if (cell === '') return '>'
+        return cell.trim()
+      })
+    }
+
+    const rows = lines.map(parseRow)
+    if (rows.length === 0) return block
+
+    const header = rows[0]
+    if (!header) return block
+    const colCount = header.length
+    const separator = Array(colCount).fill('---')
+
+    const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
+
+    const mdLines: string[] = []
+    mdLines.push(toMarkdownRow(header))
+    mdLines.push(toMarkdownRow(separator))
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]
+      if (row) {
+        mdLines.push(toMarkdownRow(row))
+      }
+    }
+
+    return mdLines.join('\n')
+  })
+
+  // 整形無効領域を復元（''等幅'' との組み合わせも考慮してインラインコードにする）
+  text = text.replace(/__DOKU_NOWIKI_(\d+)__/g, (_m, idxStr) => {
+    const idx = Number(idxStr)
+    let content = nowikiPlaceholders[idx] ?? ''
+    // ''等幅'' のような Dokuwiki の等幅指定は中身だけ取り出す
+    content = content.replace(/''(.*?)''/g, '$1')
+    return '`' + content + '`'
+  })
+
+  // DISCUSSION タグを Frontmatter に変換
+  let hasDiscussion = false
+  let discussionTitle = ''
+  text = text.replace(/~~DISCUSSION(?:\|([^~]+))?~~/g, (_m, title: string) => {
+    hasDiscussion = true
+    if (title) discussionTitle = title.trim()
+    return ''
+  })
+
+  if (hasDiscussion) {
+    let props = 'discussion: true\n'
+    if (discussionTitle) {
+      props += `discussion-title: "${discussionTitle.replace(/"/g, '\\"')}"\n`
+    }
+
+    if (text.startsWith('---\n')) {
+      text = text.replace(/^---\n/, `---\n${props}`)
+    } else {
+      text = `---\n${props}---\n\n` + text.replace(/^\s+/, '')
+    }
+  }
+
+  // NOTOCタグをFrontmatter に変換
+  let hasNotoc = false
+  text = text.replace(/~~[\s\S]*NOTOC[\s\S]*~~/g, (_m) => {
+    hasNotoc = true
+    return ''
+  })
+
+  if (hasNotoc) {
+    let props = 'notoc: true\n'
+    if (text.startsWith('---\n')) {
+      text = text.replace(/^---\n/, `---\n${props}`)
+    } else {
+      text = `---\n${props}---\n\n` + text.replace(/^\s+/, '')
+    }
+  }
+
+  // sortable プラグインを MDC に変換
+  // <sortable 1=category 4=bpm 7=numeric> -> ::sortable{c1=category c4=bpm c7=numeric}
+  text = text.replace(/<sortable\s+([^>]*?)>/gi, (_m, attrs) => {
+    const mdcAttrs = attrs.trim().replace(/(\d+)=([^\s>]+)/g, 'c$1="$2"')
+    return `::sortable{${mdcAttrs}}`
+  })
+  text = text.replace(/<\/sortable>/gi, '::')
+
+  return text
+}
+
+export default defineTask({
+  meta: {
+    name: 'db:seed',
+    description: 'Seed database with DokuWiki pages converted to Markdown'
+  },
+  async run() {
+    console.log('Seeding database from .local/pages...')
+
+    const pagesDir = path.resolve(process.cwd(), '.local/pages')
+    if (!fs.existsSync(pagesDir)) {
+      console.warn('Pages directory not found:', pagesDir)
+      return { result: 'No pages found to seed' }
+    }
+
+    const files = getFilesRecursively(pagesDir)
+    const pageEntries = files
+      .filter((file) => file.endsWith('.txt'))
+      .map((file) => {
+        const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
+        const bodyContent = fs.readFileSync(file, 'utf8')
+        const markdown = convertDokuwikiToMarkdown(bodyContent)
+        const now = new Date().toISOString()
+
+        return {
+          path: `/${relativePath}`,
+          revision: 1,
+          body: markdown,
+          message: 'Initial seed',
+          minor: 0,
+          createdAt: now,
+          updatedAt: now,
+          createdBy: 'system',
+          updatedBy: 'system'
+        }
+      })
+
+    if (pageEntries.length > 0) {
+      // ページテーブルに挿入
+      await db.insert(schema.pagesTable).values(pageEntries).onConflictDoNothing()
+      console.log(`Inserted ${pageEntries.length} pages.`)
+    }
+
+    return { result: 'Database seeded successfully' }
+  }
+})
