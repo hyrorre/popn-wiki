@@ -1,4 +1,3 @@
-
 import { blob } from '@nuxthub/blob'
 
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp']

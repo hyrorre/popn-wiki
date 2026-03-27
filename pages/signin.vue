@@ -5,7 +5,6 @@ useHead({
   title: 'SIGN IN'
 })
 
-
 const form = reactive({
   email: '',
   password: ''

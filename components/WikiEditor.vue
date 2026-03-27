@@ -103,7 +103,7 @@ await loadHistory()
         type="text"
         class="border rounded px-2 py-1 flex-1"
         placeholder="変更メッセージ（任意）"
-      >
+      />
     </div>
 
     <p v-if="errorMessage" class="text-red-600">{{ errorMessage }}</p>
@@ -128,16 +128,10 @@ await loadHistory()
           <div class="flex items-center justify-between gap-3">
             <div>
               <p class="font-medium">r{{ item.revision }}</p>
-              <p class="text-sm text-muted">
-                {{ item.updatedAt }} / {{ item.updatedBy }}
-              </p>
+              <p class="text-sm text-muted">{{ item.updatedAt }} / {{ item.updatedBy }}</p>
               <p v-if="item.message" class="text-sm">{{ item.message }}</p>
             </div>
-            <button
-              class="border px-2 py-1 rounded"
-              :disabled="restoring !== null"
-              @click="restore(item.revision)"
-            >
+            <button class="border px-2 py-1 rounded" :disabled="restoring !== null" @click="restore(item.revision)">
               {{ restoring === item.revision ? '実行中...' : 'この版に差し戻す' }}
             </button>
           </div>

@@ -23,10 +23,10 @@ function sortTable(table: HTMLTableElement, colIndex: number) {
 
   const rows = Array.from(tbody.querySelectorAll('tr'))
   const type = (attrs[`c${colIndex + 1}`] as string) || 'text'
-  
+
   const currentSortCol = table.getAttribute('data-sort-col')
   const currentSortDir = table.getAttribute('data-sort-dir')
-  
+
   const isAsc = currentSortCol === String(colIndex) && currentSortDir === 'asc'
   const newDir = isAsc ? 'desc' : 'asc'
 
@@ -37,19 +37,19 @@ function sortTable(table: HTMLTableElement, colIndex: number) {
     if (typeof valA === 'number' && typeof valB === 'number') {
       return newDir === 'asc' ? valA - valB : valB - valA
     }
-    
+
     const strA = String(valA)
     const strB = String(valB)
-    return newDir === 'asc' 
-      ? strA.localeCompare(strB, undefined, { numeric: true }) 
+    return newDir === 'asc'
+      ? strA.localeCompare(strB, undefined, { numeric: true })
       : strB.localeCompare(strA, undefined, { numeric: true })
   })
 
-  rows.forEach(row => tbody.appendChild(row))
-  
+  rows.forEach((row) => tbody.appendChild(row))
+
   table.setAttribute('data-sort-col', String(colIndex))
   table.setAttribute('data-sort-dir', newDir)
-  
+
   sortCol.value = colIndex
   sortDir.value = newDir
 }
@@ -61,7 +61,7 @@ onMounted(() => {
 
   const headers = table.querySelectorAll('th')
   thElements.value = Array.from(headers)
-  
+
   headers.forEach((th, index) => {
     th.style.cursor = 'pointer'
     th.title = 'クリックでソート'
@@ -73,12 +73,18 @@ onMounted(() => {
 <template>
   <div ref="container" class="sortable-table-wrapper">
     <slot />
-    
+
     <!-- ヘッダーにアイコンをテレポート -->
     <template v-for="(th, index) in thElements" :key="index">
       <Teleport :to="th">
         <Icon
-          :name="sortCol === index ? (sortDir === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down') : 'lucide:chevrons-up-down'"
+          :name="
+            sortCol === index
+              ? sortDir === 'asc'
+                ? 'lucide:chevron-up'
+                : 'lucide:chevron-down'
+              : 'lucide:chevrons-up-down'
+          "
           class="w-4 h-4 ml-1 inline-block align-middle transition-opacity"
           :class="sortCol === index ? 'opacity-100' : 'opacity-30'"
         />

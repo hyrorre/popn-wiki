@@ -35,9 +35,9 @@ export default defineEventHandler(async (event) => {
   await db.insert(usersTable).values(user)
 
   // Omit password from session
-   
+
   const { password: _, ...userWithoutPassword } = user
-  
+
   await setUserSession(event, {
     user: userWithoutPassword
   })

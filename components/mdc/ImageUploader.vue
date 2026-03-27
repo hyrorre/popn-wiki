@@ -47,7 +47,9 @@ const copyMarkdown = async () => {
   if (!markdownText.value) return
   await navigator.clipboard.writeText(markdownText.value)
   copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 </script>
 
@@ -59,7 +61,7 @@ const copyMarkdown = async () => {
       accept="image/png,image/jpeg,image/gif,image/webp"
       class="hidden"
       @change="upload"
-    >
+    />
 
     <button
       class="border px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -72,7 +74,9 @@ const copyMarkdown = async () => {
     <p v-if="errorMessage" class="text-red-600 mt-2 text-sm">{{ errorMessage }}</p>
 
     <div v-if="result" class="mt-3 flex items-center gap-2">
-      <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded flex-1 overflow-x-auto">{{ markdownText }}</code>
+      <code class="text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded flex-1 overflow-x-auto">{{
+        markdownText
+      }}</code>
       <button
         class="border px-2 py-1 rounded text-sm whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         @click="copyMarkdown"

@@ -8,7 +8,7 @@ useHead({
   },
   title: app.title,
   titleTemplate: '%s - ' + app.title,
-    meta: [
+  meta: [
     { name: 'description', content: app.description },
     { property: 'og:site_name', content: app.title },
     { property: 'og:type', content: app.type },

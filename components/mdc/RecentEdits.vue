@@ -3,19 +3,22 @@ import type { Page } from '~/types'
 
 type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'updatedAt'>
 
-const props = withDefaults(defineProps<{
-  limit?: number | string
-  hideDetail?: boolean
-}>(), {
-  limit: 10,
-  hideDetail: false
-})
+const props = withDefaults(
+  defineProps<{
+    limit?: number | string
+    hideDetail?: boolean
+  }>(),
+  {
+    limit: 10,
+    hideDetail: false
+  }
+)
 
 const { data: pages, status } = await useFetch<RecentPage[]>('/api/page/recent', {
   query: { limit: Number(props.limit) }
 })
 
-const {format} = useAppConfig()
+const { format } = useAppConfig()
 
 const formatDate = (dateStr: string) => {
   const options: Intl.DateTimeFormatOptions = {}

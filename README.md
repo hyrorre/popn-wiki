@@ -5,6 +5,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 (WIP)
 
 ## TODO
+
 - [x] Fix: external link
 - [x] page create/delete
 - [ ] image upload
@@ -21,12 +22,14 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [ ] definition list
 
 ## Feature
+
 - Markdown based syntax
 - Auth
 - Fast response
 - Customizable
 
 ## Powered by
+
 - [Nuxt](https://nuxt.com) : SSR Framework
 - [@nuxtjs/mdc](https://nuxt.com/modules/mdc) : Markdown parser
 - [NuxtHub](https://hub.nuxt.com) : DB (D1), Blob (R2), Auth (nuxt-auth-utils)

@@ -16,12 +16,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'ID and body are required.' })
   }
   const now = new Date().toISOString()
-  
+
   const updated = await db
     .update(commentsTable)
-    .set({ 
-      body, 
-      updatedAt: now 
+    .set({
+      body,
+      updatedAt: now
     })
     .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
     .returning()

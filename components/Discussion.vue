@@ -40,14 +40,14 @@ const threadedComments = computed(() => {
   if (!comments.value) return []
   const map = new Map<number, Comment & { children: Comment[] }>()
   const roots: Comment[] = []
-  
+
   // マップに事前にセット
-  comments.value.forEach(c => {
+  comments.value.forEach((c) => {
     map.set(c.id, { ...c, children: [] })
   })
 
   // 親子関係を構築
-  comments.value.forEach(c => {
+  comments.value.forEach((c) => {
     if (c.replyTo && map.has(c.replyTo)) {
       map.get(c.replyTo)?.children.push(map.get(c.id)!)
     } else {
@@ -67,18 +67,16 @@ const threadedComments = computed(() => {
       コメント
     </h3>
 
-    <div v-if="!comments?.length" class="text-muted mb-6">
-      コメントはまだありません。
-    </div>
-    
+    <div v-if="!comments?.length" class="text-muted mb-6">コメントはまだありません。</div>
+
     <div class="flex flex-col gap-6 mb-8">
       <!-- 親コメントループ & 再帰コンポーネントへ移譲 -->
-      <DiscussionComment 
-        v-for="comment in threadedComments" 
-        :key="comment.id" 
-        :comment="comment" 
-        :path="path" 
-        @refresh="refresh" 
+      <DiscussionComment
+        v-for="comment in threadedComments"
+        :key="comment.id"
+        :comment="comment"
+        :path="path"
+        @refresh="refresh"
       />
     </div>
 
@@ -87,15 +85,18 @@ const threadedComments = computed(() => {
         <u-icon name="i-heroicons-pencil" class="w-5 h-5" />
         新しくコメントする
       </h4>
-      <u-textarea 
-        v-model="newCommentBody" 
-        placeholder="ページについての意見や質問を書いてみましょう。" 
-        :rows="3" 
+      <u-textarea
+        v-model="newCommentBody"
+        placeholder="ページについての意見や質問を書いてみましょう。"
+        :rows="3"
         class="w-full"
       />
 
       <!-- プレビュー領域 -->
-      <div v-if="newCommentBody.trim()" class="mt-3 p-3 border border-default rounded bg-gray-50 dark:bg-gray-800/50 transition-all">
+      <div
+        v-if="newCommentBody.trim()"
+        class="mt-3 p-3 border border-default rounded bg-gray-50 dark:bg-gray-800/50 transition-all"
+      >
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
         </div>

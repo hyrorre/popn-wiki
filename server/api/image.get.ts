@@ -1,4 +1,3 @@
-
 import { blob } from '@nuxthub/blob'
 
 export default defineEventHandler(async () => {

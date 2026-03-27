@@ -1,20 +1,22 @@
 import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
 
-export const pagesTable = sqliteTable('pages', {
-  path: text().notNull(),
-  revision: integer().notNull(),
-  body: text().notNull(),
-  message: text(),
-  minor: integer(),
-  createdAt: text().notNull(),
-  updatedAt: text().notNull(),
-  createdBy: text().notNull(),
-  updatedBy: text().notNull(),
-}, (table) => {
-  return [
-    primaryKey({ columns: [table.path, table.revision] })
-  ]
-})
+export const pagesTable = sqliteTable(
+  'pages',
+  {
+    path: text().notNull(),
+    revision: integer().notNull(),
+    body: text().notNull(),
+    message: text(),
+    minor: integer(),
+    createdAt: text().notNull(),
+    updatedAt: text().notNull(),
+    createdBy: text().notNull(),
+    updatedBy: text().notNull()
+  },
+  (table) => {
+    return [primaryKey({ columns: [table.path, table.revision] })]
+  }
+)
 
 export const profilesTable = sqliteTable('profiles', {
   id: text().primaryKey().notNull(),

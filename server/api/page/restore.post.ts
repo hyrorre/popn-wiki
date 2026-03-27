@@ -41,17 +41,21 @@ export default defineEventHandler(async (event) => {
 
   const nextRevision = (latest?.revision ?? 0) + 1
   const now = new Date().toISOString()
-  
-  const inserted = await db.insert(pagesTable).values({
-    path,
-    revision: nextRevision,
-    body: targetPage.body,
-    message: `Restore revision ${targetRevision}`,
-    createdAt: now,
-    updatedAt: now,
-    createdBy: user.id,
-    updatedBy: user.id
-  }).returning().get()
+
+  const inserted = await db
+    .insert(pagesTable)
+    .values({
+      path,
+      revision: nextRevision,
+      body: targetPage.body,
+      message: `Restore revision ${targetRevision}`,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.id,
+      updatedBy: user.id
+    })
+    .returning()
+    .get()
 
   return inserted
 })

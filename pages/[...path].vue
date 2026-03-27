@@ -9,10 +9,14 @@ const createMode = ref(false)
 const conflictMessage = ref('')
 const deleting = ref(false)
 
-const path = (typeof(route.params.path) === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
+const path = (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
 
 // includeDeleted=true で取得し、フロントで状態を判定
-const { data: page, error: fetchError, refresh } = await useFetch('/api/page', {
+const {
+  data: page,
+  error: fetchError,
+  refresh
+} = await useFetch('/api/page', {
   query: { path, includeDeleted: 'true' }
 })
 
@@ -66,10 +70,14 @@ const startRestore = () => {
 }
 
 // @nuxtjs/mdc の公式パーサを利用して Frontmatter を安全に解析
-const { data: mdcAst } = await useAsyncData(`page-ast-${path}`, async () => {
-  if (!page.value?.body) return null
-  return await parseMarkdown(page.value.body)
-}, { watch: [page] })
+const { data: mdcAst } = await useAsyncData(
+  `page-ast-${path}`,
+  async () => {
+    if (!page.value?.body) return null
+    return await parseMarkdown(page.value.body)
+  },
+  { watch: [page] }
+)
 
 const hasDiscussion = computed(() => {
   return mdcAst.value?.data?.discussion === true
@@ -79,7 +87,6 @@ const hasDiscussion = computed(() => {
 useHead({
   title: mdcAst.value?.data?.title || ''
 })
-
 </script>
 
 <template>
@@ -103,9 +110,7 @@ useHead({
           </template>
           <template v-else>
             <p class="text-muted mb-4">このページはまだ存在しません。</p>
-            <button class="border px-3 py-1 rounded" @click="startCreate">
-              新規作成
-            </button>
+            <button class="border px-3 py-1 rounded" @click="startCreate">新規作成</button>
           </template>
         </div>
         <div v-else class="py-8">
@@ -128,9 +133,7 @@ useHead({
           </template>
           <template v-else>
             <p class="text-muted mb-4">このページは削除されています。</p>
-            <button class="border px-3 py-1 rounded" @click="startRestore">
-              新規作成 または 復元
-            </button>
+            <button class="border px-3 py-1 rounded" @click="startRestore">新規作成 または 復元</button>
           </template>
         </div>
         <div v-else class="py-8">

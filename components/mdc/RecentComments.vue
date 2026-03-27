@@ -5,19 +5,22 @@ type RecentComment = {
   commenter: string
 }
 
-const props = withDefaults(defineProps<{
-  limit?: number | string
-  hideDetail?: boolean
-}>(), {
-  limit: 10,
-  hideDetail: false
-})
+const props = withDefaults(
+  defineProps<{
+    limit?: number | string
+    hideDetail?: boolean
+  }>(),
+  {
+    limit: 10,
+    hideDetail: false
+  }
+)
 
 const { data: comments, status } = await useFetch<RecentComment[]>('/api/comment/recent', {
   query: { limit: Number(props.limit) }
 })
 
-const {format} = useAppConfig()
+const { format } = useAppConfig()
 
 const formatDate = (dateStr: string) => {
   const options: Intl.DateTimeFormatOptions = {}

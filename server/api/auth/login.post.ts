@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Omit password from session
-   
+
   const { password: _, ...userWithoutPassword } = user
 
   await setUserSession(event, {

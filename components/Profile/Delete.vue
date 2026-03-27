@@ -22,7 +22,6 @@ const submit = async () => {
 }
 </script>
 
-
 <template>
   <u-card>
     <template #header>

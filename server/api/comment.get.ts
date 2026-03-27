@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   if (!path) {
     throw createError({ statusCode: 400, message: 'Path is required.' })
   }
-  
+
   // Join を使用してプロフィール名を取得
   const data = await db
     .select({

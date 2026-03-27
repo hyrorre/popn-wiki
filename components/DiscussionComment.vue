@@ -82,7 +82,7 @@ const formatDate = (dateStr: string) => {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 }
 </script>
@@ -99,7 +99,7 @@ const formatDate = (dateStr: string) => {
         <span v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt" class="text-xs ml-1">(編集済)</span>
       </span>
     </div>
-    
+
     <!-- 編集モード -->
     <div v-if="isEditingOpen" class="mt-2">
       <u-textarea v-model="editBody" :rows="3" class="w-full" />
@@ -122,11 +122,15 @@ const formatDate = (dateStr: string) => {
       </div>
       <MDC :value="comment.body" class="prose prose-sm dark:prose-invert max-w-none" />
     </div>
-    
+
     <!-- アクションボタン群 -->
     <div v-if="user && !isEditingOpen" class="flex justify-end gap-3 mt-3 text-sm">
       <!-- ユーザーIDチェック -->
-      <button v-if="comment.userId === user.id" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
+      <button
+        v-if="comment.userId === user.id"
+        class="text-muted hover:text-primary transition-colors flex items-center gap-1"
+        @click="openEdit"
+      >
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
@@ -150,13 +154,16 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- 子コメント（再帰呼び出し） -->
-    <div v-if="comment.children && comment.children.length > 0" class="mt-5 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700 flex flex-col gap-4">
-      <DiscussionComment 
-        v-for="child in comment.children" 
-        :key="child.id" 
-        :comment="child" 
-        :path="path" 
-        @refresh="emit('refresh')" 
+    <div
+      v-if="comment.children && comment.children.length > 0"
+      class="mt-5 pl-4 sm:pl-6 border-l-2 border-gray-200 dark:border-gray-700 flex flex-col gap-4"
+    >
+      <DiscussionComment
+        v-for="child in comment.children"
+        :key="child.id"
+        :comment="child"
+        :path="path"
+        @refresh="emit('refresh')"
       />
     </div>
   </div>
