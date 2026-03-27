@@ -29,8 +29,9 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 ## Powered by
 - [Nuxt](https://nuxt.com) : SSR Framework
 - [@nuxtjs/mdc](https://nuxt.com/modules/mdc) : Markdown parser
-- [Supabase](https://supabase.com) : DB, Auth, Storage
-- [Cloudflare Workers](https://www.cloudflare.com/developer-platform/products/workers/) : Hosting, Edge Functions
+- [NuxtHub](https://hub.nuxt.com) : DB (D1), Blob (R2), Auth (nuxt-auth-utils)
+- [Cloudflare](https://www.cloudflare.com/) : Hosting, Edge Functions
+- [Resend](https://resend.com) : Email service
 
 ## Setup
 

@@ -5,15 +5,13 @@ useHead({
   title: 'FORGOT PASSWORD'
 })
 
-const supabase = useSupabaseClient()
-
 const form = reactive({
   email: ''
 })
 const error_message = ref('')
 
 const submit = async () => {
-  await supabase.auth.resetPasswordForEmail(form.email, { redirectTo: window.location.origin + '/reset' })
+  error_message.value = 'Password reset is currently unavailable in the new system.'
 }
 </script>
 

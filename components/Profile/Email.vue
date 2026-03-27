@@ -1,13 +1,10 @@
 <script setup lang="ts">
-const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const { user } = useUserSession()
 
 const message = ref('')
 
 const submit = async () => {
-  supabase.auth.updateUser({ email: user.value?.email }).then(({ error }) => {
-    message.value = error ? error.message : 'Check your email box.'
-  })
+  message.value = 'Email update via nuxt-auth-utils would require custom logic. Not implemented yet.'
 }
 </script>
 

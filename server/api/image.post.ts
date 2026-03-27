@@ -1,10 +1,11 @@
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+
+import { blob } from '@nuxthub/blob'
 
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
+  const { user } = await getUserSession(event)
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
@@ -30,35 +31,24 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'ファイルサイズは5MB以下にしてください。' })
   }
 
-  // オリジナルファイル名をURLエンコード
-  const encodedName = encodeURIComponent(file.filename)
-
-  const client = await serverSupabaseClient(event)
-
-  // upsert: false で衝突時エラー
-  const { error: uploadError } = await client.storage
-    .from('image')
-    .upload(encodedName, file.data, {
+  // オリジナルファイル名をそのまま使用
+  try {
+    const putBlob = await blob.put(file.filename, file.data, {
       contentType: file.type || 'application/octet-stream',
-      upsert: false
+      addRandomSuffix: false // 既存のコードが同名チェックをしているため
     })
 
-  if (uploadError) {
-    if (uploadError.message?.includes('already exists') || uploadError.message?.includes('Duplicate')) {
+    return {
+      url: putBlob.pathname,
+      filename: file.filename
+    }
+  } catch (e: any) {
+    if (e.message?.includes('already exists')) {
       throw createError({
         statusCode: 409,
         message: `同名のファイルが既に存在します: ${file.filename}`
       })
     }
-    throw createError({ statusCode: 500, message: uploadError.message })
-  }
-
-  const { data: publicUrlData } = client.storage
-    .from('image')
-    .getPublicUrl(encodedName)
-
-  return {
-    url: publicUrlData.publicUrl,
-    filename: file.filename
+    throw createError({ statusCode: 500, message: e.message })
   }
 })

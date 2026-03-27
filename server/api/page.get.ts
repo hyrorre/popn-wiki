@@ -1,5 +1,6 @@
-import { serverSupabaseClient } from '#supabase/server'
-import type { Page } from '~/types'
+import { pagesTable } from '../db/schema'
+import { eq, desc, and } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
   const query = (await getQuery(event)) as { path?: string; revision?: string; includeDeleted?: string }
@@ -8,7 +9,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const includeDeleted = query.includeDeleted === 'true'
-  const client = await serverSupabaseClient(event)
 
   if (query.revision !== undefined) {
     const requestedRevision = Number.parseInt(query.revision, 10)
@@ -16,16 +16,11 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Invalid revision.' })
     }
 
-    const { data, error } = await client
-      .from('pages')
-      .select('*')
-      .eq('path', query.path)
-      .eq('revision', requestedRevision)
-      .maybeSingle<Page>()
-
-    if (error) {
-      throw createError({ statusCode: 500, message: error.message })
-    }
+    const data = await db
+      .select()
+      .from(pagesTable)
+      .where(and(eq(pagesTable.path, query.path), eq(pagesTable.revision, requestedRevision)))
+      .get()
 
     if (!data) {
       throw createError({ statusCode: 404, message: 'Page not found.' })
@@ -34,17 +29,12 @@ export default defineEventHandler(async (event) => {
     return data
   }
 
-  const { data, error } = await client
-    .from('pages')
-    .select('*')
-    .eq('path', query.path)
-    .order('revision', { ascending: false })
-    .limit(1)
-    .maybeSingle<Page>()
-
-  if (error) {
-    throw createError({ statusCode: 500, message: error.message })
-  }
+  const data = await db
+    .select()
+    .from(pagesTable)
+    .where(eq(pagesTable.path, query.path))
+    .orderBy(desc(pagesTable.revision))
+    .get()
 
   if (!data) {
     throw createError({ statusCode: 404, message: 'Page not found.' })

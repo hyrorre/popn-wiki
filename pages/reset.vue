@@ -5,8 +5,6 @@ useHead({
   title: 'RESET PASSWORD'
 })
 
-const supabase = useSupabaseClient()
-
 const form = reactive({
   password: ''
 })
@@ -14,12 +12,7 @@ const form = reactive({
 const error_message = ref('')
 
 const submit = async () => {
-  const { error } = await supabase.auth.updateUser(form)
-  if (error) {
-    alert('Error : ' + error.message)
-  } else {
-    alert('Password reset succeeded.')
-  }
+  alert('Password reset is not yet implemented.')
 }
 </script>
 

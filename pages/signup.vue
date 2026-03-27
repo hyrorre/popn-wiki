@@ -5,7 +5,6 @@ useHead({
   title: 'SIGN UP'
 })
 
-const supabase = useSupabaseClient()
 
 const form = reactive({
   email: '',
@@ -16,14 +15,16 @@ const error_message = ref('')
 const open = ref(false)
 
 const submit = async () => {
-  await supabase.auth.signUp(form).then(({ error }) => {
-    if (error) {
-      error_message.value = error.message
-    } else {
-      error_message.value = ''
-      open.value = true // open modal
-    }
-  })
+  try {
+    await $fetch('/api/auth/register', {
+      method: 'POST',
+      body: form
+    })
+    error_message.value = ''
+    open.value = true // open modal
+  } catch (e: any) {
+    error_message.value = e.data?.message || 'Registration failed'
+  }
 }
 </script>
 

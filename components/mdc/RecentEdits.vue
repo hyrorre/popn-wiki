@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Page } from '~/types'
 
-type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updated_by' | 'updated_at'>
+type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'updatedAt'>
 
 const props = withDefaults(defineProps<{
   limit?: number | string
@@ -38,7 +38,7 @@ const formatDate = (dateStr: string) => {
         <NuxtLink :to="`/${page.path}`" class="hover:underline text-primary truncate">
           {{ page.path }}
         </NuxtLink>
-        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updated_at) }}</span>
+        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updatedAt) }}</span>
       </li>
     </ul>
   </div>

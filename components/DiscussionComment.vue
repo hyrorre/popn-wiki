@@ -10,7 +10,7 @@ const emit = defineEmits<{
   (e: 'refresh'): void
 }>()
 
-const user = useSupabaseUser()
+const { user } = useUserSession()
 
 const replyBody = ref('')
 const isReplying = ref(false)
@@ -41,7 +41,7 @@ const submitReply = async () => {
       body: {
         path: props.path,
         body: replyBody.value,
-        reply_to: props.comment.id
+        replyTo: props.comment.id
       }
     })
     isReplyingOpen.value = false
@@ -95,8 +95,8 @@ const formatDate = (dateStr: string) => {
         {{ comment.profiles?.name || '名無しさん' }}
       </span>
       <span>
-        {{ formatDate(comment.created_at) }}
-        <span v-if="comment.updated_at && comment.updated_at !== comment.created_at" class="text-xs ml-1">(編集済)</span>
+        {{ formatDate(comment.createdAt) }}
+        <span v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt" class="text-xs ml-1">(編集済)</span>
       </span>
     </div>
     
@@ -126,7 +126,7 @@ const formatDate = (dateStr: string) => {
     <!-- アクションボタン群 -->
     <div class="flex justify-end gap-3 mt-3 text-sm" v-if="user && !isEditingOpen">
       <!-- ユーザーIDチェック -->
-      <button v-if="comment.user_id === user.sub" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
+      <button v-if="comment.userId === user.id" class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openEdit">
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">

@@ -1,5 +1,6 @@
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import type { Page } from '~/types'
+import { pagesTable } from '../../db/schema'
+import { eq, desc, and } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
 
 type RestorePageRequest = {
   path?: string
@@ -7,7 +8,7 @@ type RestorePageRequest = {
 }
 
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
+  const { user } = await getUserSession(event)
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
@@ -20,51 +21,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
   }
 
-  const client = await serverSupabaseClient(event)
-  const { data: targetPage, error: targetError } = await client
-    .from('pages')
-    .select('*')
-    .eq('path', path)
-    .eq('revision', targetRevision)
-    .maybeSingle<Page>()
-
-  if (targetError) {
-    throw createError({ statusCode: 500, message: targetError.message })
-  }
+  const targetPage = await db
+    .select()
+    .from(pagesTable)
+    .where(and(eq(pagesTable.path, path), eq(pagesTable.revision, targetRevision)))
+    .get()
 
   if (!targetPage) {
     throw createError({ statusCode: 404, message: 'Target revision not found.' })
   }
 
-  const { data: latest, error: latestError } = await client
-    .from('pages')
-    .select('revision')
-    .eq('path', path)
-    .order('revision', { ascending: false })
+  const latest = await db
+    .select({ revision: pagesTable.revision })
+    .from(pagesTable)
+    .where(eq(pagesTable.path, path))
+    .orderBy(desc(pagesTable.revision))
     .limit(1)
-    .maybeSingle<{ revision: number }>()
-
-  if (latestError) {
-    throw createError({ statusCode: 500, message: latestError.message })
-  }
+    .get()
 
   const nextRevision = (latest?.revision ?? 0) + 1
-  const { data: inserted, error: insertError } = await client
-    .from('pages')
-    .insert({
-      path,
-      revision: nextRevision,
-      body: targetPage.body,
-      message: `Restore revision ${targetRevision}`,
-      created_by: user.sub,
-      updated_by: user.sub
-    })
-    .select('*')
-    .single<Page>()
-
-  if (insertError) {
-    throw createError({ statusCode: 500, message: insertError.message })
-  }
+  const now = new Date().toISOString()
+  
+  const inserted = await db.insert(pagesTable).values({
+    path,
+    revision: nextRevision,
+    body: targetPage.body,
+    message: `Restore revision ${targetRevision}`,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: user.id,
+    updatedBy: user.id
+  }).returning().get()
 
   return inserted
 })

@@ -3,7 +3,7 @@ import type { Page } from '~/types'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 
 const route = useRoute()
-const user = useSupabaseUser()
+const { user } = useUserSession()
 const editMode = ref(false)
 const createMode = ref(false)
 const conflictMessage = ref('')

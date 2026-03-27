@@ -1,17 +1,19 @@
-import { serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
+import { usersTable, profilesTable } from '../../db/schema'
+import { eq } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
-  const client = serverSupabaseServiceRole(event)
-  const user = await serverSupabaseUser(event)
+  const { user } = await getUserSession(event)
 
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
+  
+  // ユーザーとプロフィールを削除
+  await db.delete(usersTable).where(eq(usersTable.id, user.id))
+  await db.delete(profilesTable).where(eq(profilesTable.id, user.id))
 
-  const { error } = await client.auth.admin.deleteUser(user.sub)
-  if (error) {
-    throw createError({ statusCode: 500, message: error.message })
-  }
+  await clearUserSession(event)
 
   return { message: 'User deleted.' }
 })

@@ -1,8 +1,9 @@
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import type { Comment } from '~/types'
+import { commentsTable, profilesTable } from '../db/schema'
+import { eq, and } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
+  const { user } = await getUserSession(event)
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
@@ -14,28 +15,26 @@ export default defineEventHandler(async (event) => {
   if (!id || !body) {
     throw createError({ statusCode: 400, message: 'ID and body are required.' })
   }
-
-  const client = await serverSupabaseClient(event)
+  const now = new Date().toISOString()
   
-  // DB level RLS should ensure users can only update their own comments, or eq('user_id', user.sub)
-  const { data, error } = await client
-    .from('comments')
-    .update({ 
+  const updated = await db
+    .update(commentsTable)
+    .set({ 
       body, 
-      updated_at: new Date().toISOString() 
+      updatedAt: now 
     })
-    .eq('id', id)
-    .eq('user_id', user.sub)
-    .select('*, profiles:user_id(id, name)')
-    .single<Comment>()
+    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
+    .returning()
+    .get()
 
-  if (error) {
-    throw createError({ statusCode: 500, message: error.message })
-  }
-
-  if (!data) {
+  if (!updated) {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  return data
+  const profile = await db.select().from(profilesTable).where(eq(profilesTable.id, user.id)).get()
+
+  return {
+    ...updated,
+    profiles: profile
+  }
 })

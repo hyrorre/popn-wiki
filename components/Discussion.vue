@@ -5,7 +5,7 @@ const props = defineProps<{
   path: string
 }>()
 
-const user = useSupabaseUser()
+const { user } = useUserSession()
 // APIリクエストでpathを指定してコメントを取得します
 const { data: comments, refresh } = await useFetch<Comment[]>('/api/comment', {
   query: { path: props.path }
@@ -48,8 +48,8 @@ const threadedComments = computed(() => {
 
   // 親子関係を構築
   comments.value.forEach(c => {
-    if (c.reply_to && map.has(c.reply_to)) {
-      map.get(c.reply_to).children.push(map.get(c.id))
+    if (c.replyTo && map.has(c.replyTo)) {
+      map.get(c.replyTo).children.push(map.get(c.id))
     } else {
       roots.push(map.get(c.id))
     }

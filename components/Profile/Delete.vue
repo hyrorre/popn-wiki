@@ -1,26 +1,26 @@
 <script setup lang="ts">
-const supabase = useSupabaseClient()
-const message = ref('')
+const { clear: clearSession } = useUserSession()
+
 const form = reactive({
   del: ''
 })
+const message = ref('')
 
 const submit = async () => {
-  await $fetch('/api/user/delete', {
-    method: 'POST'
-  })
-    .then(async () => {
-      supabase.auth.signOut().finally(() => {
-        message.value = 'Account deleted.'
-        alert('Account deleted.')
-        useRouter().push('/')
-      })
+  try {
+    await $fetch('/api/user/delete', {
+      method: 'POST'
     })
-    .catch((error) => {
-      message.value = error.message
-    })
+    await clearSession()
+    message.value = 'Account deleted.'
+    alert('Account deleted.')
+    useRouter().push('/')
+  } catch (error: any) {
+    message.value = error.message
+  }
 }
 </script>
+
 
 <template>
   <u-card>

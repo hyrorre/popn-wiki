@@ -6,11 +6,12 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
-    '@nuxtjs/supabase',
+    '@nuxthub/core',
+    'nuxt-auth-utils',
+    'nuxt-mail',
     '@nuxtjs/i18n',
     '@nuxtjs/mdc',
-    '@nuxt/scripts',
-    '@nuxthub/core'
+    '@nuxt/scripts'
   ],
   mdc: {
     remarkPlugins: {
@@ -52,16 +53,20 @@ export default defineNuxtConfig({
       }
     ]
   },
-  supabase: {
-    url: process.env.NUXT_PUBLIC_SUPABASE_URL,
-    key: process.env.NUXT_PUBLIC_SUPABASE_KEY,
-    redirectOptions: {
-      login: '/signin',
-      callback: '/',
-      include: ['/profile'],
-      exclude: []
+  mail: {
+    message: {
+      to: process.env.NUXT_MAIL_TO!
+    },
+    smtp: {
+      host: 'smtp.resend.com',
+      port: 465,
+      auth: {
+        user: 'resend',
+        pass: process.env.NUXT_RESEND_API_KEY
+      }
     }
   },
+
   hub: {
     blob: {
       driver: 'cloudflare-r2',

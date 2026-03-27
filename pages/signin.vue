@@ -5,7 +5,6 @@ useHead({
   title: 'SIGN IN'
 })
 
-const supabase = useSupabaseClient()
 
 const form = reactive({
   email: '',
@@ -13,14 +12,19 @@ const form = reactive({
 })
 const error_message = ref('')
 
+const { fetch: refreshSession } = useUserSession()
+
 const submit = async () => {
-  await supabase.auth.signInWithPassword(form).then(({ error }) => {
-    if (error) {
-      error_message.value = error.message
-    } else {
-      useRouter().push('/')
-    }
-  })
+  try {
+    await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: form
+    })
+    await refreshSession()
+    useRouter().push('/')
+  } catch (e: any) {
+    error_message.value = e.data?.message || 'Login failed'
+  }
 }
 </script>
 

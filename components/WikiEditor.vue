@@ -129,7 +129,7 @@ await loadHistory()
             <div>
               <p class="font-medium">r{{ item.revision }}</p>
               <p class="text-sm text-muted">
-                {{ item.updated_at }} / {{ item.updated_by }}
+                {{ item.updatedAt }} / {{ item.updatedBy }}
               </p>
               <p v-if="item.message" class="text-sm">{{ item.message }}</p>
             </div>

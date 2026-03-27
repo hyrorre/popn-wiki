@@ -3,12 +3,14 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { app } = useAppConfig()
 
-const signOut = () => {
-  const supabase = useSupabaseClient()
-  supabase.auth.signOut().then(() => useRouter().push('/'))
+const { user, clear: clearSession } = useUserSession()
+
+const signOut = async () => {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await clearSession()
+  useRouter().push('/')
 }
 
-const user = useSupabaseUser()
 const { data: profile } = await useFetch('/api/profile')
 
 const items = computed((): NavigationMenuItem[][] => [
@@ -25,7 +27,7 @@ const items = computed((): NavigationMenuItem[][] => [
     ? [
         {
           class: 'profile',
-          label: profile.value?.name,
+          label: profile.value?.name ?? undefined,
           icon: 'i-tabler-user',
           children: [
             {

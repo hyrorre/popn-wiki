@@ -1,30 +1,31 @@
-import { serverSupabaseClient } from '#supabase/server'
-import type { Page } from '~/types'
+import { pagesTable } from '../../db/schema'
+import { eq, desc, not } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limit = Math.min(Number(query.limit) || 10, 50)
 
-  const client = await serverSupabaseClient(event)
+  // 各ページの最新リビジョンを取得
+  // SQLite では WINDOW FUNCTION や SUBQUERY を使用
+  const data = await db
+    .select({
+      path: pagesTable.path,
+      revision: pagesTable.revision,
+      message: pagesTable.message,
+      updatedBy: pagesTable.updatedBy,
+      updatedAt: pagesTable.updatedAt
+    })
+    .from(pagesTable)
+    .where(not(eq(pagesTable.body, ''))) // 削除済みを除外
+    .orderBy(desc(pagesTable.updatedAt))
+    .all()
 
-  // 各ページの最新リビジョンのみ取得するため、
-  // distinct on は Supabase JS では直接使えないので、全最新をソートで取得してフィルタする
-  const { data, error } = await client
-    .from('pages')
-    .select('path, revision, message, updated_by, updated_at')
-    .neq('body', '')  // 削除済みページを除外
-    .order('updated_at', { ascending: false })
-    .limit(200)  // 十分な候補を取得
-
-  if (error) {
-    throw createError({ statusCode: 500, message: error.message })
-  }
-
-  // 各パスの最新リビジョンだけを残す
+  // 重複排除 (メモリ上で行うのが簡単)
   const seen = new Set<string>()
-  const recent: Pick<Page, 'path' | 'revision' | 'message' | 'updated_by' | 'updated_at'>[] = []
+  const recent = []
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     if (seen.has(row.path)) continue
     seen.add(row.path)
     recent.push(row)

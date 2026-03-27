@@ -1,38 +1,26 @@
 <script setup lang="ts">
-const supabase = useSupabaseClient()
-const user = useSupabaseUser()
+const { user } = useUserSession()
 
 const {
   data: form,
   error,
   status
-} = useAsyncData<Profile>(async () => {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', user.value!.sub).single<Profile>()
-  if (error) {
-    const { data, error: error2 } = await supabase
-      .from('profiles')
-      .insert({ id: user.value?.sub })
-      .select()
-      .single<Profile>()
-
-    if (error2) {
-      throw error
-    }
-    return data
-  }
-  return data
+} = useAsyncData<any>(async () => {
+  return await $fetch('/api/profile')
 })
 
 const message = ref('')
 
-const submit = () => {
-  form.value!.updated_at = new Date().toISOString()
-  supabase
-    .from('profiles')
-    .upsert(form.value)
-    .then(async ({ error }) => {
-      message.value = error ? error.message : 'Saved.'
+const submit = async () => {
+  try {
+    await $fetch('/api/profile', {
+      method: 'POST',
+      body: form.value
     })
+    message.value = 'Saved.'
+  } catch (e: any) {
+    message.value = e.data?.message || 'Save failed'
+  }
 }
 </script>
 
