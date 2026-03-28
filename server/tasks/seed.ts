@@ -755,9 +755,15 @@ function convertDokuwikiToMarkdown(input: string): string {
       // スペースを'+'に変換
       // url = url.replaceAll(' ', '+')
 
-      // specialCharactersを_に変換
+      // specialCharacters (#以外)を_に変換
       url = url.replace(
-        new RegExp(`[${specialCharacters.map((c) => c.replace(/[\\^\]-]/g, '\\$&')).join('')}]`, 'g'),
+        new RegExp(
+          `[${specialCharacters
+            .filter((c) => c !== '#' && c !== '/')
+            .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
+            .join('')}]`,
+          'g'
+        ),
         '_'
       )
 
@@ -920,60 +926,29 @@ export default defineTask({
         const now = new Date().toISOString()
 
         return {
-          path: `/${relativePath}`,
+          path: relativePath === 'start' ? '/' : decodeURI(relativePath),
           revision: 1,
           body: markdown,
           message: null,
           minor: 0,
           createdAt: now,
           updatedAt: now,
-          createdBy: 'system',
-          updatedBy: 'system'
+          createdBy: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068',
+          updatedBy: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068'
         }
       })
 
     if (pageEntries.length > 0) {
+      // ページテーブルのデータをすべて削除
+      await db.delete(schema.pagesTable)
+
       // ページテーブルに挿入
-      // await db.insert(schema.pagesTable).values(pageEntries).onConflictDoNothing()
-      // console.log(`Inserted ${pageEntries.length} pages.`)
-
-      // INSERT SQLを手動で生成して出力
-      const tableName = 'pages'
-      const columns = [
-        'path',
-        'revision',
-        'body',
-        'message',
-        'minor',
-        'createdAt',
-        'updatedAt',
-        'createdBy',
-        'updatedBy'
-      ]
-
-      const escapeSQLite = (val: string | number | boolean | null | undefined) => {
-        if (val === null || val === undefined) return 'NULL'
-        if (typeof val === 'number') return String(val)
-        if (typeof val === 'boolean') return val ? '1' : '0'
-        // 文字列内のシングルクオートを二重化してエスケープ
-        return `'${String(val).replace(/'/g, "''")}'`
+      for (const pageEntry of pageEntries) {
+        await db.insert(schema.pagesTable).values(pageEntry).onConflictDoNothing()
       }
-
-      const rows = pageEntries.map((entry) => {
-        const values = columns.map((col) => escapeSQLite((entry as Record<string, unknown>)[col] as string | number | boolean | null | undefined)).join(', ')
-        return `(${values})`
-      })
-
-      const fullSql = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES\n${rows.join(',\n')};`
-
-      // SQLを.local/seed.sqlに保存
-      if (!fs.existsSync(path.resolve(process.cwd(), '.local'))) {
-        fs.mkdirSync(path.resolve(process.cwd(), '.local'))
-      }
-      fs.writeFileSync(path.resolve(process.cwd(), '.local/seed.sql'), fullSql)
-      console.log(`Generated SQL at .local/seed.sql. (${pageEntries.length} records)`)
+      console.log(`Inserted ${pageEntries.length} pages.`)
     }
 
-    return { result: 'Database seeded successfully' }
+    return { result: `Inserted ${pageEntries.length} pages.` }
   }
 })
