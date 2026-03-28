@@ -39,7 +39,8 @@
   },
   "devDependencies": {
     "fast-csv": "^5.0.5",
-    "prettier": "3.8.1"
+    "prettier": "3.8.1",
+    "wrangler": "^4.78.0"
   },
   "overrides": {
     "chokidar": "3.6.0"
