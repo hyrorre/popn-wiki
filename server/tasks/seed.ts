@@ -923,7 +923,7 @@ export default defineTask({
           path: `/${relativePath}`,
           revision: 1,
           body: markdown,
-          message: 'Initial seed',
+          message: null,
           minor: 0,
           createdAt: now,
           updatedAt: now,
@@ -934,8 +934,44 @@ export default defineTask({
 
     if (pageEntries.length > 0) {
       // ページテーブルに挿入
-      await db.insert(schema.pagesTable).values(pageEntries).onConflictDoNothing()
-      console.log(`Inserted ${pageEntries.length} pages.`)
+      // await db.insert(schema.pagesTable).values(pageEntries).onConflictDoNothing()
+      // console.log(`Inserted ${pageEntries.length} pages.`)
+
+      // INSERT SQLを手動で生成して出力
+      const tableName = 'pages'
+      const columns = [
+        'path',
+        'revision',
+        'body',
+        'message',
+        'minor',
+        'createdAt',
+        'updatedAt',
+        'createdBy',
+        'updatedBy'
+      ]
+
+      const escapeSQLite = (val: string | number | boolean | null | undefined) => {
+        if (val === null || val === undefined) return 'NULL'
+        if (typeof val === 'number') return String(val)
+        if (typeof val === 'boolean') return val ? '1' : '0'
+        // 文字列内のシングルクオートを二重化してエスケープ
+        return `'${String(val).replace(/'/g, "''")}'`
+      }
+
+      const rows = pageEntries.map((entry) => {
+        const values = columns.map((col) => escapeSQLite((entry as Record<string, unknown>)[col] as string | number | boolean | null | undefined)).join(', ')
+        return `(${values})`
+      })
+
+      const fullSql = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES\n${rows.join(',\n')};`
+
+      // SQLを.local/seed.sqlに保存
+      if (!fs.existsSync(path.resolve(process.cwd(), '.local'))) {
+        fs.mkdirSync(path.resolve(process.cwd(), '.local'))
+      }
+      fs.writeFileSync(path.resolve(process.cwd(), '.local/seed.sql'), fullSql)
+      console.log(`Generated SQL at .local/seed.sql. (${pageEntries.length} records)`)
     }
 
     return { result: 'Database seeded successfully' }

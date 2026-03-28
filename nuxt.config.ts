@@ -75,7 +75,6 @@ export default defineNuxtConfig({
     },
     db: {
       dialect: 'sqlite',
-      driver: 'd1-http',
       casing: 'snake_case'
     }
   },
@@ -93,6 +92,11 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: ['@vue/devtools-core', '@vue/devtools-kit']
+    }
+  },
+  nitro: {
+    experimental: {
+      tasks: true
     }
   }
 })
