@@ -53,11 +53,7 @@ export default defineNuxtConfig({
     ]
   },
   hub: {
-    blob: {
-      driver: 'cloudflare-r2',
-      bucketName: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET!,
-      binding: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BINDING!
-    },
+    blob: true,
     db: {
       dialect: 'sqlite',
       casing: 'snake_case'
@@ -82,6 +78,25 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       tasks: true
+    },
+    cloudflare: process.env.NODE_ENV === 'development' ? undefined : {
+      deployConfig: true,
+      nodeCompat: true,
+      wrangler: {
+        d1_databases: [
+          {
+            binding: 'db',
+            database_name: 'popn-wiki-db',
+            database_id: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID
+          }
+        ],
+        r2_buckets: [
+          {
+            binding: 'bucket',
+            bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
+          }
+        ]
+      }
     }
   }
 })
