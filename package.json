@@ -17,27 +17,27 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
-    "@nuxt/eslint": "1.15.2",
     "@nuxt/scripts": "^0.13.2",
     "@nuxt/ui": "4.6.0",
     "@nuxthub/core": "0.10.7",
     "@nuxtjs/i18n": "10.2.4",
     "@nuxtjs/mdc": "0.21.0",
-    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
-    "eslint": "^10.1.0",
     "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.29",
     "rehype-external-links": "^3.0.0",
     "remark-breaks": "^4.0.0",
-    "typescript": "^6.0.2",
     "unist-util-visit": "^5.1.0",
     "vue": "^3.5.31",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
+    "@nuxt/eslint": "1.15.2",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^10.1.0",
     "fast-csv": "^5.0.5",
     "prettier": "3.8.1",
+    "typescript": "^6.0.2",
     "wrangler": "^4.78.0"
   },
   "overrides": {
