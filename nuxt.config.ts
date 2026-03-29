@@ -78,25 +78,6 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       tasks: true
-    },
-    cloudflare: process.env.NODE_ENV === 'development' ? undefined : {
-      deployConfig: true,
-      nodeCompat: true,
-      wrangler: {
-        d1_databases: [
-          {
-            binding: 'db',
-            database_name: 'popn-wiki-db',
-            database_id: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID
-          }
-        ],
-        r2_buckets: [
-          {
-            binding: 'bucket',
-            bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
-          }
-        ]
-      }
     }
   }
 })

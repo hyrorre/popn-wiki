@@ -20,6 +20,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [ ] edit page layout (vertical/horizontal)
 - [ ] sidebar layout
 - [ ] definition list
+- [ ] media file redirect
 
 ## Feature
 
@@ -32,9 +33,8 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 
 - [Nuxt](https://nuxt.com) : SSR Framework
 - [@nuxtjs/mdc](https://nuxt.com/modules/mdc) : Markdown parser
-- [NuxtHub](https://hub.nuxt.com) : DB (D1), Blob (R2), Auth (nuxt-auth-utils)
+- [NuxtHub](https://hub.nuxt.com) : DB (D1), Blob (R2)
 - [Cloudflare](https://www.cloudflare.com/) : Hosting, Edge Functions
-- [Resend](https://resend.com) : Email service
 
 ## Setup
 
