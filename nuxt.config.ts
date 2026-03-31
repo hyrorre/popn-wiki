@@ -76,6 +76,8 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
+    compatibilityDate: '2026-03-29',
+    preset: 'cloudflare_module',
     experimental: {
       tasks: true
     },
@@ -85,14 +87,14 @@ export default defineNuxtConfig({
       wrangler: {
         d1_databases: [
           {
-            binding: 'db',
+            binding: 'DB',
             database_name: 'popn-wiki-db',
             database_id: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID
           }
         ],
         r2_buckets: [
           {
-            binding: 'bucket',
+            binding: 'BLOB',
             bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
           }
         ]
