@@ -67,7 +67,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       googleTagManagerId: process.env.NUXT_PUBLIC_GTAG_ID,
-      googleAdsenseId: process.env.NUXT_PUBLIC_GOOGLE_ADSENSE_ID
+      googleAdsenseId: process.env.NUXT_PUBLIC_GOOGLE_ADSENSE_ID,
+      imageBasePath: process.env.NUXT_PUBLIC_IMAGE_BASE_PATH || '/api/image'
     }
   },
   vite: {

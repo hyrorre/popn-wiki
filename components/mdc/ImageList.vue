@@ -15,7 +15,7 @@ const { data: images, status } = await useFetch<ImageItem[]>('/api/image')
     <div v-else class="">
       <ul class="">
         <li v-for="image in images" :key="image.name" class="">
-          <u-link :to="image.url">{{ image.name }}</u-link>
+          <u-link :to="image.url" external>{{ image.name }}</u-link>
         </li>
       </ul>
     </div>
