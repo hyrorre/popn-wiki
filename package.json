@@ -36,7 +36,10 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.1.0",
     "fast-csv": "^5.0.5",
+    "mdast-util-to-hast": "^13.2.1",
     "prettier": "3.8.1",
+    "rehype-stringify": "^10.0.1",
+    "remark-rehype": "^11.1.2",
     "typescript": "^6.0.2",
     "wrangler": "^4.78.0"
   },

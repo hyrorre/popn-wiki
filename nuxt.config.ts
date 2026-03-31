@@ -22,6 +22,9 @@ export default defineNuxtConfig({
       },
       tableColor: {
         src: '~/utils/remark-table-color'
+      },
+      definitionList: {
+        src: '~/utils/remark-definition-list'
       }
     },
     rehypePlugins: {

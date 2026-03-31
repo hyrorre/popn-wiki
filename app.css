@@ -102,6 +102,21 @@ body,
     }
   }
 
+  dl {
+    margin-top: 1rem;
+    margin-left: 2.5rem;
+
+    dt {
+      margin-top: 1rem;
+      margin-left: -2.5rem;
+      font-weight: bold;
+    }
+
+    dd {
+      @apply list-item list-disc ps-1.5 my-2 marker:text-(--ui-border-accented);
+    }
+  }
+
   th,
   td {
     @apply border;
