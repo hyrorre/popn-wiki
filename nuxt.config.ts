@@ -94,7 +94,7 @@ export default defineNuxtConfig({
         ],
         r2_buckets: [
           {
-            binding: 'BLOB',
+            binding: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BINDING || 'BLOB',
             bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
           }
         ]

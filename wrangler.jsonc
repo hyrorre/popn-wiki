@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "r2_buckets": [
+    {
+      "binding": "BLOB",
+      "bucket_name": "popn-wiki-images"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "popn-wiki-db",
+      "database_id": "783f9203-1334-4c69-b704-b69347ab34d3"
+    }
+  ]
+}
