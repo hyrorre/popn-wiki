@@ -2,8 +2,8 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { app } = useAppConfig()
-
 const { user, clear: clearSession } = useUserSession()
+const { editMode, canEdit, toggleEditMode, setSidebarOpen } = usePageActions()
 
 const signOut = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' })
@@ -13,8 +13,8 @@ const signOut = async () => {
 
 const { data: profile } = await useFetch('/api/profile')
 
-const items = computed((): NavigationMenuItem[][] => [
-  [
+const items = computed((): NavigationMenuItem[][] => {
+  const leftItems: NavigationMenuItem[] = [
     {
       label: app.title,
       icon: 'i-public-icon',
@@ -22,8 +22,20 @@ const items = computed((): NavigationMenuItem[][] => [
       active: false,
       class: 'site-title'
     }
-  ],
-  user.value
+  ]
+
+  const actionItems: NavigationMenuItem[] = []
+  if (canEdit.value) {
+    actionItems.push({
+      label: editMode.value ? '閲覧に戻る' : '編集する',
+      icon: editMode.value ? 'i-heroicons-eye' : 'i-heroicons-pencil-square',
+      onSelect: () => {
+        toggleEditMode()
+      }
+    })
+  }
+
+  const userItems: NavigationMenuItem[] = user.value
     ? [
         {
           class: 'profile',
@@ -53,11 +65,27 @@ const items = computed((): NavigationMenuItem[][] => [
           to: '/signup'
         }
       ]
-])
+
+  return [leftItems, actionItems, userItems]
+})
 </script>
 
 <template>
   <header class="border-b border-default mb-8">
-    <u-navigation-menu :items="items" content-orientation="vertical" />
+    <u-container class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <u-button
+          icon="i-heroicons-bars-3"
+          variant="ghost"
+          color="neutral"
+          class="lg:hidden"
+          @click="setSidebarOpen(true)"
+        />
+        <u-navigation-menu v-if="items[0]" :items="items[0]" />
+      </div>
+      <div class="flex items-center gap-2">
+        <u-navigation-menu v-if="items[1] && items[2]" :items="[...items[1], ...items[2]]" />
+      </div>
+    </u-container>
   </header>
 </template>

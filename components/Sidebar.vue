@@ -5,7 +5,7 @@ const { data: page } = await useFetch('/api/page', {
 </script>
 
 <template>
-  <aside>
+  <aside class="py-4 px-2 overflow-y-auto max-h-full">
     <MDC v-if="page" :value="page.body" class="content" />
   </aside>
 </template>

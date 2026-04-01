@@ -17,6 +17,8 @@ body,
 
 .content {
   text-align: start;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 
   h1,
   h2,
@@ -74,7 +76,15 @@ body,
     padding: 1rem;
     border-radius: 0.5rem;
     background-color: var(--ui-border);
-    overflow: scroll;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
   }
 
   ol {
@@ -119,7 +129,7 @@ body,
 
   th,
   td {
-    @apply border;
+    @apply border px-2 py-1;
   }
 
   hr {

@@ -4,7 +4,8 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 
 const route = useRoute()
 const { user } = useUserSession()
-const editMode = ref(false)
+const { editMode, isSidebarOpen, setEditMode, setRevision, setCanEdit } = usePageActions()
+
 const createMode = ref(false)
 const conflictMessage = ref('')
 const deleting = ref(false)
@@ -24,10 +25,19 @@ const {
 const pageNotFound = computed(() => !page.value && !!fetchError.value)
 const isDeleted = computed(() => page.value?.body === '')
 
+watchEffect(() => {
+  setCanEdit(!!user.value)
+  if (page.value) {
+    setRevision(page.value.revision)
+  } else {
+    setRevision(null)
+  }
+})
+
 const onSaved = async (saved: Page) => {
   conflictMessage.value = ''
   page.value = saved
-  editMode.value = false
+  setEditMode(false)
   createMode.value = false
   await refresh()
 }
@@ -51,7 +61,7 @@ const deletePage = async () => {
       body: { path }
     })
     await refresh()
-    editMode.value = false
+    setEditMode(false)
   } catch {
     alert('削除に失敗しました。')
   } finally {
@@ -66,7 +76,7 @@ const startCreate = () => {
 
 // 削除済みページを復元（エディタを開く）
 const startRestore = () => {
-  editMode.value = true
+  setEditMode(true)
 }
 
 // @nuxtjs/mdc の公式パーサを利用して Frontmatter を安全に解析
@@ -91,9 +101,19 @@ useHead({
 
 <template>
   <Header />
-  <u-container class="flex">
-    <Sidebar class="border-r border-default max-w-[200px]" />
-    <main class="w-full pl-4 pb-12">
+
+  <u-container class="flex flex-col lg:flex-row gap-4">
+    <!-- デスクトップ用サイドバー -->
+    <Sidebar class="hidden lg:block border-r border-default min-w-[200px] max-w-[250px]" />
+
+    <!-- モバイル用サイドバー (Slideover) -->
+    <u-slideover v-model:open="isSidebarOpen" title="Menu" side="left">
+      <template #body>
+        <Sidebar @click="isSidebarOpen = false" />
+      </template>
+    </u-slideover>
+
+    <main class="w-full pb-12 overflow-hidden">
       <!-- ページが存在しない場合 -->
       <template v-if="pageNotFound">
         <div v-if="user" class="py-8">
@@ -108,13 +128,13 @@ useHead({
               @conflict="onConflict"
             />
           </template>
-          <template v-else>
-            <p class="text-muted mb-4">このページはまだ存在しません。</p>
-            <button class="border px-3 py-1 rounded" @click="startCreate">新規作成</button>
-          </template>
+          <div v-else class="text-center py-12">
+            <p class="text-muted mb-6 text-lg">このページはまだ存在しません。</p>
+            <u-button size="lg" icon="i-heroicons-plus" @click="startCreate">新規作成</u-button>
+          </div>
         </div>
-        <div v-else class="py-8">
-          <p class="text-muted">ページが見つかりません。</p>
+        <div v-else class="py-12 text-center">
+          <p class="text-muted text-lg">ページが見つかりません。</p>
         </div>
       </template>
 
@@ -127,41 +147,39 @@ useHead({
               :initial-body="''"
               :base-revision="page!.revision"
               @saved="onSaved"
-              @cancel="editMode = false"
+              @cancel="setEditMode(false)"
               @conflict="onConflict"
             />
           </template>
-          <template v-else>
-            <p class="text-muted mb-4">このページは削除されています。</p>
-            <button class="border px-3 py-1 rounded" @click="startRestore">新規作成 または 復元</button>
-          </template>
+          <div v-else class="text-center py-12">
+            <p class="text-muted mb-6 text-lg">このページは削除されています。</p>
+            <u-button size="lg" icon="i-heroicons-arrow-path-rounded-square" @click="startRestore">
+              新規作成 または 復元
+            </u-button>
+          </div>
         </div>
-        <div v-else class="py-8">
-          <p class="text-muted">ページが見つかりません。</p>
+        <div v-else class="py-12 text-center">
+          <p class="text-muted text-lg">ページが見つかりません。</p>
         </div>
       </template>
 
       <!-- 通常のページ表示 -->
       <template v-else-if="page">
-        <div v-if="user" class="mb-4 flex items-center gap-2">
-          <button class="border px-3 py-1 rounded" @click="editMode = !editMode">
-            {{ editMode ? '閲覧に戻る' : '編集する' }}
-          </button>
-          <button
-            v-if="editMode"
-            class="border px-3 py-1 rounded text-red-600 border-red-300"
-            :disabled="deleting"
-            @click="deletePage"
-          >
-            {{ deleting ? '削除中...' : '削除' }}
-          </button>
-          <span class="text-sm text-muted">revision: {{ page.revision }}</span>
+        <div v-if="editMode" class="mb-8">
+          <h2 class="text-2xl font-bold flex items-center gap-2">
+            <u-icon name="i-heroicons-pencil-square" class="text-primary" />
+            編集モード
+          </h2>
         </div>
 
-        <p v-if="conflictMessage" class="text-red-600 mb-3">
-          {{ conflictMessage }}
-          <button class="underline ml-2" @click="reloadLatest">最新版を再読込</button>
-        </p>
+        <u-alert
+          v-if="conflictMessage"
+          color="error"
+          variant="subtle"
+          :title="conflictMessage"
+          class="mb-4"
+          :actions="[{ label: '最新版を再読込', onClick: reloadLatest }]"
+        />
 
         <WikiEditor
           v-if="editMode"
@@ -169,14 +187,28 @@ useHead({
           :initial-body="page.body"
           :base-revision="page.revision"
           @saved="onSaved"
-          @cancel="editMode = false"
+          @cancel="setEditMode(false)"
           @conflict="onConflict"
         />
 
         <MDC v-else :value="page.body" class="content" />
 
+        <!-- 編集モード時の下部アクション -->
+        <div v-if="editMode" class="mt-12 pt-8 border-t border-default flex justify-center">
+          <u-button
+            class="text-red-600 border-red-300"
+            variant="outline"
+            icon="i-heroicons-trash"
+            size="lg"
+            :disabled="deleting"
+            @click="deletePage"
+          >
+            {{ deleting ? '削除中...' : 'このページを削除する' }}
+          </u-button>
+        </div>
+
         <!-- ディスカッション機能 -->
-        <div v-if="hasDiscussion && !editMode" class="mt-8 pt-8 border-t border-default">
+        <div v-if="hasDiscussion && !editMode" class="mt-12 pt-8 border-t border-default">
           <Discussion :path="path" />
         </div>
       </template>
