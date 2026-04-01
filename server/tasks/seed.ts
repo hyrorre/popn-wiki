@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import { db, schema } from '@nuxthub/db'
+import { unserialize } from 'php-serialize'
+import { commentsTable, profilesTable } from '../db/schema'
 
 const specialCharacters = [
   '\u{1a}',
@@ -902,12 +904,91 @@ function convertDokuwikiToMarkdown(input: string): string {
   return text
 }
 
+// DokuWiki Discussion プラグインの .comments ファイルの型定義
+interface DokuWikiCommentUser {
+  id: string
+  name: string
+  mail: string
+  address: string
+  url: string
+}
+
+interface DokuWikiComment {
+  user: DokuWikiCommentUser
+  date: { created: number; replied?: number; modified?: number }
+  raw: string
+  xhtml: string
+  parent: string | null
+  replies: string[]
+  show: boolean
+  cid: string
+}
+
+interface DokuWikiCommentsFile {
+  title: string
+  status: number
+  number: number
+  comments: Record<string, DokuWikiComment>
+  subscribers: unknown
+}
+
+/**
+ * .local/meta 配下の .comments ファイルを再帰的に取得して
+ * パースし、全コメントを収集する
+ */
+function collectAllComments(metaDir: string): {
+  comments: { pagePath: string; comment: DokuWikiComment }[]
+  profiles: Map<string, { id: string; name: string }>
+} {
+  const commentFiles = getFilesRecursively(metaDir).filter((f) => f.endsWith('.comments'))
+  const allComments: { pagePath: string; comment: DokuWikiComment }[] = []
+  const profiles = new Map<string, { id: string; name: string }>()
+
+  for (const file of commentFiles) {
+    const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '')
+    const pagePath = relativePath === 'start' ? '/' : decodeURI(relativePath)
+
+    let parsed: DokuWikiCommentsFile
+    try {
+      const raw = fs.readFileSync(file, 'utf8')
+      parsed = unserialize(raw) as DokuWikiCommentsFile
+    } catch {
+      console.warn(`Failed to parse: ${file}`)
+      continue
+    }
+
+    if (!parsed.comments || typeof parsed.comments !== 'object') continue
+
+    const comments = parsed.comments as Record<string, DokuWikiComment>
+    for (const [, comment] of Object.entries(comments)) {
+      // 非表示コメントはスキップ
+      if (!comment.show) continue
+
+      allComments.push({ pagePath, comment })
+
+      // プロフィール情報を収集
+      if (comment.user?.id && !profiles.has(comment.user.id)) {
+        profiles.set(comment.user.id, {
+          id: comment.user.id,
+          name: comment.user.name || comment.user.id
+        })
+      }
+    }
+  }
+
+  // コメントを作成日時順にソート（親が子より先に挿入されるように）
+  allComments.sort((a, b) => a.comment.date.created - b.comment.date.created)
+
+  return { comments: allComments, profiles }
+}
+
 export default defineTask({
   meta: {
     name: 'db:seed',
-    description: 'Seed database with DokuWiki pages converted to Markdown'
+    description: 'Seed database with DokuWiki pages and comments converted to Markdown'
   },
   async run() {
+    // ===== ページのシード =====
     console.log('Seeding database from .local/pages...')
 
     const pagesDir = path.resolve(process.cwd(), '.local/pages')
@@ -949,6 +1030,77 @@ export default defineTask({
       console.log(`Inserted ${pageEntries.length} pages.`)
     }
 
-    return { result: `Inserted ${pageEntries.length} pages.` }
+    // ===== コメントのシード =====
+    console.log('Seeding comments from .local/meta...')
+
+    const metaDir = path.resolve(process.cwd(), '.local/meta')
+    if (!fs.existsSync(metaDir)) {
+      console.warn('Meta directory not found:', metaDir)
+      return { result: `Inserted ${pageEntries.length} pages. No comments found.` }
+    }
+
+    const { comments: allComments, profiles } = collectAllComments(metaDir)
+    console.log(`Found ${allComments.length} comments from ${profiles.size} unique users.`)
+
+    // コメントテーブルのデータをすべて削除
+    await db.delete(commentsTable)
+
+    // プロフィールテーブルに挿入（既存のプロフィールは上書きしない）
+    for (const [, profile] of profiles) {
+      const now = new Date().toISOString()
+      await db
+        .insert(profilesTable)
+        .values({
+          id: profile.id,
+          name: profile.name,
+          avatar: null,
+          createdAt: now,
+          updatedAt: now
+        })
+        .onConflictDoNothing()
+    }
+    console.log(`Inserted ${profiles.size} profiles.`)
+
+    // CID → 新しい整数ID のマッピング
+    const cidToNewId = new Map<string, number>()
+    let insertedCount = 0
+
+    for (const { pagePath, comment } of allComments) {
+      const body = convertDokuwikiToMarkdown(comment.raw)
+      const createdAt = new Date(comment.date.created * 1000).toISOString()
+      const updatedAt = comment.date.modified
+        ? new Date(comment.date.modified * 1000).toISOString()
+        : createdAt
+
+      // 親コメントの新IDを取得
+      const replyTo = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
+
+      try {
+        const inserted = await db
+          .insert(commentsTable)
+          .values({
+            path: pagePath,
+            body,
+            replyTo,
+            userId: comment.user.id,
+            createdAt,
+            updatedAt
+          })
+          .returning({ id: commentsTable.id })
+          .get()
+
+        // CID → 新ID のマッピングを記録
+        cidToNewId.set(comment.cid, inserted.id)
+        insertedCount++
+      } catch (e) {
+        console.warn(`Failed to insert comment ${comment.cid} for ${pagePath}:`, e)
+      }
+    }
+
+    console.log(`Inserted ${insertedCount} comments.`)
+
+    return {
+      result: `Inserted ${pageEntries.length} pages and ${insertedCount} comments.`
+    }
   }
 })

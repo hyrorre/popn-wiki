@@ -1,5 +1,5 @@
 import { commentsTable, profilesTable } from '../db/schema'
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, aliasedTable } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
@@ -10,7 +10,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Path is required.' })
   }
 
-  // Join を使用してプロフィール名を取得
+  // 親コメントのプロフィール名を取得するためのエイリアス
+  const parentComments = aliasedTable(commentsTable, 'parent_comments')
+  const parentProfiles = aliasedTable(profilesTable, 'parent_profiles')
+
+  // Join を使用してプロフィール名と返信先名を取得
   const data = await db
     .select({
       id: commentsTable.id,
@@ -19,18 +23,20 @@ export default defineEventHandler(async (event) => {
       createdAt: commentsTable.createdAt,
       updatedAt: commentsTable.updatedAt,
       userId: commentsTable.userId,
+      replyTo: commentsTable.replyTo,
       profiles: {
         id: profilesTable.id,
         name: profilesTable.name
-      }
+      },
+      replyToName: parentProfiles.name
     })
     .from(commentsTable)
     .leftJoin(profilesTable, eq(commentsTable.userId, profilesTable.id))
+    .leftJoin(parentComments, eq(commentsTable.replyTo, parentComments.id))
+    .leftJoin(parentProfiles, eq(parentComments.userId, parentProfiles.id))
     .where(eq(commentsTable.path, path))
     .orderBy(asc(commentsTable.createdAt))
     .all()
 
-  // フロントエンドが期待する形式（profiles がネストされたオブジェクト）に変換
-  // Drizzle の select でも構造化できますが、一旦手動で整形
   return data
 })
