@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import * as Diff from 'diff'
 import type { Page } from '~/types'
 
 const props = defineProps<{
@@ -20,6 +21,49 @@ const saving = ref(false)
 const loadingHistory = ref(false)
 const restoring = ref<number | null>(null)
 const revisions = ref<Page[]>([])
+
+const isViewModalOpen = ref(false)
+const isDiffModalOpen = ref(false)
+const isRestoreConfirmOpen = ref(false)
+const selectedRevision = ref<Page | null>(null)
+const diffTarget = ref<'current' | 'previous'>('current')
+const viewMode = ref<'preview' | 'markdown'>('preview')
+
+const diffResults = computed(() => {
+  if (!selectedRevision.value) return []
+
+  let fromContent = ''
+  let toContent = selectedRevision.value.body || ''
+
+  if (diffTarget.value === 'current') {
+    fromContent = selectedRevision.value.body || ''
+    toContent = body.value || ''
+  } else {
+    // find index in revisions
+    const index = revisions.value.findIndex((r) => r.revision === selectedRevision.value?.revision)
+    const prev = revisions.value[index + 1]
+    fromContent = prev?.body || ''
+    toContent = selectedRevision.value.body || ''
+  }
+
+  return Diff.diffLines(fromContent, toContent)
+})
+
+const openViewModal = (item: Page) => {
+  selectedRevision.value = item
+  isViewModalOpen.value = true
+}
+
+const openDiffModal = (item: Page, target: 'current' | 'previous') => {
+  diffTarget.value = target
+  selectedRevision.value = item
+  isDiffModalOpen.value = true
+}
+
+const openRestoreConfirm = (item: Page) => {
+  selectedRevision.value = item
+  isRestoreConfirmOpen.value = true
+}
 
 type LayoutMode = 'split' | 'stack'
 const layoutMode = ref<LayoutMode>('split')
@@ -175,23 +219,120 @@ await loadHistory()
                 <span class="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded"
                   >r{{ item.revision }}</span
                 >
-                <span class="text-sm font-medium">{{ item.updatedBy }}</span>
+                <span class="text-sm font-medium">{{ item.userName || item.updatedBy }}</span>
               </div>
               <p class="text-xs text-muted mb-1">{{ item.updatedAt }}</p>
               <p v-if="item.message" class="text-sm text-gray-700 dark:text-gray-300 italic">{{ item.message }}</p>
             </div>
-            <u-button
-              size="sm"
-              variant="subtle"
-              :loading="restoring === item.revision"
-              :disabled="restoring !== null"
-              @click="restore(item.revision)"
-            >
-              復元
-            </u-button>
+            <div class="flex items-center gap-2">
+              <u-button size="sm" variant="ghost" icon="i-heroicons-eye" @click="openViewModal(item)">
+                表示
+              </u-button>
+              <u-button
+                size="sm"
+                variant="ghost"
+                icon="i-heroicons-arrows-right-left"
+                @click="openDiffModal(item, 'current')"
+              >
+                現在との差分
+              </u-button>
+              <u-button
+                size="sm"
+                variant="ghost"
+                icon="i-heroicons-arrow-uturn-left"
+                :disabled="revisions.indexOf(item) === revisions.length - 1"
+                @click="openDiffModal(item, 'previous')"
+              >
+                前回との差分
+              </u-button>
+              <u-button
+                size="sm"
+                variant="subtle"
+                color="primary"
+                :loading="restoring === item.revision"
+                :disabled="restoring !== null"
+                @click="openRestoreConfirm(item)"
+              >
+                復元
+              </u-button>
+            </div>
           </div>
         </li>
       </ul>
     </section>
+
+    <!-- リビジョン内容確認モーダル -->
+    <u-modal
+      v-model:open="isViewModalOpen"
+      :title="`Revision ${selectedRevision?.revision} の内容`"
+      :ui="{ content: 'sm:max-w-4xl' }"
+    >
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-end">
+            <u-form-field label="プレビュー表示" name="viewMode" size="sm">
+              <u-switch
+                :model-value="viewMode === 'preview'"
+                @update:model-value="(val) => (viewMode = val ? 'preview' : 'markdown')"
+              />
+            </u-form-field>
+          </div>
+
+          <div class="max-h-[70vh] overflow-auto p-4 bg-muted/10 rounded-lg">
+            <template v-if="selectedRevision">
+              <MDC v-if="viewMode === 'preview'" :value="selectedRevision.body" class="content bg-white dark:bg-gray-900 p-4 rounded shadow-sm" />
+              <pre v-else class="whitespace-pre-wrap font-mono text-sm bg-gray-50 dark:bg-gray-800/50 p-4 rounded">{{
+                selectedRevision.body
+              }}</pre>
+            </template>
+          </div>
+        </div>
+      </template>
+    </u-modal>
+
+    <!-- 差分確認モーダル -->
+    <u-modal
+      v-model:open="isDiffModalOpen"
+      :title="diffTarget === 'current' ? '現在の編集内容との差分' : `Revision ${selectedRevision?.revision} とその前回との差分`"
+      :ui="{ content: 'sm:max-w-4xl' }"
+    >
+      <template #body>
+        <div class="max-h-[70vh] overflow-auto bg-white dark:bg-gray-900 rounded-lg font-mono text-sm">
+          <div v-for="(part, index) in diffResults" :key="index" :class="[
+            'whitespace-pre-wrap px-2 py-0.5',
+            part.added ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : '',
+            part.removed ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : ''
+          ]">
+            <span v-if="part.added" class="inline-block w-4 opacity-50">+</span>
+            <span v-else-if="part.removed" class="inline-block w-4 opacity-50">-</span>
+            <span>{{ part.value }}</span>
+          </div>
+        </div>
+      </template>
+    </u-modal>
+
+    <!-- 復元確認モーダル -->
+    <u-modal
+      v-model:open="isRestoreConfirmOpen"
+      title="リビジョンの復元"
+      description="このリビジョンの内容で現在のページを上書きします。よろしいですか？"
+    >
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <u-button variant="ghost" color="neutral" @click="isRestoreConfirmOpen = false">キャンセル</u-button>
+          <u-button
+            color="primary"
+            @click="
+              () => {
+                restore(selectedRevision!.revision)
+                isRestoreConfirmOpen = false
+              }
+            "
+          >
+            復元を実行する
+          </u-button>
+        </div>
+      </template>
+    </u-modal>
   </section>
 </template>

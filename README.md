@@ -15,10 +15,11 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] table sort
 - [x] convert comments
 - [x] comment paging
+- [x] edit page layout (vertical/horizontal)
+- [x] sidebar layout
+- [ ] revision view/diff
 - [ ] NOTOC/TOC
 - [ ] NOCACHE
-- [ ] edit page layout (vertical/horizontal)
-- [ ] sidebar layout
 - [ ] definition list
 - [ ] media file redirect
 

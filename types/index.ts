@@ -30,6 +30,7 @@ export type Page = {
   createdAt: string
   updatedAt: string
   minor: number | null
+  userName?: string | null
 }
 
 export type Comment = {
