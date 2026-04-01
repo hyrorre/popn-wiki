@@ -14,7 +14,7 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] Fix: google-analytics
 - [x] table sort
 - [x] convert comments
-- [ ] comment paging
+- [x] comment paging
 - [ ] NOTOC/TOC
 - [ ] NOCACHE
 - [ ] edit page layout (vertical/horizontal)

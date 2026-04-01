@@ -6,10 +6,33 @@ const props = defineProps<{
 }>()
 
 const { user } = useUserSession()
+
+const page = ref(1)
+const itemsPerPage = 20
+
 // APIリクエストでpathを指定してコメントを取得します
-const { data: comments, refresh } = await useFetch<Comment[]>('/api/comment', {
-  query: { path: props.path }
+const { data: commentData, refresh } = await useFetch<{ comments: Comment[], total: number }>('/api/comment', {
+  query: {
+    path: props.path,
+    page,
+    limit: itemsPerPage
+  }
 })
+
+const comments = computed(() => commentData.value?.comments || [])
+const totalRoots = computed(() => commentData.value?.total || 0)
+const maxPage = computed(() => Math.ceil(totalRoots.value / itemsPerPage))
+
+const jumpPage = ref(1)
+
+const handleJump = () => {
+  const p = parseInt(jumpPage.value.toString())
+  if (!isNaN(p) && p >= 1 && p <= maxPage.value) {
+    page.value = p
+  } else {
+    jumpPage.value = page.value
+  }
+}
 
 const newCommentBody = ref('')
 const isSubmitting = ref(false)
@@ -58,6 +81,15 @@ const threadedComments = computed(() => {
 
   return roots
 })
+
+// ページ遷移時に上部にスクロール
+watch(page, (newVal) => {
+  jumpPage.value = newVal
+  const element = document.getElementById('discussion')
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' })
+  }
+})
 </script>
 
 <template>
@@ -67,7 +99,7 @@ const threadedComments = computed(() => {
       コメント
     </h3>
 
-    <div v-if="!comments?.length" class="text-muted mb-6">コメントはまだありません。</div>
+    <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 
     <div class="flex flex-col gap-6 mb-8">
       <!-- 親コメントループ & 再帰コンポーネントへ移譲 -->
@@ -78,6 +110,41 @@ const threadedComments = computed(() => {
         :path="path"
         @refresh="refresh"
       />
+    </div>
+
+    <!-- ページネーション & ジャンプ -->
+    <div v-if="totalRoots > itemsPerPage" class="flex flex-col md:flex-row items-center justify-center gap-5 mb-8 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default">
+      <div class="text-sm font-medium text-muted">
+        全 <span class="text-foreground">{{ maxPage }}</span> ページ
+      </div>
+
+      <u-pagination
+        v-model:page="page"
+        :total="totalRoots"
+        :items-per-page="itemsPerPage"
+        size="md"
+        color="primary"
+      />
+
+      <div class="flex items-center gap-2">
+        <u-input
+          v-model="jumpPage"
+          type="number"
+          size="sm"
+          class="w-16"
+          :min="1"
+          :max="maxPage"
+          @keyup.enter="handleJump"
+        />
+        <span class="text-xs text-muted font-medium">ページへ</span>
+        <u-button
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-magnifying-glass"
+          @click="handleJump"
+        />
+      </div>
     </div>
 
     <div v-if="user" class="border border-default rounded-lg p-5 bg-white dark:bg-gray-900 shadow-sm">

@@ -38,13 +38,13 @@ export type Comment = {
   body: string
   userId: string
   replyTo: number | null
-  replyToName?: string
+  replyToName: string | null
   createdAt: string
   updatedAt: string
-  profiles?: {
+  profiles: {
     id: string
     name: string | null
-  }
+  } | null
   children?: Comment[]
 }
 

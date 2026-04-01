@@ -116,10 +116,6 @@ const formatDate = (dateStr: string) => {
     </div>
     <!-- 通常表示 -->
     <div v-else class="text-foreground leading-relaxed">
-      <div v-if="comment.replyToName" class="text-primary font-medium text-xs mb-1">
-        <u-icon name="i-heroicons-arrow-uturn-right" class="w-3 h-3 inline-block mr-0.5 align-text-bottom" />
-        宛先: {{ comment.replyToName }}
-      </div>
       <MDC :value="comment.body" class="prose prose-sm dark:prose-invert max-w-none" />
     </div>
 
