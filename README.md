@@ -17,11 +17,18 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] comment paging
 - [x] edit page layout (vertical/horizontal)
 - [x] sidebar layout
-- [ ] revision view/diff
+- [x] revision view/diff
+- [x] definition list
+- [x] auto link label
+- [ ] staging
 - [ ] NOTOC/TOC
 - [ ] NOCACHE
-- [ ] definition list
 - [ ] media file redirect
+- [ ] breadcrumb
+- [ ] user email confirmation
+- [ ] user role (admin/editor/commenter/viewer)
+- [ ] cache strategy (swr/stale-while-revalidate)
+- [ ] test codes (bun test)
 
 ## Feature
 

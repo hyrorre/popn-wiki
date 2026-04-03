@@ -619,7 +619,42 @@ function getFilesRecursively(dir: string): string[] {
   return results
 }
 
-function convertDokuwikiToMarkdown(input: string): string {
+/**
+ * DokuWiki 形式のテキストから最初の見出し（====== タイトル ======）を抽出する
+ */
+function extractTitleFromDokuwiki(content: string): string | null {
+  // 最初の見出し行を探す
+  const match = content.match(/^(={2,6})\s*(.*?)\s*\1\s*$/m)
+  if (match?.[2] !== undefined) return match[2].trim()
+  return null
+}
+
+/**
+ * 全ページをスキャンしてパスとタイトルの対応マップを作成する
+ */
+function buildTitleMap(pagesDir: string): Map<string, string> {
+  const titleMap = new Map<string, string>()
+  const files = getFilesRecursively(pagesDir).filter((f) => f.endsWith('.txt'))
+
+  for (const file of files) {
+    const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
+    const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
+    
+    try {
+      const content = fs.readFileSync(file, 'utf8')
+      const title = extractTitleFromDokuwiki(content)
+      if (title) {
+        titleMap.set(dbPath, title)
+      }
+    } catch (e) {
+      console.warn(`Failed to read for title map: ${file}`, e)
+    }
+  }
+
+  return titleMap
+}
+
+function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
   let text = input
 
   // 単一の [ または ] をエスケープ (DokuWiki のリンク [[...]] を除く)
@@ -734,18 +769,25 @@ function convertDokuwikiToMarkdown(input: string): string {
   // 内部/外部リンク: [[target|label]] / [[target]] -> [label](url)
   text = text.replace(/\[\[(.+?)\]\]/g, (_m, inner: string) => {
     let target = inner
-    let label = inner
+    let label = ''
+    let isExplicitLabel = false
 
     const pipeIndex = inner.indexOf('|')
     if (pipeIndex !== -1) {
       target = inner.slice(0, pipeIndex)
-      label = inner.slice(pipeIndex + 1)
+      label = inner.slice(pipeIndex + 1).trim()
+      isExplicitLabel = true
+    } else {
+      target = inner
+      label = inner.trim()
     }
 
     let url = target.trim()
+    let isInternal = false
 
     // 内部リンク
     if (!url.startsWith('http')) {
+      isInternal = true
       // dokuwiki の名前空間区切り : をパスの / に変換
       url = url.replace(/:/g, '/')
 
@@ -753,9 +795,6 @@ function convertDokuwikiToMarkdown(input: string): string {
       if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
         url = '/' + url
       }
-
-      // スペースを'+'に変換
-      // url = url.replaceAll(' ', '+')
 
       // specialCharacters (#以外)を_に変換
       url = url.replace(
@@ -772,20 +811,29 @@ function convertDokuwikiToMarkdown(input: string): string {
       // 連続した_を1つにまとめる
       url = url.replace(/_+/g, '_')
 
-      // 先頭と末尾の_を削除
+      // 先頭と末尾 host の_を削除
       url = url.replace(/^_/, '').replace(/_$/, '')
 
       // urlを小文字に変換
       url = url.toLowerCase()
     }
 
-    label = label.trim()
+    // ラベルの自動補完 (内部リンクかつ明示的なラベルがないか、ラベルが空の場合)
+    if (isInternal && titleMap && (!isExplicitLabel || label === '')) {
+      const dbPath = url.startsWith('/') && url.length > 1 ? url.substring(1) : url
+      const title = titleMap.get(dbPath)
 
-    // labelの先頭が:だったらそれを削除
-    label = label.replace(/^:/, '')
+      if (title) {
+        label = title
+      }
+    }
 
-    // labelの:を/に置換
-    label = label.replace(/:/g, '/')
+    if (!isExplicitLabel) {
+      // labelの先頭が:だったらそれを削除
+      label = label.replace(/^:/, '')
+      // labelの:を/に置換
+      label = label.replace(/:/g, '/')
+    }
 
     return `[${label.trim()}](${url})`
   })
@@ -997,13 +1045,16 @@ export default defineTask({
       return { result: 'No pages found to seed' }
     }
 
+    const titleMap = buildTitleMap(pagesDir)
+    console.log(`Built title map with ${titleMap.size} entries.`)
+
     const files = getFilesRecursively(pagesDir)
     const pageEntries = files
       .filter((file) => file.endsWith('.txt'))
       .map((file) => {
         const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
         const bodyContent = fs.readFileSync(file, 'utf8')
-        const markdown = convertDokuwikiToMarkdown(bodyContent)
+        const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
         const now = new Date().toISOString()
 
         return {
@@ -1066,7 +1117,7 @@ export default defineTask({
     let insertedCount = 0
 
     for (const { pagePath, comment } of allComments) {
-      const body = convertDokuwikiToMarkdown(comment.raw)
+      const body = convertDokuwikiToMarkdown(comment.raw, titleMap)
       const createdAt = new Date(comment.date.created * 1000).toISOString()
       const updatedAt = comment.date.modified
         ? new Date(comment.date.modified * 1000).toISOString()
