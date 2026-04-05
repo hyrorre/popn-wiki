@@ -1,8 +1,9 @@
 import fs from 'fs'
 import path from 'path'
 import { db, schema } from '@nuxthub/db'
+import { sql, eq } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
-import { commentsTable, profilesTable } from '../db/schema'
+import { commentsTable, usersTable } from '../db/schema'
 
 const specialCharacters = [
   '\u{1a}',
@@ -986,11 +987,11 @@ interface DokuWikiCommentsFile {
  */
 function collectAllComments(metaDir: string): {
   comments: { pagePath: string; comment: DokuWikiComment }[]
-  profiles: Map<string, { id: string; name: string }>
+  users: Map<string, { id: string; name: string }>
 } {
   const commentFiles = getFilesRecursively(metaDir).filter((f) => f.endsWith('.comments'))
   const allComments: { pagePath: string; comment: DokuWikiComment }[] = []
-  const profiles = new Map<string, { id: string; name: string }>()
+  const users = new Map<string, { id: string; name: string }>()
 
   for (const file of commentFiles) {
     const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '')
@@ -1015,8 +1016,8 @@ function collectAllComments(metaDir: string): {
       allComments.push({ pagePath, comment })
 
       // プロフィール情報を収集
-      if (comment.user?.id && !profiles.has(comment.user.id)) {
-        profiles.set(comment.user.id, {
+      if (comment.user?.id && !users.has(comment.user.id)) {
+        users.set(comment.user.id, {
           id: comment.user.id,
           name: comment.user.name || comment.user.id
         })
@@ -1027,7 +1028,29 @@ function collectAllComments(metaDir: string): {
   // コメントを作成日時順にソート（親が子より先に挿入されるように）
   allComments.sort((a, b) => a.comment.date.created - b.comment.date.created)
 
-  return { comments: allComments, profiles }
+  return { comments: allComments, users }
+}
+
+/**
+ * スキーマ定義を介さずに Raw SQL で挿入を行うヘルパー
+ */
+async function rawInsert(tableName: string, data: Record<string, any>) {
+  const keys = Object.keys(data)
+  const values = Object.values(data)
+  const prefix = `INSERT INTO "${tableName}" (${keys.map((k) => `"${k}"`).join(', ')}) VALUES (`
+  const suffix = `) ON CONFLICT DO NOTHING`
+
+  // Drizzle の sql オブジェクトを手動で組み立ててパラメータをバインドする
+  let statement = sql.raw(prefix)
+  for (let i = 0; i < values.length; i++) {
+    if (i > 0) {
+      statement = sql`${statement}, `
+    }
+    statement = sql`${statement}${values[i]}`
+  }
+  statement = sql`${statement}${sql.raw(suffix)}`
+
+  await db.run(statement)
 }
 
 export default defineTask({
@@ -1050,7 +1073,12 @@ export default defineTask({
 
     const files = getFilesRecursively(pagesDir)
     const pageEntries = files
-      .filter((file) => file.endsWith('.txt'))
+      .filter(
+        (file) =>
+          file.endsWith('.txt') &&
+          !file.endsWith('%E9%81%BF%E9%9B%A3%E6%89%80.txt') &&
+          !file.endsWith('%E3%83%8A%E3%83%93%E3%81%8F%E3%82%93%E3%81%AE%E8%82%B2%E6%88%90.txt')
+      )
       .map((file) => {
         const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
         const bodyContent = fs.readFileSync(file, 'utf8')
@@ -1063,20 +1091,39 @@ export default defineTask({
           body: markdown,
           message: null,
           minor: 0,
-          createdAt: now,
-          updatedAt: now,
-          createdBy: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068',
-          updatedBy: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068'
+          created_at: now,
+          updated_at: now,
+          created_by: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068',
+          updated_by: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068'
         }
       })
 
     if (pageEntries.length > 0) {
       // ページテーブルのデータをすべて削除
-      await db.delete(schema.pagesTable)
+      await db.run(sql`DELETE FROM pages`)
 
       // ページテーブルに挿入
+      const CHUNK_SIZE = 80000 // 80KB limit for D1 HTTP API
       for (const pageEntry of pageEntries) {
-        await db.insert(schema.pagesTable).values(pageEntry).onConflictDoNothing()
+        try {
+          const fullBody = pageEntry.body
+          if (fullBody.length > CHUNK_SIZE) {
+            // Raw INSERT for first chunk
+            const firstChunk = fullBody.substring(0, CHUNK_SIZE)
+            await rawInsert('pages', { ...pageEntry, body: firstChunk })
+
+            // Raw UPDATE for subsequent chunks
+            for (let offset = CHUNK_SIZE; offset < fullBody.length; offset += CHUNK_SIZE) {
+              const chunk = fullBody.substring(offset, offset + CHUNK_SIZE)
+              await db.run(sql`UPDATE pages SET body = body || ${chunk} WHERE path = ${pageEntry.path}`)
+            }
+            console.log(`[Large Page] Split and inserted: ${pageEntry.path} (${fullBody.length} chars)`)
+          } else {
+            await rawInsert('pages', pageEntry)
+          }
+        } catch {
+          console.error(`[Error] Failed to insert page: ${pageEntry.path}`)
+        }
       }
       console.log(`Inserted ${pageEntries.length} pages.`)
     }
@@ -1090,27 +1137,28 @@ export default defineTask({
       return { result: `Inserted ${pageEntries.length} pages. No comments found.` }
     }
 
-    const { comments: allComments, profiles } = collectAllComments(metaDir)
-    console.log(`Found ${allComments.length} comments from ${profiles.size} unique users.`)
+    const { comments: allComments, users } = collectAllComments(metaDir)
+    console.log(`Found ${allComments.length} comments from ${users.size} unique users.`)
 
     // コメントテーブルのデータをすべて削除
-    await db.delete(commentsTable)
+    await db.run(sql`DELETE FROM comments`)
 
     // プロフィールテーブルに挿入（既存のプロフィールは上書きしない）
-    for (const [, profile] of profiles) {
+    for (const [, user] of users) {
       const now = new Date().toISOString()
-      await db
-        .insert(profilesTable)
-        .values({
-          id: profile.id,
-          name: profile.name,
+      try {
+        await rawInsert('users', {
+          id: user.id,
+          name: user.name,
           avatar: null,
-          createdAt: now,
-          updatedAt: now
+          created_at: now,
+          updated_at: now
         })
-        .onConflictDoNothing()
+      } catch {
+        // ignore
+      }
     }
-    console.log(`Inserted ${profiles.size} profiles.`)
+    console.log(`Inserted ${users.size} users.`)
 
     // CID → 新しい整数ID のマッピング
     const cidToNewId = new Map<string, number>()
@@ -1124,27 +1172,25 @@ export default defineTask({
         : createdAt
 
       // 親コメントの新IDを取得
-      const replyTo = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
+      const reply_to = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
 
       try {
-        const inserted = await db
-          .insert(commentsTable)
-          .values({
-            path: pagePath,
-            body,
-            replyTo,
-            userId: comment.user.id,
-            createdAt,
-            updatedAt
-          })
-          .returning({ id: commentsTable.id })
-          .get()
+        await db.run(sql`
+          INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
+          VALUES (${pagePath}, ${body}, ${reply_to}, ${comment.user.id}, ${createdAt}, ${updatedAt})
+          ON CONFLICT DO NOTHING
+        `)
 
         // CID → 新ID のマッピングを記録
-        cidToNewId.set(comment.cid, inserted.id)
+        const res = await db.run(sql`SELECT last_insert_rowid() as id`) as any
+        // results配列または直接の結果オブジェクトから ID を抽出
+        const newId = res.results?.[0]?.id || res[0]?.id
+        if (newId) {
+          cidToNewId.set(comment.cid, newId)
+        }
         insertedCount++
-      } catch (e) {
-        console.warn(`Failed to insert comment ${comment.cid} for ${pagePath}:`, e)
+      } catch (e: any) {
+        console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e.message}`)
       }
     }
 
