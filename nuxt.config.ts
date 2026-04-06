@@ -59,13 +59,13 @@ export default defineNuxtConfig({
     blob: true,
     db: {
       dialect: 'sqlite',
-      casing: 'snake_case',
-      driver: 'd1-http',
-      connection: {
-        accountId: process.env.NUXT_HUB_CLOUDFLARE_ACCOUNT_ID,
-        databaseId: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID,
-        token: process.env.NUXT_HUB_CLOUDFLARE_API_TOKEN
-      }
+      casing: 'snake_case'
+      // driver: 'd1-http',
+      // connection: {
+      //   accountId: process.env.NUXT_HUB_CLOUDFLARE_ACCOUNT_ID,
+      //   databaseId: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID,
+      //   token: process.env.NUXT_HUB_CLOUDFLARE_API_TOKEN
+      // }
     }
   },
   router: {
