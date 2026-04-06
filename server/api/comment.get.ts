@@ -1,4 +1,4 @@
-import { commentsTable, profilesTable } from '../db/schema'
+import { commentsTable, usersTable } from '../db/schema'
 import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
 
   // 親コメントのプロフィール名を取得するためのエイリアス（返信先表示用）
   const parentComments = aliasedTable(commentsTable, 'parent_comments')
-  const parentProfiles = aliasedTable(profilesTable, 'parent_profiles')
+  const parentProfiles = aliasedTable(usersTable, 'parent_profiles')
 
   // tree CTE から結果を取得し、プロフィールを JOIN
   const comments = await db
@@ -88,13 +88,13 @@ export default defineEventHandler(async (event) => {
       userId: tree.userId,
       replyTo: tree.replyTo,
       profiles: {
-        id: profilesTable.id,
-        name: profilesTable.name
+        id: usersTable.id,
+        name: usersTable.name
       },
       replyToName: parentProfiles.name
     })
     .from(tree)
-    .leftJoin(profilesTable, eq(tree.userId, profilesTable.id))
+    .leftJoin(usersTable, eq(tree.userId, usersTable.id))
     .leftJoin(parentComments, eq(tree.replyTo, parentComments.id))
     .leftJoin(parentProfiles, eq(parentComments.userId, parentProfiles.id))
     .orderBy(desc(sql`tree.rootCreatedAt`), asc(tree.createdAt))

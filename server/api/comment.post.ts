@@ -1,4 +1,4 @@
-import { commentsTable, profilesTable } from '../db/schema'
+import { commentsTable, usersTable } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
       path,
       body,
       replyTo,
-      userId: user.id,
+      userId: parseInt(user.id),
       createdAt: now,
       updatedAt: now
     })
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     .get()
 
   // プロフィール情報を取得して結合 (Drizzleのjoinを使うことも可能)
-  const profile = await db.select().from(profilesTable).where(eq(profilesTable.id, user.id)).get()
+  const profile = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(user.id))).get()
 
   return {
     ...inserted,

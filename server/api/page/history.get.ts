@@ -1,5 +1,5 @@
 import { db } from '@nuxthub/db'
-import { pagesTable, profilesTable } from '../../db/schema'
+import { pagesTable, usersTable } from '../../db/schema'
 import { eq, desc } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
@@ -15,10 +15,10 @@ export default defineEventHandler(async (event) => {
       message: pagesTable.message,
       updatedAt: pagesTable.updatedAt,
       updatedBy: pagesTable.updatedBy,
-      userName: profilesTable.name
+      userName: usersTable.name
     })
     .from(pagesTable)
-    .leftJoin(profilesTable, eq(pagesTable.updatedBy, profilesTable.id))
+    .leftJoin(usersTable, eq(pagesTable.updatedBy, usersTable.id))
     .where(eq(pagesTable.path, query.path))
     .orderBy(desc(pagesTable.revision))
     .all()

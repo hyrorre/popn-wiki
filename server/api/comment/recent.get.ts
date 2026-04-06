@@ -1,4 +1,4 @@
-import { commentsTable, profilesTable } from '../../db/schema'
+import { commentsTable, usersTable } from '../../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -11,10 +11,10 @@ export default defineEventHandler(async (event) => {
     .select({
       path: commentsTable.path,
       createdAt: commentsTable.createdAt,
-      name: profilesTable.name
+      name: usersTable.name
     })
     .from(commentsTable)
-    .leftJoin(profilesTable, eq(commentsTable.userId, profilesTable.id))
+    .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
     .orderBy(desc(commentsTable.createdAt))
     .limit(200)
     .all()

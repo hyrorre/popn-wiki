@@ -1,4 +1,4 @@
-import { commentsTable, profilesTable } from '../db/schema'
+import { commentsTable, usersTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       body,
       updatedAt: now
     })
-    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
+    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, parseInt(user.id))))
     .returning()
     .get()
 
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  const profile = await db.select().from(profilesTable).where(eq(profilesTable.id, user.id)).get()
+  const profile = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(user.id))).get()
 
   return {
     ...updated,

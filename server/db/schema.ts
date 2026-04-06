@@ -1,5 +1,15 @@
 import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
 
+export const usersTable = sqliteTable('users', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull(),
+  email: text().notNull().unique(),
+  password: text().notNull(),
+  avatar: text(),
+  createdAt: text().notNull(),
+  updatedAt: text().notNull()
+})
+
 export const pagesTable = sqliteTable(
   'pages',
   {
@@ -10,37 +20,20 @@ export const pagesTable = sqliteTable(
     minor: integer(),
     createdAt: text().notNull(),
     updatedAt: text().notNull(),
-    createdBy: text().notNull(),
-    updatedBy: text().notNull()
+    createdBy: integer().notNull(),
+    updatedBy: integer().notNull()
   },
   (table) => {
     return [primaryKey({ columns: [table.path, table.revision] })]
   }
 )
 
-export const profilesTable = sqliteTable('profiles', {
-  id: text().primaryKey().notNull(),
-  name: text(),
-  avatar: text(),
-  createdAt: text().notNull(),
-  updatedAt: text().notNull()
-})
-
 export const commentsTable = sqliteTable('comments', {
   id: integer().primaryKey({ autoIncrement: true }),
   path: text().notNull(),
   body: text().notNull(),
   replyTo: integer(),
-  userId: text().notNull(),
-  createdAt: text().notNull(),
-  updatedAt: text().notNull()
-})
-export const usersTable = sqliteTable('users', {
-  id: text().primaryKey().notNull(),
-  email: text().notNull().unique(),
-  password: text().notNull(),
-  name: text(),
-  avatar: text(),
+  userId: integer().notNull(),
   createdAt: text().notNull(),
   updatedAt: text().notNull()
 })

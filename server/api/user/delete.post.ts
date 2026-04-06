@@ -1,4 +1,4 @@
-import { usersTable, profilesTable } from '../../db/schema'
+import { usersTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -9,9 +9,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  // ユーザーとプロフィールを削除
-  await db.delete(usersTable).where(eq(usersTable.id, user.id))
-  await db.delete(profilesTable).where(eq(profilesTable.id, user.id))
+  // ユーザーを削除
+  await db.delete(usersTable).where(eq(usersTable.id, parseInt(user.id)))
 
   await clearUserSession(event)
 

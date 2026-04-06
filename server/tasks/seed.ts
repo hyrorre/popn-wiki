@@ -1,9 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { db, schema } from '@nuxthub/db'
-import { sql, eq } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
+import { sql } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
-import { commentsTable, usersTable } from '../db/schema'
 
 const specialCharacters = [
   '\u{1a}',
@@ -640,7 +639,7 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
   for (const file of files) {
     const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
     const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
-    
+
     try {
       const content = fs.readFileSync(file, 'utf8')
       const title = extractTitleFromDokuwiki(content)
@@ -1031,6 +1030,28 @@ function collectAllComments(metaDir: string): {
   return { comments: allComments, users }
 }
 
+function parseUsersAuth(filePath: string): Map<string, { id: string; name: string; email: string; password: string }> {
+  const usersMap = new Map<string, { id: string; name: string; email: string; password: string }>()
+  if (!fs.existsSync(filePath)) return usersMap
+
+  const content = fs.readFileSync(filePath, 'utf8')
+  const lines = content.split('\n')
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const parts = trimmed.split(':')
+    if (parts.length >= 4) {
+      const id = parts[0] || ''
+      const password = parts[1] || ''
+      const name = parts[2] || ''
+      const email = parts[3] || ''
+      usersMap.set(id, { id, name, email, password })
+    }
+  }
+  return usersMap
+}
+
 /**
  * スキーマ定義を介さずに Raw SQL で挿入を行うヘルパー
  */
@@ -1059,6 +1080,57 @@ export default defineTask({
     description: 'Seed database with DokuWiki pages and comments converted to Markdown'
   },
   async run() {
+    // ===== ユーザー情報とコメントの収集 =====
+    console.log('Seeding users...')
+    const metaDir = path.resolve(process.cwd(), '.local/meta')
+    let allComments: { pagePath: string; comment: DokuWikiComment }[] = []
+    let commentUsers = new Map<string, { id: string; name: string }>()
+
+    if (fs.existsSync(metaDir)) {
+      const parsed = collectAllComments(metaDir)
+      allComments = parsed.comments
+      commentUsers = parsed.users
+    } else {
+      console.warn('Meta directory not found:', metaDir)
+    }
+
+    const authUsers = parseUsersAuth(path.resolve(process.cwd(), '.local/users.auth.php'))
+
+    const allUniqueUsers = new Map<string, { id: string; name: string; email: string; password: string }>()
+    for (const [id, data] of authUsers) {
+      allUniqueUsers.set(id, data)
+    }
+    for (const [id, data] of commentUsers) {
+      if (!allUniqueUsers.has(id)) {
+        allUniqueUsers.set(id, { ...data, email: `${id}@migrated.local`, password: '!' })
+      }
+    }
+
+    // ユーザーの挿入
+    await db.run(sql`DELETE FROM users`)
+    const oldUserIdToNewId = new Map<string, number>()
+    const userNow = new Date().toISOString()
+
+    for (const [oldId, user] of allUniqueUsers) {
+      try {
+        await rawInsert('users', {
+          name: user.name,
+          email: user.email,
+          password: user.password,
+          created_at: userNow,
+          updated_at: userNow
+        })
+        const res = (await db.get(sql`SELECT id FROM users WHERE email = ${user.email}`)) as any
+        const newId = res?.id
+        if (newId) oldUserIdToNewId.set(oldId, newId)
+      } catch (e: any) {
+        console.error(`[Error] User insert failed ${oldId}: ${e.message}`)
+      }
+    }
+    console.log(`Inserted ${oldUserIdToNewId.size} users.`)
+
+    const defaultUserId = Array.from(oldUserIdToNewId.values())[0] || 0
+
     // ===== ページのシード =====
     console.log('Seeding database from .local/pages...')
 
@@ -1073,12 +1145,7 @@ export default defineTask({
 
     const files = getFilesRecursively(pagesDir)
     const pageEntries = files
-      .filter(
-        (file) =>
-          file.endsWith('.txt') &&
-          !file.endsWith('%E9%81%BF%E9%9B%A3%E6%89%80.txt') &&
-          !file.endsWith('%E3%83%8A%E3%83%93%E3%81%8F%E3%82%93%E3%81%AE%E8%82%B2%E6%88%90.txt')
-      )
+      .filter((file) => file.endsWith('.txt'))
       .map((file) => {
         const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
         const bodyContent = fs.readFileSync(file, 'utf8')
@@ -1093,8 +1160,8 @@ export default defineTask({
           minor: 0,
           created_at: now,
           updated_at: now,
-          created_by: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068',
-          updated_by: 'c33bfcc6-e2ac-4ca7-92f8-81dc9a76e068'
+          created_by: defaultUserId,
+          updated_by: defaultUserId
         }
       })
 
@@ -1131,34 +1198,8 @@ export default defineTask({
     // ===== コメントのシード =====
     console.log('Seeding comments from .local/meta...')
 
-    const metaDir = path.resolve(process.cwd(), '.local/meta')
-    if (!fs.existsSync(metaDir)) {
-      console.warn('Meta directory not found:', metaDir)
-      return { result: `Inserted ${pageEntries.length} pages. No comments found.` }
-    }
-
-    const { comments: allComments, users } = collectAllComments(metaDir)
-    console.log(`Found ${allComments.length} comments from ${users.size} unique users.`)
-
     // コメントテーブルのデータをすべて削除
     await db.run(sql`DELETE FROM comments`)
-
-    // プロフィールテーブルに挿入（既存のプロフィールは上書きしない）
-    for (const [, user] of users) {
-      const now = new Date().toISOString()
-      try {
-        await rawInsert('users', {
-          id: user.id,
-          name: user.name,
-          avatar: null,
-          created_at: now,
-          updated_at: now
-        })
-      } catch {
-        // ignore
-      }
-    }
-    console.log(`Inserted ${users.size} users.`)
 
     // CID → 新しい整数ID のマッピング
     const cidToNewId = new Map<string, number>()
@@ -1167,24 +1208,24 @@ export default defineTask({
     for (const { pagePath, comment } of allComments) {
       const body = convertDokuwikiToMarkdown(comment.raw, titleMap)
       const createdAt = new Date(comment.date.created * 1000).toISOString()
-      const updatedAt = comment.date.modified
-        ? new Date(comment.date.modified * 1000).toISOString()
-        : createdAt
+      const updatedAt = comment.date.modified ? new Date(comment.date.modified * 1000).toISOString() : createdAt
 
       // 親コメントの新IDを取得
-      const reply_to = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
+      const replyToId = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
+      const newUserId = oldUserIdToNewId.get(comment.user.id)
+
+      if (newUserId === undefined) continue
 
       try {
         await db.run(sql`
           INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
-          VALUES (${pagePath}, ${body}, ${reply_to}, ${comment.user.id}, ${createdAt}, ${updatedAt})
+          VALUES (${pagePath}, ${body}, ${replyToId}, ${newUserId}, ${createdAt}, ${updatedAt})
           ON CONFLICT DO NOTHING
         `)
 
         // CID → 新ID のマッピングを記録
-        const res = await db.run(sql`SELECT last_insert_rowid() as id`) as any
-        // results配列または直接の結果オブジェクトから ID を抽出
-        const newId = res.results?.[0]?.id || res[0]?.id
+        const res = (await db.get(sql`SELECT last_insert_rowid() as id`)) as { id: number }
+        const newId = res?.id
         if (newId) {
           cidToNewId.set(comment.cid, newId)
         }
