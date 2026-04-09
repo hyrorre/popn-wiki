@@ -1,6 +1,5 @@
 import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
-import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
@@ -23,11 +22,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const user = {
-    id: randomUUID(),
+    // id: auto increment
     email,
     password: await hashPassword(password),
-    name: name || email.split('@')[0],
-    avatar: null,
+    name: name || '',
+    avatar: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

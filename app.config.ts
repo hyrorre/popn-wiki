@@ -1,5 +1,8 @@
+import { ja } from '@nuxt/ui/locale'
+
 export default defineAppConfig({
   app: {
+    locale: ja,
     lang: 'ja',
     title: 'ポップンミュージック上級攻略Wiki',
     description: 'ポップンミュージック中級・上級・超上級曲の難易度表・攻略情報をまとめるサイト',

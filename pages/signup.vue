@@ -6,6 +6,7 @@ useHead({
 })
 
 const form = reactive({
+  name: '',
   email: '',
   password: ''
 })
@@ -35,8 +36,11 @@ const submit = async () => {
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
         <u-form :state="form" @submit="submit">
+          <u-form-field label="Name" name="name">
+            <u-input v-model="form.name" required autofocus class="w-full" size="lg" />
+          </u-form-field>
           <u-form-field label="Email" name="email">
-            <u-input v-model="form.email" required autofocus class="w-full" size="lg" />
+            <u-input v-model="form.email" required class="w-full" size="lg" />
           </u-form-field>
           <u-form-field label="Password" name="password" class="mt-4">
             <u-input v-model="form.password" required class="w-full" size="lg" :type="showPassword ? 'text' : 'password'">

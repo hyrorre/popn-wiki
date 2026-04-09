@@ -26,11 +26,13 @@
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.29",
+    "nuxt-resend": "0.0.2",
     "rehype-external-links": "^3.0.0",
     "remark-breaks": "^4.0.0",
     "unist-util-visit": "^5.1.0",
     "vue": "^3.5.31",
-    "vue-router": "^5.0.4"
+    "vue-router": "^5.0.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@nuxt/eslint": "1.15.2",

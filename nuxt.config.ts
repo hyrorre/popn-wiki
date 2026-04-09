@@ -10,7 +10,8 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@nuxtjs/i18n',
     '@nuxtjs/mdc',
-    '@nuxt/scripts'
+    '@nuxt/scripts',
+    'nuxt-resend'
   ],
   mdc: {
     remarkPlugins: {
@@ -82,7 +83,7 @@ export default defineNuxtConfig({
   },
   vite: {
     optimizeDeps: {
-      include: ['@vue/devtools-core', '@vue/devtools-kit']
+      include: ['@vue/devtools-core', '@vue/devtools-kit', 'diff', 'zod']
     }
   },
   nitro: {

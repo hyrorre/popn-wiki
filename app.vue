@@ -36,5 +36,7 @@ if (config.public.googleAdsenseId) {
 </script>
 
 <template>
-  <NuxtPage />
+  <u-app :locale="app.locale">
+    <NuxtPage />
+  </u-app>
 </template>

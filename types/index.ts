@@ -1,3 +1,12 @@
+declare module '#auth-utils' {
+  interface User {
+    id: number
+    email: string
+    name: string
+    avatar: string
+  }
+}
+
 export type Config = {
   title: string
   lang: string

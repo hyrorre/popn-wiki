@@ -1,24 +1,42 @@
 <script setup lang="ts">
+import * as z from 'zod'
+import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+
 const { app } = useAppConfig()
 
 useHead({
   title: 'SIGN IN'
 })
 
-const form = reactive({
-  email: '',
-  password: ''
-})
+const fields = ref<AuthFormField[]>([
+  {
+    name: 'email',
+    type: 'text',
+    label: 'Email'
+  },
+  {
+    name: 'password',
+    type: 'password',
+    label: 'Password'
+  }
+])
+
 const error_message = ref('')
-const showPassword = ref(false)
 
 const { fetch: refreshSession } = useUserSession()
 
-const submit = async () => {
+const schema = z.object({
+  email: z.email('Invalid email'),
+  password: z.string('Password is required').min(8, 'Must be at least 8 characters')
+})
+
+type Schema = z.output<typeof schema>
+
+const submit = async (payload: FormSubmitEvent<Schema>) => {
   try {
     await $fetch('/api/auth/login', {
       method: 'POST',
-      body: form
+      body: payload.data
     })
     await refreshSession()
     useRouter().push('/')
@@ -34,28 +52,28 @@ const submit = async () => {
     <h1 class="text-4xl">{{ app.title }}</h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
-        <u-form :state="form" @submit="submit">
-          <u-form-field label="Email" name="email">
-            <u-input v-model="form.email" required autofocus class="w-full" size="lg" />
-          </u-form-field>
-          <u-form-field label="Password" name="password" class="mt-4">
-            <u-input v-model="form.password" required class="w-full" size="lg" :type="showPassword ? 'text' : 'password'">
-              <template #trailing>
-                <u-button
-                  color="neutral"
-                  variant="link"
-                  :icon="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </u-input>
-          </u-form-field>
-          <p>{{ error_message }}</p>
-          <div class="flex justify-between items-end">
-            <u-link to="/forgot" class="text-left">Forgot your password?</u-link>
-            <u-button type="submit" size="lg" class="mt-8">SIGN IN</u-button>
-          </div>
-        </u-form>
+        <u-auth-form
+          title="ログイン"
+          :fields="fields"
+          :schema="schema"
+          :submit="{ label: 'ログイン' }"
+          @submit="submit"
+        >
+          <template #validation>
+            <u-alert v-if="error_message" color="error" icon="i-lucide-info" :title="error_message" />
+          </template>
+        </u-auth-form>
+        <u-button to="/forgot" color="neutral" variant="link" class="mt-2">パスワードを忘れた方はこちら</u-button>
+        <template #footer>
+          <u-button
+            to="/forgot"
+            color="info"
+            variant="subtle"
+            label="旧WikiからのID移行はこちら"
+            icon="i-lucide-terminal"
+            block
+          />
+        </template>
       </u-card>
     </div>
   </u-container>

@@ -7,7 +7,8 @@ export const usersTable = sqliteTable('users', {
   password: text().notNull(),
   avatar: text(),
   createdAt: text().notNull(),
-  updatedAt: text().notNull()
+  updatedAt: text().notNull(),
+  confirmed: integer().notNull().default(0)
 })
 
 export const pagesTable = sqliteTable(
