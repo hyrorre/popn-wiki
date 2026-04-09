@@ -1,19 +1,52 @@
 <script setup lang="ts">
+import * as z from 'zod'
+import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+
 const { app } = useAppConfig()
+const route = useRoute()
+const token = route.query.token as string
 
 useHead({
-  title: 'RESET PASSWORD'
+  title: '新しいパスワードの設定'
 })
 
-const form = reactive({
-  password: ''
-})
+const fields = ref<AuthFormField[]>([
+  {
+    name: 'password',
+    type: 'password',
+    label: '新しいパスワード'
+  }
+])
 
 const error_message = ref('')
-const showPassword = ref(false)
+const success = ref(false)
 
-const submit = async () => {
-  alert('Password reset is not yet implemented.')
+const schema = z.object({
+  password: z.string().min(8, 'パスワードは8文字以上で入力してください')
+})
+
+type Schema = z.output<typeof schema>
+
+const submit = async (payload: FormSubmitEvent<Schema>) => {
+  if (!token) {
+    error_message.value = '無効なリクエストです。'
+    return
+  }
+
+  try {
+    await $fetch('/api/auth/reset', {
+      method: 'POST',
+      body: {
+        token,
+        password: payload.data.password
+      }
+    })
+    error_message.value = ''
+    success.value = true
+  } catch (err) {
+    const fetchError = err as { data?: { message?: string } }
+    error_message.value = fetchError.data?.message || 'パスワードの変更に失敗しました'
+  }
 }
 </script>
 
@@ -22,24 +55,34 @@ const submit = async () => {
     <h1 class="text-4xl">{{ app.title }}</h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
-        <u-form :state="form" @submit="submit">
-          <u-form-field label="Password" name="password">
-            <u-input v-model="form.password" required autofocus class="w-full" size="lg" :type="showPassword ? 'text' : 'password'">
-              <template #trailing>
-                <u-button
-                  color="neutral"
-                  variant="link"
-                  :icon="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </u-input>
-          </u-form-field>
-          <p>{{ error_message }}</p>
-          <div class="flex justify-end items-end">
-            <u-button type="submit" size="lg" class="mt-8">SUBMIT</u-button>
+        <template v-if="!success">
+          <u-auth-form
+            title="パスワードの再設定"
+            description="新しいパスワードを入力してください。"
+            :fields="fields"
+            :schema="schema"
+            :submit="{ label: 'パスワードを変更' }"
+            @submit="submit"
+          >
+            <template #validation>
+              <u-alert v-if="error_message" color="error" icon="i-lucide-info" :title="error_message" />
+              <u-alert
+                v-if="!token"
+                color="warning"
+                icon="i-lucide-alert-triangle"
+                title="トークンが見つかりません。メールのリンクから再度アクセスしてください。"
+              />
+            </template>
+          </u-auth-form>
+        </template>
+        <template v-else>
+          <div class="py-8">
+            <u-icon name="i-lucide-check-circle" class="w-16 h-16 text-success mx-auto mb-4" />
+            <h2 class="text-2xl font-bold mb-2">再設定完了</h2>
+            <p class="text-neutral-500 mb-6">パスワードが正常に変更されました。</p>
+            <u-button to="/signin" block size="lg">ログイン画面へ</u-button>
           </div>
-        </u-form>
+        </template>
       </u-card>
     </div>
   </u-container>

@@ -38,3 +38,11 @@ export const commentsTable = sqliteTable('comments', {
   createdAt: text().notNull(),
   updatedAt: text().notNull()
 })
+
+export const tokensTable = sqliteTable('tokens', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  userId: integer().notNull(),
+  token: text().notNull().unique(),
+  type: text().notNull(), // 'verification', 'reset'
+  expiresAt: integer().notNull() // timestamp
+})

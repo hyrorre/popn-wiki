@@ -20,13 +20,21 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Omit password from session
+  if (user.confirmed !== 1) {
+    throw createError({
+      statusCode: 403,
+      message: 'Email not verified. Please check your inbox.'
+    })
+  }
 
-  const { password: _, ...userWithoutPassword } = user
-
-  await setUserSession(event, {
-    user: userWithoutPassword
+  const session = await setUserSession(event, {
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar
+    }
   })
 
-  return userWithoutPassword
+  return session.user
 })

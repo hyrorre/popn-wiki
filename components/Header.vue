@@ -55,12 +55,12 @@ const items = computed((): NavigationMenuItem[][] => {
       ]
     : [
         {
-          label: 'Sign In',
+          label: 'ログイン',
           icon: 'i-tabler-login',
           to: '/signin'
         },
         {
-          label: 'Sign Up',
+          label: '新規登録',
           icon: 'i-tabler-user-plus',
           to: '/signup'
         }
