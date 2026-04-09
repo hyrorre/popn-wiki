@@ -26,3 +26,6 @@ bun.lock
 
 # generated files
 server/db/migrations/
+
+# content
+*.md

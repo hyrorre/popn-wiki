@@ -22,3 +22,9 @@ logs
 .env
 .env.*
 !.env.example
+
+# Local files
+.local
+
+# wrangler
+.wrangler
