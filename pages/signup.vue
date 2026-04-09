@@ -10,6 +10,7 @@ const form = reactive({
   password: ''
 })
 const error_message = ref('')
+const showPassword = ref(false)
 
 const open = ref(false)
 
@@ -38,7 +39,16 @@ const submit = async () => {
             <u-input v-model="form.email" required autofocus class="w-full" size="lg" />
           </u-form-field>
           <u-form-field label="Password" name="password" class="mt-4">
-            <u-input v-model="form.password" required class="w-full" size="lg" type="password" />
+            <u-input v-model="form.password" required class="w-full" size="lg" :type="showPassword ? 'text' : 'password'">
+              <template #trailing>
+                <u-button
+                  color="neutral"
+                  variant="link"
+                  :icon="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </u-input>
           </u-form-field>
           <p>{{ error_message }}</p>
           <div class="flex justify-end items-end">

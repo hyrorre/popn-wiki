@@ -10,6 +10,7 @@ const form = reactive({
 })
 
 const error_message = ref('')
+const showPassword = ref(false)
 
 const submit = async () => {
   alert('Password reset is not yet implemented.')
@@ -23,7 +24,16 @@ const submit = async () => {
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
         <u-form :state="form" @submit="submit">
           <u-form-field label="Password" name="password">
-            <u-input v-model="form.password" required autofocus class="w-full" size="lg" type="password" />
+            <u-input v-model="form.password" required autofocus class="w-full" size="lg" :type="showPassword ? 'text' : 'password'">
+              <template #trailing>
+                <u-button
+                  color="neutral"
+                  variant="link"
+                  :icon="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </u-input>
           </u-form-field>
           <p>{{ error_message }}</p>
           <div class="flex justify-end items-end">
