@@ -18,7 +18,8 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       routes: ['/'],
-      crawlLinks: true
+      crawlLinks: true,
+      failOnError: false
     }
   },
   vite: {
