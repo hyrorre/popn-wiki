@@ -1,0 +1,26 @@
+diff --git a/dev/index.js b/dev/index.js
+index cc454b5e02e681a4cf08e1568d52834ad4035e2b..bf83f66cc1996cbb239396d6e424bca6cb1f4aa7 100644
+--- a/dev/index.js
++++ b/dev/index.js
+@@ -109,7 +109,7 @@ export function normalizeUri(value) {
+     }
+ 
+     if (replace) {
+-      result.push(value.slice(start, index), encodeURIComponent(replace))
++      result.push(value.slice(start, index), replace)
+       start = index + skip + 1
+       replace = ''
+     }
+diff --git a/index.js b/index.js
+index fb6fe6fbb8255297c7be9d3850ff945b151a2732..e1ec706fa0cbc85d17eff2fef788c73c9c5262cf 100644
+--- a/index.js
++++ b/index.js
+@@ -94,7 +94,7 @@ export function normalizeUri(value) {
+       replace = String.fromCharCode(code);
+     }
+     if (replace) {
+-      result.push(value.slice(start, index), encodeURIComponent(replace));
++      result.push(value.slice(start, index), replace);
+       start = index + skip + 1;
+       replace = '';
+     }

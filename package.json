@@ -24,5 +24,8 @@
   },
   "overrides": {
     "chokidar": "3.6.0"
+  },
+  "patchedDependencies": {
+    "micromark-util-sanitize-uri@2.0.1": "patches/micromark-util-sanitize-uri@2.0.1.patch"
   }
 }

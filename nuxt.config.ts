@@ -5,6 +5,7 @@ export default defineNuxtConfig({
   css: ['~/app.css'],
   modules: ['@nuxt/content', '@nuxt/eslint', '@nuxt/ui', 'nuxt-studio'],
   studio: {
+    dev: false,
     i18n: {
       defaultLocale: 'ja'
     },
