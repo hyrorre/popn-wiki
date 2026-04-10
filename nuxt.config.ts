@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     },
     repository: {
       provider: 'github',
-      owner: 'popn-wiki',
+      owner: 'hyrorre',
       repo: 'popn-wiki',
       branch: 'main'
     }
