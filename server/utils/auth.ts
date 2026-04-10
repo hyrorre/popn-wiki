@@ -17,7 +17,7 @@ export const generateToken = async (userId: number, type: 'verification' | 'rese
 
 export const sendVerificationEmail = async (event: H3Event, email: string, token: string) => {
   const resend = useResend()
-  const app = useAppConfig()
+  const { app } = useAppConfig()
   const origin = getRequestURL(event).origin
   const url = `${origin}/verify?token=${token}`
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
@@ -35,7 +35,7 @@ export const sendVerificationEmail = async (event: H3Event, email: string, token
 
 export const sendResetPasswordEmail = async (event: H3Event, email: string, token: string) => {
   const resend = useResend()
-  const app = useAppConfig()
+  const { app } = useAppConfig()
   const origin = getRequestURL(event).origin
   const url = `${origin}/reset?token=${token}`
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
