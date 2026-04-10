@@ -4,6 +4,23 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ['~/app.css'],
   modules: ['@nuxt/content', '@nuxt/eslint', '@nuxt/ui', 'nuxt-studio'],
+  content: {
+    build: {
+      markdown: {
+        remarkPlugins: {
+          tableMerge: {
+            src: '~/utils/remark-table-merge'
+          },
+          tableColor: {
+            src: '~/utils/remark-table-color'
+          },
+          definitionList: {
+            src: '~/utils/remark-definition-list'
+          }
+        }
+      }
+    }
+  },
   studio: {
     dev: false,
     i18n: {
