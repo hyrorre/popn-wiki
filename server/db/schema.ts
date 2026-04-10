@@ -22,7 +22,8 @@ export const pagesTable = sqliteTable(
     createdAt: text().notNull(),
     updatedAt: text().notNull(),
     createdBy: integer().notNull(),
-    updatedBy: integer().notNull()
+    updatedBy: integer().notNull(),
+    bodyAst: text()
   },
   (table) => {
     return [primaryKey({ columns: [table.path, table.revision] })]

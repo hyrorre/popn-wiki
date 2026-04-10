@@ -3,7 +3,7 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { app } = useAppConfig()
 const { user, clear: clearSession } = useUserSession()
-const { editMode, canEdit, toggleEditMode, setSidebarOpen } = usePageActions()
+const { canEdit, setSidebarOpen, revision } = usePageActions()
 
 const signOut = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' })
@@ -14,6 +14,13 @@ const signOut = async () => {
 const { data: profile } = await useFetch('/api/profile')
 
 const items = computed((): NavigationMenuItem[][] => {
+  const route = useRoute()
+  const isEditPage = computed(() => route.path.startsWith('/edit'))
+  const path = computed(() => {
+    const p = route.params.path
+    return (typeof p === 'string' ? p : p?.join('/')) || ''
+  })
+
   const leftItems: NavigationMenuItem[] = [
     {
       label: app.title,
@@ -27,11 +34,9 @@ const items = computed((): NavigationMenuItem[][] => {
   const actionItems: NavigationMenuItem[] = []
   if (canEdit.value) {
     actionItems.push({
-      label: editMode.value ? '閲覧に戻る' : '編集する',
-      icon: editMode.value ? 'i-heroicons-eye' : 'i-heroicons-pencil-square',
-      onSelect: () => {
-        toggleEditMode()
-      }
+      label: isEditPage.value ? '閲覧に戻る' : revision.value ? '編集する' : '新規作成',
+      icon: isEditPage.value ? 'i-heroicons-eye' : revision.value ? 'i-heroicons-pencil-square' : 'i-heroicons-plus',
+      to: (isEditPage.value ? `/${path.value}` : `/edit/${path.value}`).replace('//', '/')
     })
   }
 

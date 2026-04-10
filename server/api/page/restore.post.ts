@@ -1,6 +1,7 @@
 import { pagesTable } from '../../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 
 type RestorePageRequest = {
   path?: string
@@ -42,12 +43,17 @@ export default defineEventHandler(async (event) => {
   const nextRevision = (latest?.revision ?? 0) + 1
   const now = new Date().toISOString()
 
+  // 復元対象のページ本文を再解析（あるいは元データに AST があればそれを使っても良いが
+  // スキーマ変更前のデータには AST がないので再解析するのが安全）
+  const ast = await parseMarkdown(targetPage.body)
+
   const inserted = await db
     .insert(pagesTable)
     .values({
       path,
       revision: nextRevision,
       body: targetPage.body,
+      bodyAst: JSON.stringify(ast),
       message: `Restore revision ${targetRevision}`,
       createdAt: now,
       updatedAt: now,

@@ -1,6 +1,7 @@
 import { pagesTable } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 
 type UpdatePageRequest = {
   path?: string
@@ -43,12 +44,16 @@ export default defineEventHandler(async (event) => {
   const nextRevision = latestRevision + 1
   const now = new Date().toISOString()
 
+  // Markdown を解析
+  const ast = await parseMarkdown(body)
+
   const inserted = await db
     .insert(pagesTable)
     .values({
       path,
       revision: nextRevision,
       body,
+      bodyAst: JSON.stringify(ast),
       message: payload.message?.trim() || null,
       createdAt: now,
       updatedAt: now,

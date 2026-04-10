@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Comment } from '~/types'
+import type { Comment } from '~/shared/types'
 
 const props = defineProps<{
   path: string
@@ -11,7 +11,7 @@ const page = ref(1)
 const itemsPerPage = 20
 
 // APIリクエストでpathを指定してコメントを取得します
-const { data: commentData, refresh } = await useFetch<{ comments: Comment[], total: number }>('/api/comment', {
+const { data: commentData, refresh } = await useFetch<{ comments: Comment[]; total: number }>('/api/comment', {
   query: {
     path: props.path,
     page,
@@ -113,18 +113,15 @@ watch(page, (newVal) => {
     </div>
 
     <!-- ページネーション & ジャンプ -->
-    <div v-if="totalRoots > itemsPerPage" class="flex flex-col md:flex-row items-center justify-center gap-5 mb-8 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default">
+    <div
+      v-if="totalRoots > itemsPerPage"
+      class="flex flex-col md:flex-row items-center justify-center gap-5 mb-8 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
+    >
       <div class="text-sm font-medium text-muted">
         全 <span class="text-foreground">{{ maxPage }}</span> ページ
       </div>
 
-      <u-pagination
-        v-model:page="page"
-        :total="totalRoots"
-        :items-per-page="itemsPerPage"
-        size="md"
-        color="primary"
-      />
+      <u-pagination v-model:page="page" :total="totalRoots" :items-per-page="itemsPerPage" size="md" color="primary" />
 
       <div class="flex items-center gap-2">
         <u-input
@@ -137,13 +134,7 @@ watch(page, (newVal) => {
           @keyup.enter="handleJump"
         />
         <span class="text-xs text-muted font-medium">ページへ</span>
-        <u-button
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-magnifying-glass"
-          @click="handleJump"
-        />
+        <u-button size="xs" color="neutral" variant="ghost" icon="i-heroicons-magnifying-glass" @click="handleJump" />
       </div>
     </div>
 

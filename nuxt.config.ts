@@ -45,9 +45,6 @@ export default defineNuxtConfig({
     ],
     defaultLocale: 'ja'
   },
-  imports: {
-    dirs: ['types/**']
-  },
   icon: {
     customCollections: [
       {

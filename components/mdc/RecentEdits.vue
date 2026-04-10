@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Page } from '~/types'
+import type { Page } from '~/shared/types'
 
 type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'updatedAt'>
 

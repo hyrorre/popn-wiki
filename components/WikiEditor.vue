@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as Diff from 'diff'
-import type { Page } from '~/types'
+import type { Page } from '~/shared/types'
 
 const props = defineProps<{
   path: string
@@ -135,6 +135,12 @@ const restore = async (revision: number) => {
   }
 }
 
+const isDirty = computed(() => body.value !== props.initialBody)
+
+defineExpose({
+  isDirty
+})
+
 await loadHistory()
 </script>
 
@@ -225,9 +231,7 @@ await loadHistory()
               <p v-if="item.message" class="text-sm text-gray-700 dark:text-gray-300 italic">{{ item.message }}</p>
             </div>
             <div class="flex items-center gap-2">
-              <u-button size="sm" variant="ghost" icon="i-heroicons-eye" @click="openViewModal(item)">
-                表示
-              </u-button>
+              <u-button size="sm" variant="ghost" icon="i-heroicons-eye" @click="openViewModal(item)"> 表示 </u-button>
               <u-button
                 size="sm"
                 variant="ghost"
@@ -280,7 +284,11 @@ await loadHistory()
 
           <div class="max-h-[70vh] overflow-auto p-4 bg-muted/10 rounded-lg">
             <template v-if="selectedRevision">
-              <MDC v-if="viewMode === 'preview'" :value="selectedRevision.body" class="content bg-white dark:bg-gray-900 p-4 rounded shadow-sm" />
+              <MDC
+                v-if="viewMode === 'preview'"
+                :value="selectedRevision.body"
+                class="content bg-white dark:bg-gray-900 p-4 rounded shadow-sm"
+              />
               <pre v-else class="whitespace-pre-wrap font-mono text-sm bg-gray-50 dark:bg-gray-800/50 p-4 rounded">{{
                 selectedRevision.body
               }}</pre>
@@ -293,16 +301,24 @@ await loadHistory()
     <!-- 差分確認モーダル -->
     <u-modal
       v-model:open="isDiffModalOpen"
-      :title="diffTarget === 'current' ? '現在の編集内容との差分' : `Revision ${selectedRevision?.revision} とその前回との差分`"
+      :title="
+        diffTarget === 'current'
+          ? '現在の編集内容との差分'
+          : `Revision ${selectedRevision?.revision} とその前回との差分`
+      "
       :ui="{ content: 'sm:max-w-4xl' }"
     >
       <template #body>
         <div class="max-h-[70vh] overflow-auto bg-white dark:bg-gray-900 rounded-lg font-mono text-sm">
-          <div v-for="(part, index) in diffResults" :key="index" :class="[
-            'whitespace-pre-wrap px-2 py-0.5',
-            part.added ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : '',
-            part.removed ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : ''
-          ]">
+          <div
+            v-for="(part, index) in diffResults"
+            :key="index"
+            :class="[
+              'whitespace-pre-wrap px-2 py-0.5',
+              part.added ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : '',
+              part.removed ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : ''
+            ]"
+          >
             <span v-if="part.added" class="inline-block w-4 opacity-50">+</span>
             <span v-else-if="part.removed" class="inline-block w-4 opacity-50">-</span>
             <span>{{ part.value }}</span>
