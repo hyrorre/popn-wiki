@@ -86,6 +86,7 @@ export default defineNuxtConfig({
   nitro: {
     compatibilityDate: '2026-03-29',
     preset: 'cloudflare_module',
+    sourceMap: false,
     experimental: {
       tasks: true
     },
