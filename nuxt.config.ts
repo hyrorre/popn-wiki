@@ -80,7 +80,15 @@ export default defineNuxtConfig({
   },
   vite: {
     optimizeDeps: {
-      include: ['@vue/devtools-core', '@vue/devtools-kit', 'diff', 'zod']
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'diff',
+        'zod',
+        'remark-breaks',
+        'rehype-external-links',
+        'remark-parse'
+      ]
     }
   },
   nitro: {

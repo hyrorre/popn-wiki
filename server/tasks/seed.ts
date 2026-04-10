@@ -654,6 +654,31 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
   return titleMap
 }
 
+/**
+ * URL のパーセントエンコーディングが不正（非UTF-8など）な場合に修正を試みる
+ */
+function fixMalformedUrl(url: string): string {
+  if (!url.includes('%')) return url
+  try {
+    decodeURIComponent(url)
+    return url
+  } catch {
+    // 不正なシーケンスが含まれる場合、EUC-JP としてデコードを試みる
+    return url.replace(/(?:%[0-9A-Fa-f]{2})+/g, (match) => {
+      try {
+        return decodeURIComponent(match)
+      } catch {
+        const bytes = new Uint8Array(match.split('%').filter(Boolean).map((h) => parseInt(h, 16)))
+        try {
+          return new TextDecoder('euc-jp').decode(bytes)
+        } catch {
+          return match
+        }
+      }
+    })
+  }
+}
+
 function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
   let text = input
 
@@ -785,38 +810,41 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     let url = target.trim()
     let isInternal = false
 
-    // 内部リンク
-    if (!url.startsWith('http')) {
-      isInternal = true
-      // dokuwiki の名前空間区切り : をパスの / に変換
-      url = url.replace(/:/g, '/')
+      // 内部リンク
+      if (!url.startsWith('http')) {
+        isInternal = true
+        // dokuwiki の名前空間区切り : をパスの / に変換
+        url = url.replace(/:/g, '/')
 
-      // 先頭がスキームでなければルート相対パスにしておく
-      if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
-        url = '/' + url
+        // 先頭がスキームでなければルート相対パスにしておく
+        if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
+          url = '/' + url
+        }
+
+        // specialCharacters (#以外)を_に変換
+        url = url.replace(
+          new RegExp(
+            `[${specialCharacters
+              .filter((c) => c !== '#' && c !== '/')
+              .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
+              .join('')}]`,
+            'g'
+          ),
+          '_'
+        )
+
+        // 連続した_を1つにまとめる
+        url = url.replace(/_+/g, '_')
+
+        // 先頭と末尾 host の_を削除
+        url = url.replace(/^_/, '').replace(/_$/, '')
+
+        // urlを小文字に変換
+        url = url.toLowerCase()
+      } else {
+        // 外部リンクの場合は不正なエンコーディングを修正
+        url = fixMalformedUrl(url)
       }
-
-      // specialCharacters (#以外)を_に変換
-      url = url.replace(
-        new RegExp(
-          `[${specialCharacters
-            .filter((c) => c !== '#' && c !== '/')
-            .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
-            .join('')}]`,
-          'g'
-        ),
-        '_'
-      )
-
-      // 連続した_を1つにまとめる
-      url = url.replace(/_+/g, '_')
-
-      // 先頭と末尾 host の_を削除
-      url = url.replace(/^_/, '').replace(/_$/, '')
-
-      // urlを小文字に変換
-      url = url.toLowerCase()
-    }
 
     // ラベルの自動補完 (内部リンクかつ明示的なラベルがないか、ラベルが空の場合)
     if (isInternal && titleMap && (!isExplicitLabel || label === '')) {
@@ -843,6 +871,8 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     let url = src.trim().replace(/:/g, '/')
     if (!/^[a-z]+:\/\/|^\//i.test(url)) {
       url = '/' + url
+    } else {
+      url = fixMalformedUrl(url)
     }
     const altText = (alt || '').trim()
     const prefix = url.endsWith('?linkonly') ? '' : '!'
