@@ -8,7 +8,7 @@ type RecentComment = {
 const props = withDefaults(
   defineProps<{
     limit?: number | string
-    hideDetail?: boolean
+    hideDetail?: boolean | string
   }>(),
   {
     limit: 10,

@@ -942,14 +942,19 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // DISCUSSION タグを Frontmatter に変換
   let hasDiscussion = false
   let discussionTitle = ''
-  text = text.replace(/~~DISCUSSION(?:\|([^~]+))?~~/g, (_m, title: string) => {
+  let discussionClosed = false
+  text = text.replace(/~~DISCUSSION(?::([^~|]+))?(?:\|([^~]+))?~~/g, (_m, flags: string, title: string) => {
     hasDiscussion = true
+    if (flags?.includes('closed')) discussionClosed = true
     if (title) discussionTitle = title.trim()
     return ''
   })
 
   if (hasDiscussion) {
     let props = 'discussion: true\n'
+    if (discussionClosed) {
+      props += 'discussion-closed: true\n'
+    }
     if (discussionTitle) {
       props += `discussion-title: "${discussionTitle.replace(/"/g, '\\"')}"\n`
     }
@@ -977,6 +982,9 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     }
   }
 
+  // NOCACHEを削除
+  text = text.replaceAll('~~NOCACHE~~', '')
+
   // sortable プラグインを MDC に変換
   // <sortable 1=category 4=bpm 7=numeric> -> ::sortable{c1=category c4=bpm c7=numeric}
   text = text.replace(/<sortable\s+([^>]*?)>/gi, (_m, attrs) => {
@@ -984,6 +992,21 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     return `::sortable{${mdcAttrs}}`
   })
   text = text.replace(/<\/sortable>/gi, '::')
+
+  // other convert
+  text = text.replaceAll('![](/upload>/score/start/*)', ':ImageUploader')
+  text = text.replaceAll('![](/medialist>/score/start/*)', ':ImageList')
+  text = text.replaceAll(
+    '![](/changes>count=7&type=create,edit&render=list(nosummary))',
+    ':RecentEdits{limit="7" hideDetail="true"}'
+  )
+  text = text.replaceAll('![](/threads>*&count=7&simplelist&skipempty)', ':RecentComments{limit="7" hideDetail="true"}')
+  text = text.replaceAll('合計: ![total](/counter)', '')
+  text = text.replaceAll('今日: ![today](/counter)', '')
+  text = text.replaceAll('昨日: ![yesterday](/counter)', '')
+
+  text = text.replaceAll('![](/threads>*&count=40&skipempty)', ':RecentComments')
+
 
   return text
 }

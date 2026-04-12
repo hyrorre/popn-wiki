@@ -6,7 +6,7 @@ type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'up
 const props = withDefaults(
   defineProps<{
     limit?: number | string
-    hideDetail?: boolean
+    hideDetail?: boolean | string
   }>(),
   {
     limit: 10,
