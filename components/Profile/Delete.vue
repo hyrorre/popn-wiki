@@ -25,14 +25,17 @@ const submit = async () => {
 <template>
   <u-card>
     <template #header>
-      <h3>{{ $t('delete_account') }}</h3>
+      <h3>アカウントを削除</h3>
     </template>
-    <div>{{ $t('delete_account_description') }}</div>
-    <u-modal :title="$t('delete_account')" :description="$t('delete_account_confirm')">
-      <u-button color="error" class="mt-4">{{ $t('delete_account') }}</u-button>
+    <div>アカウントを削除すると、すべてのデータが削除されます。</div>
+    <u-modal
+      title="アカウントを削除"
+      description='アカウントを削除してもよろしいですか？\n削除する場合は"Delete"と入力してください。'
+    >
+      <u-button color="error" class="mt-4">アカウントを削除</u-button>
       <template #body>
         <u-form :state="form" @submit="submit">
-          {{ $t('delete_account_confirm') }}
+          アカウントを削除してもよろしいですか？<br />削除する場合は"Delete"と入力してください。
           <u-form-field name="del" class="mt-4">
             <u-input v-model="form.del" required class="w-full" size="lg" />
           </u-form-field>
@@ -44,7 +47,7 @@ const submit = async () => {
               :variant="!form.del.includes('Delete') ? 'outline' : 'solid'"
               :disabled="!form.del.includes('Delete')"
             >
-              {{ $t('delete_account') }}
+              アカウントを削除
             </u-button>
           </div>
         </u-form>

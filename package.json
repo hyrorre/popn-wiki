@@ -20,7 +20,6 @@
     "@nuxt/scripts": "^0.13.2",
     "@nuxt/ui": "4.6.1",
     "@nuxthub/core": "0.10.7",
-    "@nuxtjs/i18n": "10.2.4",
     "@nuxtjs/mdc": "0.21.1",
     "diff": "^8.0.4",
     "drizzle-orm": "^0.45.2",

@@ -8,7 +8,6 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@nuxthub/core',
     'nuxt-auth-utils',
-    '@nuxtjs/i18n',
     '@nuxtjs/mdc',
     '@nuxt/scripts',
     'nuxt-resend'
@@ -37,13 +36,6 @@ export default defineNuxtConfig({
         }
       }
     }
-  },
-  i18n: {
-    locales: [
-      { code: 'ja', name: '日本語', file: 'ja.json' },
-      { code: 'en', name: 'English', file: 'en.json' }
-    ],
-    defaultLocale: 'ja'
   },
   icon: {
     customCollections: [
