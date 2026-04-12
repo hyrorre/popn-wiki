@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'fs'
 import path from 'path'
 import { db } from '@nuxthub/db'
@@ -668,7 +669,12 @@ function fixMalformedUrl(url: string): string {
       try {
         return decodeURIComponent(match)
       } catch {
-        const bytes = new Uint8Array(match.split('%').filter(Boolean).map((h) => parseInt(h, 16)))
+        const bytes = new Uint8Array(
+          match
+            .split('%')
+            .filter(Boolean)
+            .map((h) => parseInt(h, 16))
+        )
         try {
           return new TextDecoder('euc-jp').decode(bytes)
         } catch {
@@ -810,41 +816,41 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     let url = target.trim()
     let isInternal = false
 
-      // 内部リンク
-      if (!url.startsWith('http')) {
-        isInternal = true
-        // dokuwiki の名前空間区切り : をパスの / に変換
-        url = url.replace(/:/g, '/')
+    // 内部リンク
+    if (!url.startsWith('http')) {
+      isInternal = true
+      // dokuwiki の名前空間区切り : をパスの / に変換
+      url = url.replace(/:/g, '/')
 
-        // 先頭がスキームでなければルート相対パスにしておく
-        if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
-          url = '/' + url
-        }
-
-        // specialCharacters (#以外)を_に変換
-        url = url.replace(
-          new RegExp(
-            `[${specialCharacters
-              .filter((c) => c !== '#' && c !== '/')
-              .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
-              .join('')}]`,
-            'g'
-          ),
-          '_'
-        )
-
-        // 連続した_を1つにまとめる
-        url = url.replace(/_+/g, '_')
-
-        // 先頭と末尾 host の_を削除
-        url = url.replace(/^_/, '').replace(/_$/, '')
-
-        // urlを小文字に変換
-        url = url.toLowerCase()
-      } else {
-        // 外部リンクの場合は不正なエンコーディングを修正
-        url = fixMalformedUrl(url)
+      // 先頭がスキームでなければルート相対パスにしておく
+      if (!url.startsWith('#') && !/^[a-z]+:\/\/|^\//i.test(url)) {
+        url = '/' + url
       }
+
+      // specialCharacters (#以外)を_に変換
+      url = url.replace(
+        new RegExp(
+          `[${specialCharacters
+            .filter((c) => c !== '#' && c !== '/')
+            .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
+            .join('')}]`,
+          'g'
+        ),
+        '_'
+      )
+
+      // 連続した_を1つにまとめる
+      url = url.replace(/_+/g, '_')
+
+      // 先頭と末尾 host の_を削除
+      url = url.replace(/^_/, '').replace(/_$/, '')
+
+      // urlを小文字に変換
+      url = url.toLowerCase()
+    } else {
+      // 外部リンクの場合は不正なエンコーディングを修正
+      url = fixMalformedUrl(url)
+    }
 
     // ラベルの自動補完 (内部リンクかつ明示的なラベルがないか、ラベルが空の場合)
     if (isInternal && titleMap && (!isExplicitLabel || label === '')) {
@@ -1024,6 +1030,7 @@ function collectAllComments(metaDir: string): {
 
   for (const file of commentFiles) {
     const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '')
+    console.log(`[Debug] Processing comment file: ${relativePath}`)
     const pagePath = relativePath === 'start' ? '/' : decodeURI(relativePath)
 
     let parsed: DokuWikiCommentsFile
@@ -1057,6 +1064,7 @@ function collectAllComments(metaDir: string): {
   // コメントを作成日時順にソート（親が子より先に挿入されるように）
   allComments.sort((a, b) => a.comment.date.created - b.comment.date.created)
 
+  console.log(`[Debug] collectAllComments finished. Total comments: ${allComments.length}, Total users: ${users.size}`)
   return { comments: allComments, users }
 }
 
@@ -1143,21 +1151,24 @@ export default defineTask({
 
     for (const [oldId, user] of allUniqueUsers) {
       try {
-        await rawInsert('users', {
-          name: user.name,
-          email: user.email,
-          password: user.password,
-          created_at: userNow,
-          updated_at: userNow
-        })
-        const res = (await db.get(sql`SELECT id FROM users WHERE email = ${user.email}`)) as any
-        const newId = res?.id
-        if (newId) oldUserIdToNewId.set(oldId, newId)
+        const res = (await db.get(sql`
+          INSERT INTO users (name, email, password, created_at, updated_at)
+          VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow})
+          ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+          RETURNING *
+        `)) as any
+        if (res) console.log(`[Debug] User insert res for ${oldId}: ${JSON.stringify(res)}`)
+        const newId = Array.isArray(res) ? res[0] : (res?.id || res?.ID)
+        if (newId) {
+          oldUserIdToNewId.set(oldId, newId)
+        } else {
+          console.warn(`[Warn] Could not get newId for user: ${oldId}. res: ${JSON.stringify(res)}`)
+        }
       } catch (e: any) {
         console.error(`[Error] User insert failed ${oldId}: ${e.message}`)
       }
     }
-    console.log(`Inserted ${oldUserIdToNewId.size} users.`)
+    console.log(`[Debug] oldUserIdToNewId size: ${oldUserIdToNewId.size}`)
 
     const defaultUserId = Array.from(oldUserIdToNewId.values())[0] || 0
 
@@ -1244,18 +1255,20 @@ export default defineTask({
       const replyToId = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
       const newUserId = oldUserIdToNewId.get(comment.user.id)
 
-      if (newUserId === undefined) continue
+      if (newUserId === undefined) {
+        console.warn(`[Warn] Skipping comment ${comment.cid} because user ${comment.user.id} not found in map. Mapping size: ${oldUserIdToNewId.size}`)
+        continue
+      }
 
       try {
-        await db.run(sql`
+        const res = (await db.get(sql`
           INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
           VALUES (${pagePath}, ${body}, ${replyToId}, ${newUserId}, ${createdAt}, ${updatedAt})
           ON CONFLICT DO NOTHING
-        `)
+          RETURNING id
+        `)) as { id: number } | undefined
 
-        // CID → 新ID のマッピングを記録
-        const res = (await db.get(sql`SELECT last_insert_rowid() as id`)) as { id: number }
-        const newId = res?.id
+        const newId = Array.isArray(res) ? res[0] : res?.id
         if (newId) {
           cidToNewId.set(comment.cid, newId)
         }

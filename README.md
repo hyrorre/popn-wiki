@@ -1,17 +1,17 @@
 # Serverless Wiki
 
-Sample : https://popnwiki.hyrorre.workers.dev/
+Sample : https://popn-wiki.hyrorre.workers.dev/
 
 (WIP)
 
 ## TODO
 
-- [x] Fix: external link
+- [x] fix: external link
 - [x] page create/delete
 - [x] image upload
 - [x] recent edit/comment
-- [x] Fix: converting link (pagename)
-- [x] Fix: google-analytics
+- [x] fix: converting link (pagename)
+- [x] fix: google-analytics
 - [x] table sort
 - [x] convert comments
 - [x] comment paging
@@ -20,14 +20,17 @@ Sample : https://popnwiki.hyrorre.workers.dev/
 - [x] revision view/diff
 - [x] definition list
 - [x] auto link label
-- [ ] staging
+- [x] user email confirmation
+- [x] staging
+- [x] fix: seeding comments
+- [ ] fix: markdown preview
+- [ ] feat: monaco-editor (vscode like)
 - [ ] NOTOC/TOC
 - [ ] NOCACHE
 - [ ] media file redirect
 - [ ] breadcrumb
-- [ ] user email confirmation
 - [ ] user role (admin/editor/commenter/viewer)
-- [ ] cache strategy (swr/stale-while-revalidate)
+- [ ] cache strategy (swr/isr)
 - [ ] test codes (bun test)
 
 ## Feature
