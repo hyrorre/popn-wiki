@@ -1158,7 +1158,7 @@ export default defineTask({
           RETURNING *
         `)) as any
         if (res) console.log(`[Debug] User insert res for ${oldId}: ${JSON.stringify(res)}`)
-        const newId = Array.isArray(res) ? res[0] : (res?.id || res?.ID)
+        const newId = Array.isArray(res) ? res[0] : res?.id || res?.ID
         if (newId) {
           oldUserIdToNewId.set(oldId, newId)
         } else {
@@ -1256,7 +1256,9 @@ export default defineTask({
       const newUserId = oldUserIdToNewId.get(comment.user.id)
 
       if (newUserId === undefined) {
-        console.warn(`[Warn] Skipping comment ${comment.cid} because user ${comment.user.id} not found in map. Mapping size: ${oldUserIdToNewId.size}`)
+        console.warn(
+          `[Warn] Skipping comment ${comment.cid} because user ${comment.user.id} not found in map. Mapping size: ${oldUserIdToNewId.size}`
+        )
         continue
       }
 

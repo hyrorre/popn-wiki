@@ -32,7 +32,11 @@ export default defineEventHandler(async (event) => {
     .get()
 
   // プロフィール情報を取得して結合 (Drizzleのjoinを使うことも可能)
-  const profile = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(user.id))).get()
+  const profile = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, parseInt(user.id)))
+    .get()
 
   return {
     ...inserted,

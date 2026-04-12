@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   // Generate verification token and send email
   // We need to fetch the inserted user to get the ID if we use auto-increment
   const insertedUser = await db.select().from(usersTable).where(eq(usersTable.email, email)).get()
-  
+
   if (insertedUser) {
     const token = await generateToken(insertedUser.id, 'verification')
     await sendVerificationEmail(event, email, token)

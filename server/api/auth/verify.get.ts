@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Update user confirmation status
-  await db.update(usersTable)
+  await db
+    .update(usersTable)
     .set({ confirmed: 1, updatedAt: new Date().toISOString() })
     .where(eq(usersTable.id, tokenRecord.userId))
 

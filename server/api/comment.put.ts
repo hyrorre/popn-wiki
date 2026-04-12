@@ -31,7 +31,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  const profile = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(user.id))).get()
+  const profile = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, parseInt(user.id)))
+    .get()
 
   return {
     ...updated,

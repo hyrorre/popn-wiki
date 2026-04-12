@@ -5,8 +5,8 @@ import { db } from '@nuxthub/db'
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const path = query.path as string
-  const page = Math.max(1, parseInt(query.page as string || '1'))
-  const limit = Math.max(1, parseInt(query.limit as string || '20'))
+  const page = Math.max(1, parseInt((query.page as string) || '1'))
+  const limit = Math.max(1, parseInt((query.limit as string) || '20'))
   const offset = (page - 1) * limit
 
   if (!path) {
@@ -34,8 +34,8 @@ export default defineEventHandler(async (event) => {
     .limit(limit)
     .offset(offset)
     .all()
-  
-  const rootIds = rootIdsResult.map(r => r.id)
+
+  const rootIds = rootIdsResult.map((r) => r.id)
 
   if (rootIds.length === 0) {
     return { comments: [], total }
@@ -44,20 +44,8 @@ export default defineEventHandler(async (event) => {
   // 3. 再帰的クエリ (Recursive CTE) で親 ID に紐づくすべての子孫を取得
   // スレッド内は昇順、スレッド間は降順にするため rootCreatedAt も保持する
   const tree = db.$with('tree').as(
-    db.select({
-      id: commentsTable.id,
-      path: commentsTable.path,
-      body: commentsTable.body,
-      replyTo: commentsTable.replyTo,
-      userId: commentsTable.userId,
-      createdAt: commentsTable.createdAt,
-      updatedAt: commentsTable.updatedAt,
-      rootCreatedAt: sql<string>`${commentsTable.createdAt}`.as('rootCreatedAt')
-    })
-    .from(commentsTable)
-    .where(inArray(commentsTable.id, rootIds))
-    .unionAll(
-      db.select({
+    db
+      .select({
         id: commentsTable.id,
         path: commentsTable.path,
         body: commentsTable.body,
@@ -65,11 +53,25 @@ export default defineEventHandler(async (event) => {
         userId: commentsTable.userId,
         createdAt: commentsTable.createdAt,
         updatedAt: commentsTable.updatedAt,
-        rootCreatedAt: sql<string>`tree.rootCreatedAt`.as('rootCreatedAt')
+        rootCreatedAt: sql<string>`${commentsTable.createdAt}`.as('rootCreatedAt')
       })
       .from(commentsTable)
-      .innerJoin(sql`tree`, eq(commentsTable.replyTo, sql`tree.id`))
-    )
+      .where(inArray(commentsTable.id, rootIds))
+      .unionAll(
+        db
+          .select({
+            id: commentsTable.id,
+            path: commentsTable.path,
+            body: commentsTable.body,
+            replyTo: commentsTable.replyTo,
+            userId: commentsTable.userId,
+            createdAt: commentsTable.createdAt,
+            updatedAt: commentsTable.updatedAt,
+            rootCreatedAt: sql<string>`tree.rootCreatedAt`.as('rootCreatedAt')
+          })
+          .from(commentsTable)
+          .innerJoin(sql`tree`, eq(commentsTable.replyTo, sql`tree.id`))
+      )
   )
 
   // 親コメントのプロフィール名を取得するためのエイリアス（返信先表示用）

@@ -46,17 +46,17 @@ export default function remarkDefinitionList() {
           }
         }
       } else if (node.type === 'code') {
-         const codeValue = (node as Code).value
-         startMatch = codeValue.match(/^[ \t]*([:;])[ \t]+/)
-         if (startMatch) {
-           if (startMatch[1] === ';') {
-             if (currentDl) isDlContinuation = true
-             else isDlStart = true
-           } else if (startMatch[1] === ':') {
-             if (currentDl) isDlContinuation = true
-             else isDlStart = true
-           }
-         }
+        const codeValue = (node as Code).value
+        startMatch = codeValue.match(/^[ \t]*([:;])[ \t]+/)
+        if (startMatch) {
+          if (startMatch[1] === ';') {
+            if (currentDl) isDlContinuation = true
+            else isDlStart = true
+          } else if (startMatch[1] === ':') {
+            if (currentDl) isDlContinuation = true
+            else isDlStart = true
+          }
+        }
       }
 
       if (isDlStart || isDlContinuation) {
@@ -67,9 +67,9 @@ export default function remarkDefinitionList() {
           const regex = /(?:^|\n)[ \t]*([:;])[ \t]+/g
           let match
           let lastIndex = 0
-          
-          const parts: { type: string, content: string }[] = []
-          
+
+          const parts: { type: string; content: string }[] = []
+
           while ((match = regex.exec(codeValue)) !== null) {
             if (parts.length > 0 && match.index > lastIndex) {
               parts[parts.length - 1]!.content = codeValue.substring(lastIndex, match.index)
@@ -80,11 +80,11 @@ export default function remarkDefinitionList() {
           if (parts.length > 0 && lastIndex < codeValue.length) {
             parts[parts.length - 1]!.content = codeValue.substring(lastIndex)
           }
-          
+
           for (const part of parts) {
             const parsed = inlineParser.parse(part.content)
             const unwrappedChildren: PhrasingContent[] = []
-            
+
             for (let k = 0; k < parsed.children.length; k++) {
               const child = parsed.children[k]
               if (child && child.type === 'paragraph') {
@@ -96,11 +96,11 @@ export default function remarkDefinitionList() {
                 unwrappedChildren.push(child as unknown as PhrasingContent)
               }
             }
-            
+
             items.push({
-               type: 'definitionListItem',
-               data: { hName: part.type },
-               children: unwrappedChildren
+              type: 'definitionListItem',
+              data: { hName: part.type },
+              children: unwrappedChildren
             })
           }
         } else {
@@ -163,7 +163,6 @@ export default function remarkDefinitionList() {
             items.push({ type: 'definitionListItem', data: { hName: currentType }, children: [] })
           }
         }
-
 
         if (isDlStart) {
           currentDl = {
