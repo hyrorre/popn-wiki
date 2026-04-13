@@ -996,6 +996,29 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     }
   }
 
+  // 脚注: ((テキスト)) -> [^1] (行末・次の行に定義を出力)
+  let footnoteInd = 1
+  const footnotesMap = new Map<number, string>()
+
+  text = text.replace(/\(\(([\s\S]*?)\)\)/g, (_m, footnote) => {
+    const id = footnoteInd++
+    // 脚注内の改行はMarkdownのパース崩れを防ぐためスペースにする
+    footnotesMap.set(id, footnote.trim().replace(/\n/g, ' '))
+    return `[^${id}]__FN_${id}__`
+  })
+
+  // 行ごとに見ていき、マーカーがあればその行の直後に脚注を展開する
+  text = text.replace(/^.*(?:__FN_\d+__).*$/gm, (line) => {
+    const fnIds: number[] = []
+    const replacedLine = line.replace(/__FN_(\d+)__/g, (__m, idStr) => {
+      fnIds.push(Number(idStr))
+      return ''
+    })
+
+    const defs = fnIds.map((id) => `\n[^${id}]: ${footnotesMap.get(id)}`).join('')
+    return replacedLine + defs
+  })
+
   // NOCACHEを削除
   text = text.replaceAll('~~NOCACHE~~', '')
 
