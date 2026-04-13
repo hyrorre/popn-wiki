@@ -1,0 +1,1 @@
+ALTER TABLE `pages` ADD `title` text DEFAULT '' NOT NULL;

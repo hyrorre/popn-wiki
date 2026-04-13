@@ -1,4 +1,4 @@
-import { commentsTable, usersTable } from '../../db/schema'
+import { commentsTable, usersTable, pagesTable } from '../../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
@@ -25,8 +25,17 @@ export default defineEventHandler(async (event) => {
   for (const row of data) {
     if (seen.has(row.path)) continue
     seen.add(row.path)
+
+    const latestPage = await db
+      .select({ title: pagesTable.title })
+      .from(pagesTable)
+      .where(eq(pagesTable.path, row.path))
+      .orderBy(desc(pagesTable.revision))
+      .get()
+
     recent.push({
       path: row.path,
+      title: latestPage?.title || row.path,
       created_at: row.createdAt,
       commenter: row.name ?? '匿名'
     })

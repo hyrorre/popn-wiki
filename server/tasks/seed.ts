@@ -888,60 +888,61 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
   // 連続するテーブル行のまとまりごとに処理する
   // セル内の \n（\\ から変換済み）も含む行を考慮して、行頭が ^ か | でない行もブロックに含める
-  text = text.replace(/(^[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*(?:\n[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*)*)/gm, (block) => {
-    // ブロック内のテーブル行を再結合する前に、セル内の \n を <br> に変換しておく
-    // テーブル行（^または|始まり）とそれに続くセル内改行行を1つのテーブル行としてまとめる
-    const mergedLines: string[] = []
-    for (const line of block.split('\n')) {
-      if (line.trimStart().startsWith('^') || line.trimStart().startsWith('|')) {
-        mergedLines.push(line)
-      } else if (mergedLines.length > 0) {
-        // テーブル行に続く非テーブル行はセル内改行として前の行に結合
-        mergedLines[mergedLines.length - 1] += '\n' + line
+  text = text.replace(
+    /(^[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*(?:\n[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*)*)/gm,
+    (block) => {
+      // ブロック内のテーブル行を再結合する前に、セル内の \n を <br> に変換しておく
+      // テーブル行（^または|始まり）とそれに続くセル内改行行を1つのテーブル行としてまとめる
+      const mergedLines: string[] = []
+      for (const line of block.split('\n')) {
+        if (line.trimStart().startsWith('^') || line.trimStart().startsWith('|')) {
+          mergedLines.push(line)
+        } else if (mergedLines.length > 0) {
+          // テーブル行に続く非テーブル行はセル内改行として前の行に結合
+          mergedLines[mergedLines.length - 1] += '\n' + line
+        }
       }
-    }
 
-    const lines = mergedLines
-      .map((l) => l.trim())
-      .filter((l) => l.startsWith('^') || l.startsWith('|'))
+      const lines = mergedLines.map((l) => l.trim()).filter((l) => l.startsWith('^') || l.startsWith('|'))
 
-    if (lines.length === 0) return block
+      if (lines.length === 0) return block
 
-    // 1行をセル配列に変換
-    // 空白なしの空セル (||) は結合マーカー ">" にする
-    const parseRow = (line: string) => {
-      const marker = line[0] as string // '^' または '|'
-      const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
-      return inner.split(marker).map((cell) => {
-        if (cell === '') return '>'
-        // セル内の \n（\\ から変換済み）を <br> に変換
-        return cell.trim().replace(/\n/g, '<br>')
-      })
-    }
-
-    const rows = lines.map(parseRow)
-    if (rows.length === 0) return block
-
-    const header = rows[0]
-    if (!header) return block
-    const colCount = header.length
-    const separator = Array(colCount).fill('---')
-
-    const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
-
-    const mdLines: string[] = []
-    mdLines.push(toMarkdownRow(header))
-    mdLines.push(toMarkdownRow(separator))
-
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i]
-      if (row) {
-        mdLines.push(toMarkdownRow(row))
+      // 1行をセル配列に変換
+      // 空白なしの空セル (||) は結合マーカー ">" にする
+      const parseRow = (line: string) => {
+        const marker = line[0] as string // '^' または '|'
+        const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
+        return inner.split(marker).map((cell) => {
+          if (cell === '') return '>'
+          // セル内の \n（\\ から変換済み）を <br> に変換
+          return cell.trim().replace(/\n/g, '<br>')
+        })
       }
-    }
 
-    return mdLines.join('\n')
-  })
+      const rows = lines.map(parseRow)
+      if (rows.length === 0) return block
+
+      const header = rows[0]
+      if (!header) return block
+      const colCount = header.length
+      const separator = Array(colCount).fill('---')
+
+      const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
+
+      const mdLines: string[] = []
+      mdLines.push(toMarkdownRow(header))
+      mdLines.push(toMarkdownRow(separator))
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i]
+        if (row) {
+          mdLines.push(toMarkdownRow(row))
+        }
+      }
+
+      return mdLines.join('\n')
+    }
+  )
 
   // 整形無効領域を復元（''等幅'' との組み合わせも考慮してインラインコードにする）
   text = text.replace(/__DOKU_NOWIKI_(\d+)__/g, (_m, idxStr) => {
@@ -1019,7 +1020,6 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   text = text.replaceAll('昨日: ![yesterday](/counter)', '')
 
   text = text.replaceAll('![](/threads>*&count=40&skipempty)', ':RecentComments')
-
 
   return text
 }
@@ -1229,8 +1229,13 @@ export default defineTask({
         const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
         const now = new Date().toISOString()
 
+        const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
+        const title =
+          titleMap.get(dbPath) || (relativePath === 'start' ? 'Home' : decodeURI(relativePath.split('/').pop() || ''))
+
         return {
           path: relativePath === 'start' ? '/' : decodeURI(relativePath),
+          title: title,
           revision: 1,
           body: markdown,
           message: null,

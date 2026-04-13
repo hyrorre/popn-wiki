@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Page } from '~/shared/types'
 
-type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'updatedAt'>
+type RecentPage = Pick<Page, 'path' | 'revision' | 'message' | 'updatedBy' | 'updatedAt' | 'title'>
 
 const props = withDefaults(
   defineProps<{
@@ -39,7 +39,7 @@ const formatDate = (dateStr: string) => {
     <ul v-else class="space-y-1">
       <li v-for="page in pages" :key="page.path" class="flex items-baseline gap-2">
         <NuxtLink :to="`/${page.path}`" class="hover:underline text-primary truncate">
-          {{ page.path }}
+          {{ page.title || page.path }}
         </NuxtLink>
         <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updatedAt) }}</span>
       </li>

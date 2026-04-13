@@ -22,6 +22,7 @@ export type Profile = {
 
 export type Page = {
   path: string
+  title: string
   revision: number
   body: string
   message: string | null

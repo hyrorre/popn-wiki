@@ -47,10 +47,14 @@ export default defineEventHandler(async (event) => {
   // Markdown を解析
   const ast = await parseMarkdown(body)
 
+  const titleMatch = body.match(/^#{1,6}\s+(.*)$/m)
+  const title = titleMatch?.[1] ? titleMatch[1].trim() : path === '/' ? 'Home' : path.split('/').pop() || path
+
   const inserted = await db
     .insert(pagesTable)
     .values({
       path,
+      title,
       revision: nextRevision,
       body,
       bodyAst: JSON.stringify(ast),

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 type RecentComment = {
   path: string
+  title?: string
   created_at: string
   commenter: string
 }
@@ -41,7 +42,7 @@ const formatDate = (dateStr: string) => {
     <ul v-else class="space-y-1">
       <li v-for="comment in comments" :key="comment.path" class="flex items-baseline gap-2">
         <NuxtLink :to="`/${comment.path}`" class="hover:underline text-primary truncate">
-          {{ comment.path }}
+          {{ comment.title || comment.path }}
         </NuxtLink>
         <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">
           {{ comment.commenter }} · {{ formatDate(comment.created_at) }}

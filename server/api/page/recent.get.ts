@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
   const data = await db
     .select({
       path: pagesTable.path,
+      title: pagesTable.title,
       revision: pagesTable.revision,
       message: pagesTable.message,
       updatedBy: pagesTable.updatedBy,

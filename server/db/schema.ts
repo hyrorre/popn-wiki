@@ -15,6 +15,7 @@ export const pagesTable = sqliteTable(
   'pages',
   {
     path: text().notNull(),
+    title: text().notNull().default(''),
     revision: integer().notNull(),
     body: text().notNull(),
     message: text(),

@@ -25,11 +25,13 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] fix: seeding comments
 - [x] NOTOC
 - [x] NOCACHE
+- [x] display page title (RecentEdits/RecentComments)
+- [ ] feat: migrate images
 - [ ] TOC
 - [ ] annotation (注釈)
-- [ ] display page title (RecentEdits/RecentComments)
 - [ ] feat: monaco-editor (vscode like)
 - [ ] media file redirect
+- [ ] fix: sort table
 - [ ] breadcrumb
 - [ ] user role (admin/editor/commenter/viewer)
 - [ ] cache strategy (swr/isr)
