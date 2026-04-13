@@ -23,10 +23,12 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] user email confirmation
 - [x] staging
 - [x] fix: seeding comments
-- [ ] fix: markdown preview
+- [x] NOTOC
+- [x] NOCACHE
+- [ ] TOC
+- [ ] annotation (注釈)
+- [ ] display page title (RecentEdits/RecentComments)
 - [ ] feat: monaco-editor (vscode like)
-- [ ] NOTOC/TOC
-- [ ] NOCACHE
 - [ ] media file redirect
 - [ ] breadcrumb
 - [ ] user role (admin/editor/commenter/viewer)

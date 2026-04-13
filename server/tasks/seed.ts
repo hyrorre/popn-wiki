@@ -725,10 +725,10 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // 例:
   // &aname(sec1);
   // # Title
-  // -> # Title[]{#sec1}
+  // -> # [Title]{#sec1}
   text = text.replace(
     /&aname\(([A-Za-z0-9_-]+)\);\s*\r?\n(#{1,6}\s+)(.*)$/gm,
-    (_m, id, hashes, title) => `${hashes}${title}[]{#${id}}`
+    (_m, id, hashes, title) => `${hashes}[${title}]{#${id}}`
   )
 
   // 残ったアンカーはインライン要素として変換
@@ -887,9 +887,21 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
 
   // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
   // 連続するテーブル行のまとまりごとに処理する
-  text = text.replace(/(^[ \t]*[\^|].*(?:\n[ \t]*[\^|].*)*)/gm, (block) => {
-    const lines = block
-      .split('\n')
+  // セル内の \n（\\ から変換済み）も含む行を考慮して、行頭が ^ か | でない行もブロックに含める
+  text = text.replace(/(^[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*(?:\n[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*)*)/gm, (block) => {
+    // ブロック内のテーブル行を再結合する前に、セル内の \n を <br> に変換しておく
+    // テーブル行（^または|始まり）とそれに続くセル内改行行を1つのテーブル行としてまとめる
+    const mergedLines: string[] = []
+    for (const line of block.split('\n')) {
+      if (line.trimStart().startsWith('^') || line.trimStart().startsWith('|')) {
+        mergedLines.push(line)
+      } else if (mergedLines.length > 0) {
+        // テーブル行に続く非テーブル行はセル内改行として前の行に結合
+        mergedLines[mergedLines.length - 1] += '\n' + line
+      }
+    }
+
+    const lines = mergedLines
       .map((l) => l.trim())
       .filter((l) => l.startsWith('^') || l.startsWith('|'))
 
@@ -902,7 +914,8 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
       const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
       return inner.split(marker).map((cell) => {
         if (cell === '') return '>'
-        return cell.trim()
+        // セル内の \n（\\ から変換済み）を <br> に変換
+        return cell.trim().replace(/\n/g, '<br>')
       })
     }
 
