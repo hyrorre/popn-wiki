@@ -1,6 +1,6 @@
-import { commentsTable, usersTable } from '../db/schema'
-import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { and, eq } from 'drizzle-orm'
+import { commentsTable, usersTable } from '../db/schema'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -13,7 +13,10 @@ export default defineEventHandler(async (event) => {
   const body = payload.body?.trim()
 
   if (!id || !body) {
-    throw createError({ statusCode: 400, message: 'ID and body are required.' })
+    throw createError({
+      statusCode: 400,
+      message: 'ID and body are required.'
+    })
   }
   const now = new Date().toISOString()
 
@@ -23,18 +26,21 @@ export default defineEventHandler(async (event) => {
       body,
       updatedAt: now
     })
-    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, parseInt(user.id))))
+    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, parseInt(user.id, 10))))
     .returning()
     .get()
 
   if (!updated) {
-    throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
+    throw createError({
+      statusCode: 404,
+      message: 'Comment not found or not owned by user.'
+    })
   }
 
   const profile = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, parseInt(user.id, 10)))
     .get()
 
   return {

@@ -26,8 +26,8 @@ const maxPage = computed(() => Math.ceil(totalRoots.value / itemsPerPage))
 const jumpPage = ref(1)
 
 const handleJump = () => {
-  const p = parseInt(jumpPage.value.toString())
-  if (!isNaN(p) && p >= 1 && p <= maxPage.value) {
+  const p = parseInt(jumpPage.value.toString(), 10)
+  if (!Number.isNaN(p) && p >= 1 && p <= maxPage.value) {
     page.value = p
   } else {
     jumpPage.value = page.value
@@ -72,7 +72,10 @@ const threadedComments = computed(() => {
   // 親子関係を構築
   comments.value.forEach((c) => {
     if (c.replyTo && map.has(c.replyTo)) {
-      map.get(c.replyTo)?.children.push(map.get(c.id)!)
+      const child = map.get(c.id)
+      if (child) {
+        map.get(c.replyTo)?.children.push(child)
+      }
     } else {
       const root = map.get(c.id)
       if (root) roots.push(root)

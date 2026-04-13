@@ -1,6 +1,6 @@
-import { pagesTable } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { desc, eq } from 'drizzle-orm'
+import { pagesTable } from '../db/schema'
 
 type DeletePageRequest = {
   path?: string
@@ -27,7 +27,10 @@ export default defineEventHandler(async (event) => {
     .get()
 
   if (!latest || latest.body === '') {
-    throw createError({ statusCode: 404, message: 'Page not found or already deleted.' })
+    throw createError({
+      statusCode: 404,
+      message: 'Page not found or already deleted.'
+    })
   }
 
   const nextRevision = latest.revision + 1

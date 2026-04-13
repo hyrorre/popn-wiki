@@ -1,6 +1,6 @@
-import { commentsTable, usersTable } from '../../db/schema'
-import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { desc, eq } from 'drizzle-orm'
+import { commentsTable, usersTable } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)

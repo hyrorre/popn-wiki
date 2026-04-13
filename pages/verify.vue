@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: [
-    async function (to) {
+    async (to) => {
       const nuxtApp = useNuxtApp()
       const token = to.query.token as string
 

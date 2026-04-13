@@ -1,6 +1,6 @@
-import { commentsTable, usersTable } from '../db/schema'
-import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { eq } from 'drizzle-orm'
+import { commentsTable, usersTable } from '../db/schema'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
       path,
       body,
       replyTo,
-      userId: parseInt(user.id),
+      userId: parseInt(user.id, 10),
       createdAt: now,
       updatedAt: now
     })
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   const profile = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, parseInt(user.id, 10)))
     .get()
 
   return {

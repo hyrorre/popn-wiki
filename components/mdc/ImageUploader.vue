@@ -64,6 +64,7 @@ const copyMarkdown = async () => {
     />
 
     <button
+      type="button"
       class="border px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       :disabled="uploading"
       @click="selectFile"
@@ -78,6 +79,7 @@ const copyMarkdown = async () => {
         markdownText
       }}</code>
       <button
+        type="button"
         class="border px-2 py-1 rounded text-sm whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         @click="copyMarkdown"
       >

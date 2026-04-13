@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const formData = await readMultipartFormData(event)
   const file = formData?.find((f) => f.name === 'file')
 
-  if (!file || !file.filename || !file.data?.length) {
+  if (!file?.filename || !file.data?.length) {
     throw createError({ statusCode: 400, message: 'ファイルが指定されていません。' })
   }
 

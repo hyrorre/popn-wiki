@@ -1,7 +1,7 @@
 import { db } from '@nuxthub/db'
-import { tokensTable } from '../db/schema'
-import { eq, and, gt } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import type { H3Event } from 'h3'
+import { tokensTable } from '../db/schema'
 
 export const generateToken = async (userId: number, type: 'verification' | 'reset') => {
   const token = crypto.randomUUID()

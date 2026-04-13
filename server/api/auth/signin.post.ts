@@ -1,6 +1,6 @@
-import { usersTable } from '../../db/schema'
-import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { eq } from 'drizzle-orm'
+import { usersTable } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
   const { email, password } = await readBody(event)

@@ -1,6 +1,6 @@
-import { usersTable } from '../../db/schema'
-import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { eq } from 'drizzle-orm'
+import { usersTable } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // ユーザーを削除
-  await db.delete(usersTable).where(eq(usersTable.id, parseInt(user.id)))
+  await db.delete(usersTable).where(eq(usersTable.id, parseInt(user.id, 10)))
 
   await clearUserSession(event)
 

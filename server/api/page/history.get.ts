@@ -1,6 +1,6 @@
 import { db } from '@nuxthub/db'
+import { desc, eq } from 'drizzle-orm'
 import { pagesTable, usersTable } from '../../db/schema'
-import { eq, desc } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   const query = (await getQuery(event)) as { path?: string }

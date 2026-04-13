@@ -1,7 +1,7 @@
-import { pagesTable } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+import { desc, eq } from 'drizzle-orm'
+import { pagesTable } from '../db/schema'
 
 type UpdatePageRequest = {
   path?: string

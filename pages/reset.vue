@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import * as z from 'zod'
 
 const { app } = useAppConfig()
 const route = useRoute()

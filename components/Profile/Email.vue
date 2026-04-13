@@ -16,7 +16,7 @@ const submit = async () => {
     <div v-if="!user?.email">読込中...</div>
     <u-form v-else :state="user" @submit="submit">
       <u-form-field label="メールアドレス" name="email">
-        <u-input v-model="user.email" required autofocus class="w-full" size="lg" />
+        <u-input v-model="user.email" required class="w-full" size="lg" />
       </u-form-field>
       <div class="mt-4 flex justify-end items-center">
         <div class="mr-4">{{ message }}</div>

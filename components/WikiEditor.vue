@@ -147,7 +147,7 @@ await loadHistory()
 <template>
   <section class="flex flex-col gap-4">
     <div class="flex flex-wrap gap-3 items-center justify-between bg-muted/30 p-2 rounded-lg border border-default">
-      <div class="flex gap-2 items-center flex-1 min-w-[300px]">
+      <div class="flex gap-2 items-center flex-1 min-w-75">
         <u-button icon="i-heroicons-check" :loading="saving" @click="save">
           {{ saving ? '保存中...' : '保存' }}
         </u-button>
@@ -171,7 +171,7 @@ await loadHistory()
     />
     <p v-if="errorMessage" class="text-red-600 text-sm font-medium">{{ errorMessage }}</p>
 
-    <div :class="['gap-4 min-h-[600px]', layoutMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col']">
+    <div :class="['gap-4 min-h-150', layoutMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col']">
       <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between px-1">
           <span class="text-xs font-bold text-muted uppercase">Editor</span>
@@ -179,7 +179,7 @@ await loadHistory()
         </div>
         <textarea
           v-model="body"
-          class="border border-default rounded-lg p-4 w-full h-full min-h-[400px] font-mono text-sm leading-relaxed focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+          class="border border-default rounded-lg p-4 w-full h-full min-h-100 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
           placeholder="Markdownを入力してください..."
         />
       </div>
@@ -188,9 +188,7 @@ await loadHistory()
         <div class="flex items-center px-1">
           <span class="text-xs font-bold text-muted uppercase">Preview</span>
         </div>
-        <article
-          class="border border-default rounded-lg p-6 bg-white dark:bg-gray-900 overflow-auto h-full max-h-[800px]"
-        >
+        <article class="border border-default rounded-lg p-6 bg-white dark:bg-gray-900 overflow-auto h-full max-h-200">
           <MDC :value="body" class="content" />
         </article>
       </div>
@@ -340,8 +338,10 @@ await loadHistory()
             color="primary"
             @click="
               () => {
-                restore(selectedRevision!.revision)
-                isRestoreConfirmOpen = false
+                if (selectedRevision) {
+                  restore(selectedRevision.revision)
+                  isRestoreConfirmOpen = false
+                }
               }
             "
           >

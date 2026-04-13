@@ -6,9 +6,7 @@ const props = defineProps<{
   path: string
 }>()
 
-const emit = defineEmits<{
-  (e: 'refresh'): void
-}>()
+const emit = defineEmits<(e: 'refresh') => void>()
 
 const { user } = useUserSession()
 
@@ -123,13 +121,18 @@ const formatDate = (dateStr: string) => {
     <div v-if="user && !isEditingOpen" class="flex justify-end gap-3 mt-3 text-sm">
       <!-- ユーザーIDチェック -->
       <button
+        type="button"
         v-if="comment.userId === user.id"
         class="text-muted hover:text-primary transition-colors flex items-center gap-1"
         @click="openEdit"
       >
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
       </button>
-      <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
+      <button
+        type="button"
+        class="text-muted hover:text-primary transition-colors flex items-center gap-1"
+        @click="openReply"
+      >
         <u-icon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" /> 返信
       </button>
     </div>

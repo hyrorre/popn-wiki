@@ -1,6 +1,6 @@
-import { pagesTable } from '../../db/schema'
-import { eq, desc, not } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { desc, eq, not } from 'drizzle-orm'
+import { pagesTable } from '../../db/schema'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)

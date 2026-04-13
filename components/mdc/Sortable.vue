@@ -45,7 +45,9 @@ function sortTable(table: HTMLTableElement, colIndex: number) {
       : strB.localeCompare(strA, undefined, { numeric: true })
   })
 
-  rows.forEach((row) => tbody.appendChild(row))
+  rows.forEach((row) => {
+    tbody.appendChild(row)
+  })
 
   table.setAttribute('data-sort-col', String(colIndex))
   table.setAttribute('data-sort-dir', newDir)

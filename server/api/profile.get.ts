@@ -1,6 +1,6 @@
 import { db } from '@nuxthub/db'
-import { usersTable } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { usersTable } from '../db/schema'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const data = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, parseInt(user.id, 10)))
     .get()
 
   if (!data) {

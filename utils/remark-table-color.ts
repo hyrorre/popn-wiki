@@ -36,7 +36,7 @@ export default function remarkTableColor() {
 
             const currentStyleValue = customNode.data.hProperties.style
             const currentStyle: string = typeof currentStyleValue === 'string' ? currentStyleValue : ''
-            customNode.data.hProperties.style = `${currentStyle ? currentStyle + ';' : ''}background-color: ${color};`
+            customNode.data.hProperties.style = `${currentStyle ? `${currentStyle};` : ''}background-color: ${color};`
 
             // 文字列の更新または削除
             if (remainingText.length > 0) {

@@ -1,12 +1,12 @@
-import { commentsTable, usersTable } from '../db/schema'
-import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { aliasedTable, and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { commentsTable, usersTable } from '../db/schema'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const path = query.path as string
-  const page = Math.max(1, parseInt((query.page as string) || '1'))
-  const limit = Math.max(1, parseInt((query.limit as string) || '20'))
+  const page = Math.max(1, parseInt((query.page as string) || '1', 10))
+  const limit = Math.max(1, parseInt((query.limit as string) || '20', 10))
   const offset = (page - 1) * limit
 
   if (!path) {

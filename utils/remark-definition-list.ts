@@ -65,20 +65,25 @@ export default function remarkDefinitionList() {
         if (node.type === 'code') {
           const codeValue = (node as Code).value
           const regex = /(?:^|\n)[ \t]*([:;])[ \t]+/g
-          let match
+          let match = regex.exec(codeValue)
           let lastIndex = 0
 
           const parts: { type: string; content: string }[] = []
 
-          while ((match = regex.exec(codeValue)) !== null) {
+          while (match !== null) {
             if (parts.length > 0 && match.index > lastIndex) {
-              parts[parts.length - 1]!.content = codeValue.substring(lastIndex, match.index)
+              const lastPart = parts[parts.length - 1]
+              if (lastPart) {
+                lastPart.content = codeValue.substring(lastIndex, match.index)
+              }
             }
             parts.push({ type: match[1] === ';' ? 'dt' : 'dd', content: '' })
             lastIndex = match.index + match[0].length
+            match = regex.exec(codeValue)
           }
-          if (parts.length > 0 && lastIndex < codeValue.length) {
-            parts[parts.length - 1]!.content = codeValue.substring(lastIndex)
+          const finalPart = parts[parts.length - 1]
+          if (finalPart && lastIndex < codeValue.length) {
+            finalPart.content = codeValue.substring(lastIndex)
           }
 
           for (const part of parts) {
@@ -104,10 +109,10 @@ export default function remarkDefinitionList() {
             })
           }
         } else {
-          let currentType = startMatch![1] === ';' ? 'dt' : 'dd'
+          let currentType = startMatch?.[1] === ';' ? 'dt' : 'dd'
           let currentChildren: PhrasingContent[] = []
 
-          const modifiedFirstValue = firstChildText!.value.substring(startMatch![0].length)
+          const modifiedFirstValue = firstChildText?.value.substring(startMatch?.[0]?.length || 0) || ''
 
           const processText = (text: string) => {
             const regex = /((?:^|\n)[ \t]*[:;][ \t]+)/

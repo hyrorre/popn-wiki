@@ -52,7 +52,7 @@ export default function remarkTableMerge() {
             // 削除済みのセルをスキップして左の有効な結合先を探す
             while (targetC >= 0) {
               const targetCell = row[targetC]
-              if (targetCell && targetCell.deleted) {
+              if (targetCell?.deleted) {
                 targetC--
               } else {
                 break
@@ -71,7 +71,7 @@ export default function remarkTableMerge() {
             while (targetR >= 0) {
               const targetRow = grid[targetR]
               const targetCell = targetRow ? targetRow[c] : undefined
-              if (targetCell && targetCell.deleted) {
+              if (targetCell?.deleted) {
                 targetR--
               } else {
                 break
