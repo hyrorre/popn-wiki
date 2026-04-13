@@ -26,9 +26,10 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] NOTOC
 - [x] NOCACHE
 - [x] display page title (RecentEdits/RecentComments)
+- [x] fix: nested span tag (MDC style)
+- [ ] annotation (注釈)
 - [ ] feat: migrate images
 - [ ] TOC
-- [ ] annotation (注釈)
 - [ ] feat: monaco-editor (vscode like)
 - [ ] media file redirect
 - [ ] fix: sort table

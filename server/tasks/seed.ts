@@ -739,7 +739,7 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // / の有無や色名（pink など）もそのまま style の color 値として利用する
   text = text.replace(
     /<color\s+\/?([#A-Za-z0-9_-]+)\s*>([\s\S]*?)<\/color>/gi,
-    (_m, color, content) => `[${content}]{style="color: ${color}"}`
+    (_m, color, content) => `<span style="color: ${color}">${content}</span>`
   )
 
   // Fontsize2プラグイン: <fs size>テキスト</fs> -> <span style="font-size: size">テキスト</span>
@@ -751,8 +751,8 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // NEWタグ: &new{text}; -> [text]{.andnew}
   text = text.replace(/&new\{([^}]+)\};/g, '[$1]{.andnew}')
 
-  // CommentIDタグ: &commentid{id}; -> [id]{.commentid}
-  text = text.replace(/&commentid\{([^}]+)\};/g, '[$1]{.commentid}')
+  // CommentIDタグ: &commentid{id}; -> [id]{.andcommentid}
+  text = text.replace(/&commentid\{([^}]+)\};/g, '[$1]{.andcommentid}')
 
   // リストマーカー: 行頭が * または - で、直後にスペースがない場合にスペースを追加
   // 例: "*item" -> "* item", "-item" -> "- item"
