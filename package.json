@@ -45,7 +45,7 @@
     "rehype-stringify": "^10.0.1",
     "remark-rehype": "^11.1.2",
     "typescript": "^6.0.2",
-    "wrangler": "^4.81.0"
+    "wrangler": "^4.81.1"
   },
   "overrides": {
     "chokidar": "3.6.0"
