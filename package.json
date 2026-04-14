@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "tsc": "tsc --noEmit",
     "lint": "eslint . --fix",
     "format": "prettier . --write",
     "db:generate": "drizzle-kit generate",

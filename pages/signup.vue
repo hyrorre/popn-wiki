@@ -37,6 +37,13 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
+const providers = [{
+  label: 'Googleで登録',
+  icon: 'i-mdi-google',
+  to: '/api/auth/google',
+  external: true
+}]
+
 const submit = async (payload: FormSubmitEvent<Schema>) => {
   try {
     await $fetch('/api/auth/signup', {
@@ -61,6 +68,7 @@ const submit = async (payload: FormSubmitEvent<Schema>) => {
           title="新規アカウント登録"
           :fields="fields"
           :schema="schema"
+          :providers="providers"
           :submit="{ label: '登録' }"
           @submit="submit"
         >

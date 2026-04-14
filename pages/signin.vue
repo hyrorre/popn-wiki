@@ -40,6 +40,13 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
+const providers = [{
+  label: 'Googleでログイン',
+  icon: 'i-mdi-google',
+  to: '/api/auth/google',
+  external: true
+}]
+
 const submit = async (payload: FormSubmitEvent<Schema>) => {
   resend_message.value = ''
   await $fetch('/api/auth/signin', {
@@ -90,6 +97,7 @@ const resendVerification = async () => {
           title="ログイン"
           :fields="fields"
           :schema="schema"
+          :providers="providers"
           :submit="{ label: 'ログイン' }"
           @submit="submit"
         >
@@ -113,6 +121,20 @@ const resendVerification = async () => {
               color="error"
               icon="i-lucide-alert-triangle"
               title="メールアドレスの確認に失敗しました。リンクの期限が切れているか、無効なトークンです。"
+              class="mb-4"
+            />
+            <u-alert
+              v-if="$route.query.error === 'google_failed'"
+              color="error"
+              icon="i-lucide-alert-triangle"
+              title="Googleでのログインに失敗しました。"
+              class="mb-4"
+            />
+            <u-alert
+              v-if="$route.query.error === 'google_failed_no_email'"
+              color="error"
+              icon="i-lucide-alert-triangle"
+              title="Googleアカウントからメールアドレスを取得できませんでした。"
               class="mb-4"
             />
             <div v-if="error_message" class="mb-4 space-y-2">
