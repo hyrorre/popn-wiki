@@ -1,5 +1,5 @@
 <template>
-  <u-footer>
+  <u-footer class="pt-8 pb-4">
     <div class="text-center text-sm">
       <p>hyrorre all rights reserved.</p>
       <p class="mt-2">

@@ -36,12 +36,12 @@ const formatDate = (dateStr: string) => {
     <p v-if="status === 'pending'" class="text-muted">読み込み中...</p>
     <p v-else-if="!pages?.length" class="text-muted">最近の編集はありません。</p>
 
-    <ul v-else class="space-y-1">
-      <li v-for="page in pages" :key="page.path" class="flex items-baseline gap-2">
-        <NuxtLink :to="`/${page.path}`" class="hover:underline text-primary truncate">
+    <ul v-else>
+      <li v-for="page in pages" :key="page.path">
+        <NuxtLink :to="`/${page.path}`">
           {{ page.title || page.path }}
         </NuxtLink>
-        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">{{ formatDate(page.updatedAt) }}</span>
+        <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">{{ formatDate(page.updatedAt) }}</span>
       </li>
     </ul>
   </div>

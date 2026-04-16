@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+* {
+  text-autospace: normal;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -98,16 +102,21 @@ body,
   }
 
   ul {
-    margin-top: 1rem;
-    margin-left: 1.5rem;
-    list-style-type: disc;
+    @apply list-disc ps-6 my-5 marker:text-(--ui-border-accented);
 
     ul {
-      margin-top: 0;
       list-style-type: circle;
 
       ul {
         list-style-type: '- ';
+      }
+    }
+
+    li {
+      @apply my-0.75 ps-1.5 leading-7 [&>ul]:my-0;
+
+      a {
+        @apply text-primary;
       }
     }
   }
@@ -133,6 +142,6 @@ body,
   }
 
   hr {
-    @apply border-default;
+    @apply border-default my-6;
   }
 }

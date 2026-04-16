@@ -56,7 +56,7 @@ useHead({
       </template>
     </u-slideover>
 
-    <main class="w-full pb-12 overflow-hidden">
+    <main class="w-full overflow-hidden">
       <!-- ページが存在しない場合 -->
       <template v-if="pageNotFound">
         <div class="py-12 text-center">

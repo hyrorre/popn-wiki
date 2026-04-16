@@ -37,12 +37,14 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
-const providers = [{
-  label: 'Googleで登録',
-  icon: 'i-mdi-google',
-  to: '/api/auth/google',
-  external: true
-}]
+const providers = [
+  {
+    label: 'Googleで登録',
+    icon: 'i-mdi-google',
+    to: '/api/auth/google',
+    external: true
+  }
+]
 
 const submit = async (payload: FormSubmitEvent<Schema>) => {
   try {
@@ -61,7 +63,9 @@ const submit = async (payload: FormSubmitEvent<Schema>) => {
 
 <template>
   <u-container class="text-center h-full flex flex-col justify-center">
-    <h1 class="text-4xl">{{ app.title }}</h1>
+    <h1>
+      <u-button to="/" variant="ghost" color="neutral" class="text-3xl">{{ app.title }}</u-button>
+    </h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
         <u-auth-form

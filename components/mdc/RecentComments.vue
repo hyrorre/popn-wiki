@@ -39,12 +39,12 @@ const formatDate = (dateStr: string) => {
     <p v-if="status === 'pending'" class="text-muted">読み込み中...</p>
     <p v-else-if="!comments?.length" class="text-muted">最近のコメントはありません。</p>
 
-    <ul v-else class="space-y-1">
-      <li v-for="comment in comments" :key="comment.path" class="flex items-baseline gap-2">
-        <NuxtLink :to="`/${comment.path}`" class="hover:underline text-primary truncate">
+    <ul v-else>
+      <li v-for="comment in comments" :key="comment.path">
+        <NuxtLink :to="`/${comment.path}`">
           {{ comment.title || comment.path }}
         </NuxtLink>
-        <span v-if="!hideDetail" class="text-xs text-muted whitespace-nowrap">
+        <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">
           {{ comment.commenter }} · {{ formatDate(comment.created_at) }}
         </span>
       </li>

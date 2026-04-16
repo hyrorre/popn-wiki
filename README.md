@@ -29,7 +29,8 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] fix: nested span tag (MDC style)
 - [x] annotation (注釈)
 - [x] feat(auth): add auth provider (google)
-- [ ] fix: sort table
+- [ ] feat(wiki): minor change
+- [ ] fix(wiki): sort table
 - [ ] feat: migrate images
 - [ ] TOC
 - [ ] feat: monaco-editor (vscode like)

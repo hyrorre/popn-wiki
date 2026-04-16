@@ -48,11 +48,11 @@ const items = computed((): NavigationMenuItem[][] => {
           icon: 'i-tabler-user',
           children: [
             {
-              label: 'Profile',
+              label: 'アカウント設定',
               to: '/profile'
             },
             {
-              label: 'Sign Out',
+              label: 'ログアウト',
               onSelect: () => signOut()
             }
           ]
@@ -89,7 +89,11 @@ const items = computed((): NavigationMenuItem[][] => {
         <u-navigation-menu v-if="items[0]" :items="items[0]" />
       </div>
       <div class="flex items-center gap-2">
-        <u-navigation-menu v-if="items[1] && items[2]" :items="[...items[1], ...items[2]]" />
+        <u-navigation-menu
+          v-if="items[1] && items[2]"
+          :items="[...items[1], ...items[2]]"
+          content-orientation="vertical"
+        />
       </div>
     </u-container>
   </header>
