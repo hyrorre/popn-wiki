@@ -1141,7 +1141,8 @@ function parseUsersAuth(filePath: string): Map<string, { id: string; name: strin
   for (const line of lines) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith('#')) continue
-    const parts = trimmed.split(':')
+    // ':' は '\:' とエスケープされている可能性があるため、後読み否定を使って分割する
+    const parts = trimmed.split(/(?<!\\):/).map((p) => p.replace(/\\:/g, ':'))
     if (parts.length >= 4) {
       const id = parts[0] || ''
       const password = parts[1] || ''
