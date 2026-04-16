@@ -41,7 +41,9 @@ const formatDate = (dateStr: string) => {
         <NuxtLink :to="`/${page.path}`">
           {{ page.title || page.path }}
         </NuxtLink>
-        <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">{{ formatDate(page.updatedAt) }}</span>
+        <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">{{
+          formatDate(page.updatedAt)
+        }}</span>
       </li>
     </ul>
   </div>

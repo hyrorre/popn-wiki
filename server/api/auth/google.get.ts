@@ -23,17 +23,20 @@ export default defineOAuthGoogleEventHandler({
       const now = new Date().toISOString()
       // OAuth経由のため、パスワードはセキュアなランダム文字列をハッシュ化して保存する
       const dummyPassword = await hashPassword(crypto.randomUUID())
-      
-      const newUsers = await db.insert(usersTable).values({
-        name: user.name || 'Google User',
-        email: user.email,
-        password: dummyPassword,
-        avatar: user.picture || null,
-        createdAt: now,
-        updatedAt: now,
-        confirmed: 1 // OAuth経由なのでメール認証済みとする
-      }).returning()
-      
+
+      const newUsers = await db
+        .insert(usersTable)
+        .values({
+          name: user.name || 'Google User',
+          email: user.email,
+          password: dummyPassword,
+          avatar: user.picture || null,
+          createdAt: now,
+          updatedAt: now,
+          confirmed: 1 // OAuth経由なのでメール認証済みとする
+        })
+        .returning()
+
       existingUser = newUsers[0]
       if (!existingUser) {
         throw createError({ statusCode: 500, message: 'ユーザーの作成に失敗しました' })
