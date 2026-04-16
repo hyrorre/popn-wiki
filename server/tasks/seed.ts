@@ -735,11 +735,15 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
   // id には英数字と - _ のみ許可
   text = text.replace(/&aname\(([A-Za-z0-9_-]+)\);/g, '[]{#$1}')
 
-  // カラータグ: <color /#ffff77>テキスト</color> など -> <span style="color: #ffff77">テキスト</span>
-  // / の有無や色名（pink など）もそのまま style の color 値として利用する
+  // カラータグ: <color #ffff77>, <color /#ffff77>, <color #ffffff/#000000>
   text = text.replace(
-    /<color\s+\/?([#A-Za-z0-9_-]+)\s*>([\s\S]*?)<\/color>/gi,
-    (_m, color, content) => `<span style="color: ${color}">${content}</span>`
+    /<color\s+([#A-Za-z0-9_-]*)\s*(?:\/\s*([#A-Za-z0-9_-]+))?\s*>([\s\S]*?)<\/color>/gi,
+    (_m, fg, bg, content) => {
+      const styles = []
+      if (fg) styles.push(`color: ${fg}`)
+      if (bg) styles.push(`background-color: ${bg}`)
+      return `<span style="${styles.join('; ')}">${content}</span>`
+    }
   )
 
   // Fontsize2プラグイン: <fs size>テキスト</fs> -> <span style="font-size: size">テキスト</span>
