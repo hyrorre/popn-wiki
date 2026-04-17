@@ -1174,60 +1174,69 @@ export default defineTask({
     name: 'db:seed',
     description: 'Seed database with DokuWiki pages and comments converted to Markdown'
   },
-  async run() {
-    // ===== ユーザー情報とコメントの収集 =====
-    console.log('Seeding users...')
-    const metaDir = path.resolve(process.cwd(), '.local/meta')
+  async run({ payload }) {
+    const onlyPages = !!payload?.onlyPages
+    const defaultUserId = 0
     let allComments: { pagePath: string; comment: DokuWikiComment }[] = []
-    let commentUsers = new Map<string, { id: string; name: string }>()
-
-    if (fs.existsSync(metaDir)) {
-      const parsed = collectAllComments(metaDir)
-      allComments = parsed.comments
-      commentUsers = parsed.users
-    } else {
-      console.warn('Meta directory not found:', metaDir)
-    }
-
-    const authUsers = parseUsersAuth(path.resolve(process.cwd(), '.local/users.auth.php'))
-
-    const allUniqueUsers = new Map<string, { id: string; name: string; email: string; password: string }>()
-    for (const [id, data] of authUsers) {
-      allUniqueUsers.set(id, data)
-    }
-    for (const [id, data] of commentUsers) {
-      if (!allUniqueUsers.has(id)) {
-        allUniqueUsers.set(id, { ...data, email: `${id}@migrated.local`, password: '!' })
-      }
-    }
-
-    // ユーザーの挿入
-    await db.run(sql`DELETE FROM users`)
     const oldUserIdToNewId = new Map<string, number>()
-    const userNow = new Date().toISOString()
 
-    for (const [oldId, user] of allUniqueUsers) {
-      try {
-        const res = (await db.get(sql`
-          INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
-          VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow}, 1)
-          ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-          RETURNING *
-        `)) as any
-        if (res) console.log(`[Debug] User insert res for ${oldId}: ${JSON.stringify(res)}`)
-        const newId = Array.isArray(res) ? res[0] : res?.id || res?.ID
-        if (newId) {
-          oldUserIdToNewId.set(oldId, newId)
-        } else {
-          console.warn(`[Warn] Could not get newId for user: ${oldId}. res: ${JSON.stringify(res)}`)
-        }
-      } catch (e: any) {
-        console.error(`[Error] User insert failed ${oldId}: ${e.message}`)
+    if (!onlyPages) {
+      // ===== ユーザー情報とコメントの収集 =====
+      console.log('Seeding users...')
+      const metaDir = path.resolve(process.cwd(), '.local/meta')
+      let commentUsers = new Map<string, { id: string; name: string }>()
+
+      if (fs.existsSync(metaDir)) {
+        const parsed = collectAllComments(metaDir)
+        allComments = parsed.comments
+        commentUsers = parsed.users
+      } else {
+        console.warn('Meta directory not found:', metaDir)
       }
-    }
-    console.log(`[Debug] oldUserIdToNewId size: ${oldUserIdToNewId.size}`)
 
-    const defaultUserId = Array.from(oldUserIdToNewId.values())[0] || 0
+      const authUsers = parseUsersAuth(path.resolve(process.cwd(), '.local/users.auth.php'))
+
+      const allUniqueUsers = new Map<string, { id: string; name: string; email: string; password: string }>()
+      for (const [id, data] of authUsers) {
+        allUniqueUsers.set(id, data)
+      }
+      for (const [id, data] of commentUsers) {
+        if (!allUniqueUsers.has(id)) {
+          allUniqueUsers.set(id, { ...data, email: `${id}@migrated.local`, password: '!' })
+        }
+      }
+
+      // ユーザーの挿入
+      await db.run(sql`DELETE FROM users`)
+      const userNow = new Date().toISOString()
+
+      for (const [oldId, user] of allUniqueUsers) {
+        try {
+          const res = (await db.get(sql`
+            INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+            VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow}, 1)
+            ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+            RETURNING *
+          `)) as any
+          if (res) console.log(`[Debug] User insert res for ${oldId}: ${JSON.stringify(res)}`)
+          const newId = Array.isArray(res) ? res[0] : res?.id || res?.ID
+          if (newId) {
+            oldUserIdToNewId.set(oldId, newId)
+          } else {
+            console.warn(`[Warn] Could not get newId for user: ${oldId}. res: ${JSON.stringify(res)}`)
+          }
+        } catch (e: any) {
+          console.error(`[Error] User insert failed ${oldId}: ${e.message}`)
+        }
+      }
+      console.log(`[Debug] oldUserIdToNewId size: ${oldUserIdToNewId.size}`)
+      // defaultUserId = Array.from(oldUserIdToNewId.values())[0] || 0
+    } else {
+      // console.log('Skipping users insertion, fetching default userId...')
+      // const firstUser = (await db.get(sql`SELECT id FROM users LIMIT 1`)) as any
+      // defaultUserId = firstUser?.id || 1
+      // console.log(`Using default userId: ${defaultUserId}`)
+    }
 
     // ===== ページのシード =====
     console.log('Seeding database from .local/pages...')
@@ -1277,7 +1286,12 @@ export default defineTask({
 
       // ページテーブルに挿入
       const CHUNK_SIZE = 80000 // 80KB limit for D1 HTTP API
+      let pageCount = 0
       for (const pageEntry of pageEntries) {
+        pageCount++
+        if (pageCount % 100 === 0 || pageCount === pageEntries.length) {
+          console.log(`[Pages] ${pageCount}/${pageEntries.length}: ${pageEntry.path}`)
+        }
         try {
           const fullBody = pageEntry.body
           if (fullBody.length > CHUNK_SIZE) {
@@ -1302,50 +1316,57 @@ export default defineTask({
     }
 
     // ===== コメントのシード =====
-    console.log('Seeding comments from .local/meta...')
-
-    // コメントテーブルのデータをすべて削除
-    await db.run(sql`DELETE FROM comments`)
-
-    // CID → 新しい整数ID のマッピング
-    const cidToNewId = new Map<string, number>()
     let insertedCount = 0
+    if (!onlyPages) {
+      console.log('Seeding comments from .local/meta...')
 
-    for (const { pagePath, comment } of allComments) {
-      const body = convertDokuwikiToMarkdown(comment.raw, titleMap)
-      const createdAt = new Date(comment.date.created * 1000).toISOString()
-      const updatedAt = comment.date.modified ? new Date(comment.date.modified * 1000).toISOString() : createdAt
+      // コメントテーブルのデータをすべて削除
+      await db.run(sql`DELETE FROM comments`)
 
-      // 親コメントの新IDを取得
-      const replyToId = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
-      const newUserId = oldUserIdToNewId.get(comment.user.id)
+      // CID → 新しい整数ID のマッピング
+      const cidToNewId = new Map<string, number>()
 
-      if (newUserId === undefined) {
-        console.warn(
-          `[Warn] Skipping comment ${comment.cid} because user ${comment.user.id} not found in map. Mapping size: ${oldUserIdToNewId.size}`
-        )
-        continue
-      }
-
-      try {
-        const res = (await db.get(sql`
-          INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
-          VALUES (${pagePath}, ${body}, ${replyToId}, ${newUserId}, ${createdAt}, ${updatedAt})
-          ON CONFLICT DO NOTHING
-          RETURNING id
-        `)) as { id: number } | undefined
-
-        const newId = Array.isArray(res) ? res[0] : res?.id
-        if (newId) {
-          cidToNewId.set(comment.cid, newId)
+      let commentProgress = 0
+      for (const { pagePath, comment } of allComments) {
+        commentProgress++
+        if (commentProgress % 100 === 0 || commentProgress === allComments.length) {
+          console.log(`[Comments] ${commentProgress}/${allComments.length}: ${pagePath}`)
         }
-        insertedCount++
-      } catch (e: any) {
-        console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e.message}`)
-      }
-    }
 
-    console.log(`Inserted ${insertedCount} comments.`)
+        const body = convertDokuwikiToMarkdown(comment.raw, titleMap)
+        const createdAt = new Date(comment.date.created * 1000).toISOString()
+        const updatedAt = comment.date.modified ? new Date(comment.date.modified * 1000).toISOString() : createdAt
+
+        // 親コメントの新IDを取得
+        const replyToId = comment.parent ? (cidToNewId.get(comment.parent) ?? null) : null
+        const newUserId = oldUserIdToNewId.get(comment.user.id)
+
+        if (newUserId === undefined) {
+          console.warn(
+            `[Warn] Skipping comment ${comment.cid} because user ${comment.user.id} not found in map. Mapping size: ${oldUserIdToNewId.size}`
+          )
+          continue
+        }
+
+        try {
+          const res = (await db.get(sql`
+            INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
+            VALUES (${pagePath}, ${body}, ${replyToId}, ${newUserId}, ${createdAt}, ${updatedAt})
+            ON CONFLICT DO NOTHING
+            RETURNING id
+          `)) as { id: number } | undefined
+
+          const newId = Array.isArray(res) ? res[0] : res?.id
+          if (newId) {
+            cidToNewId.set(comment.cid, newId)
+          }
+          insertedCount++
+        } catch (e: any) {
+          console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e.message}`)
+        }
+      }
+      console.log(`Inserted ${insertedCount} comments.`)
+    }
 
     return {
       result: `Inserted ${pageEntries.length} pages and ${insertedCount} comments.`
