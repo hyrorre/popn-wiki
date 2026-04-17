@@ -29,12 +29,12 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] fix: nested span tag (MDC style)
 - [x] annotation (注釈)
 - [x] feat(auth): add auth provider (google)
+- [x] feat: migrate images
+- [ ] media file redirect
 - [ ] feat(wiki): minor change
 - [ ] fix(wiki): sort table
-- [ ] feat: migrate images
 - [ ] TOC
 - [ ] feat: monaco-editor (vscode like)
-- [ ] media file redirect
 - [ ] breadcrumb
 - [ ] user role (admin/editor/commenter/viewer)
 - [ ] cache strategy (swr/isr)
