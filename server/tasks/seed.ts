@@ -638,7 +638,10 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
   const files = getFilesRecursively(pagesDir).filter((f) => f.endsWith('.txt'))
 
   for (const file of files) {
-    const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '').replace(/\\/g, '/')
+    const relativePath = path
+      .relative(pagesDir, file)
+      .replace(/\.txt$/, '')
+      .replace(/\\/g, '/')
     const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
 
     try {
@@ -709,6 +712,52 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
 
   // C言語スタイルコメント: /* ... */ -> <!-- ... -->
   text = text.replace(/\/\*([\s\S]*?)\*\//g, '<!--$1-->')
+
+  // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
+  // 強制改行 (\\) より先に処理し、セル内の \\ は <br> に変換する
+  text = text.replace(/(^[ \t]*[\^|].*(?:\n[ \t]*[\^|].*)*)/gm, (block) => {
+    const lines = block
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('^') || l.startsWith('|'))
+
+    if (lines.length === 0) return block
+
+    // 1行をセル配列に変換
+    // 空白なしの空セル (||) は結合マーカー ">" にする
+    const parseRow = (line: string) => {
+      const marker = line[0] as string // '^' または '|'
+      const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
+      return inner.split(marker).map((cell) => {
+        if (cell === '') return '>'
+        // セル内の \\ を <br> に変換（テーブル行を壊さないように）
+        return cell.replace(/\\\\([ \t]*)/g, '<br>').trim()
+      })
+    }
+
+    const rows = lines.map(parseRow)
+    if (rows.length === 0) return block
+
+    const header = rows[0]
+    if (!header) return block
+    const colCount = header.length
+    const separator = Array(colCount).fill('---')
+
+    const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
+
+    const mdLines: string[] = []
+    mdLines.push(toMarkdownRow(header))
+    mdLines.push(toMarkdownRow(separator))
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]
+      if (row) {
+        mdLines.push(toMarkdownRow(row))
+      }
+    }
+
+    return mdLines.join('\n')
+  })
 
   // 強制改行: \\ -> スペース2個 + 改行
   text = text.replace(/\\\\([ \t]*)/g, '\n')
@@ -889,65 +938,6 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     return `${prefix}[${altText}](${url})`
   })
 
-  // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
-  // 連続するテーブル行のまとまりごとに処理する
-  // セル内の \n（\\ から変換済み）も含む行を考慮して、行頭が ^ か | でない行もブロックに含める
-  text = text.replace(
-    /(^[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*(?:\n[ \t]*[\^|].*(?:\n(?![ \t]*[\^|]).*)*)*)/gm,
-    (block) => {
-      // ブロック内のテーブル行を再結合する前に、セル内の \n を <br> に変換しておく
-      // テーブル行（^または|始まり）とそれに続くセル内改行行を1つのテーブル行としてまとめる
-      const mergedLines: string[] = []
-      for (const line of block.split('\n')) {
-        if (line.trimStart().startsWith('^') || line.trimStart().startsWith('|')) {
-          mergedLines.push(line)
-        } else if (mergedLines.length > 0) {
-          // テーブル行に続く非テーブル行はセル内改行として前の行に結合
-          mergedLines[mergedLines.length - 1] += '\n' + line
-        }
-      }
-
-      const lines = mergedLines.map((l) => l.trim()).filter((l) => l.startsWith('^') || l.startsWith('|'))
-
-      if (lines.length === 0) return block
-
-      // 1行をセル配列に変換
-      // 空白なしの空セル (||) は結合マーカー ">" にする
-      const parseRow = (line: string) => {
-        const marker = line[0] as string // '^' または '|'
-        const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
-        return inner.split(marker).map((cell) => {
-          if (cell === '') return '>'
-          // セル内の \n（\\ から変換済み）を <br> に変換
-          return cell.trim().replace(/\n/g, '<br>')
-        })
-      }
-
-      const rows = lines.map(parseRow)
-      if (rows.length === 0) return block
-
-      const header = rows[0]
-      if (!header) return block
-      const colCount = header.length
-      const separator = Array(colCount).fill('---')
-
-      const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
-
-      const mdLines: string[] = []
-      mdLines.push(toMarkdownRow(header))
-      mdLines.push(toMarkdownRow(separator))
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i]
-        if (row) {
-          mdLines.push(toMarkdownRow(row))
-        }
-      }
-
-      return mdLines.join('\n')
-    }
-  )
-
   // 整形無効領域を復元（''等幅'' との組み合わせも考慮してインラインコードにする）
   text = text.replace(/__DOKU_NOWIKI_(\d+)__/g, (_m, idxStr) => {
     const idx = Number(idxStr)
@@ -1092,7 +1082,10 @@ function collectAllComments(metaDir: string): {
   const users = new Map<string, { id: string; name: string }>()
 
   for (const file of commentFiles) {
-    const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '').replace(/\\/g, '/')
+    const relativePath = path
+      .relative(metaDir, file)
+      .replace(/\.comments$/, '')
+      .replace(/\\/g, '/')
     console.log(`[Debug] Processing comment file: ${relativePath}`)
     const pagePath = relativePath === 'start' ? '/' : decodeURI(relativePath)
 
@@ -1252,7 +1245,10 @@ export default defineTask({
     const pageEntries = files
       .filter((file) => file.endsWith('.txt'))
       .map((file) => {
-        const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '').replace(/\\/g, '/')
+        const relativePath = path
+          .relative(pagesDir, file)
+          .replace(/\.txt$/, '')
+          .replace(/\\/g, '/')
         const bodyContent = fs.readFileSync(file, 'utf8')
         const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
         const now = new Date().toISOString()
