@@ -5,7 +5,7 @@ useHead({
 </script>
 
 <template>
-  <Header />
+  <Header :show-buttons="false" />
   <u-container>
     <Profile class="mt-8" />
     <ProfileEmail class="mt-8" />

@@ -52,7 +52,7 @@ useHead({
     <!-- モバイル用サイドバー (Slideover) -->
     <u-slideover v-model:open="isSidebarOpen" title="Menu" side="left">
       <template #body>
-        <Sidebar @click="isSidebarOpen = false" />
+        <Sidebar />
       </template>
     </u-slideover>
 
