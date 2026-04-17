@@ -638,7 +638,7 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
   const files = getFilesRecursively(pagesDir).filter((f) => f.endsWith('.txt'))
 
   for (const file of files) {
-    const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
+    const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '').replace(/\\/g, '/')
     const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
 
     try {
@@ -1092,7 +1092,7 @@ function collectAllComments(metaDir: string): {
   const users = new Map<string, { id: string; name: string }>()
 
   for (const file of commentFiles) {
-    const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '')
+    const relativePath = path.relative(metaDir, file).replace(/\.comments$/, '').replace(/\\/g, '/')
     console.log(`[Debug] Processing comment file: ${relativePath}`)
     const pagePath = relativePath === 'start' ? '/' : decodeURI(relativePath)
 
@@ -1252,7 +1252,7 @@ export default defineTask({
     const pageEntries = files
       .filter((file) => file.endsWith('.txt'))
       .map((file) => {
-        const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '')
+        const relativePath = path.relative(pagesDir, file).replace(/\.txt$/, '').replace(/\\/g, '/')
         const bodyContent = fs.readFileSync(file, 'utf8')
         const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
         const now = new Date().toISOString()
