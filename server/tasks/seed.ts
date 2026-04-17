@@ -986,7 +986,7 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
 
   // NOTOCタグをFrontmatter に変換
   let hasNotoc = false
-  text = text.replace(/~~[\s\S]*NOTOC[\s\S]*~~/g, (_m) => {
+  text = text.replace(/~~NOTOC~~/g, (_m) => {
     hasNotoc = true
     return ''
   })
