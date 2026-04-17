@@ -1216,8 +1216,8 @@ export default defineTask({
     for (const [oldId, user] of allUniqueUsers) {
       try {
         const res = (await db.get(sql`
-          INSERT INTO users (name, email, password, created_at, updated_at)
-          VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow})
+          INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+          VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow}, 1)
           ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
           RETURNING *
         `)) as any

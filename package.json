@@ -22,6 +22,8 @@
     "@nuxt/ui": "4.6.1",
     "@nuxthub/core": "0.10.7",
     "@nuxtjs/mdc": "0.21.1",
+    "bcryptjs": "^3.0.3",
+    "cryptmd5": "^0.1.2",
     "diff": "^8.0.4",
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.4.2",

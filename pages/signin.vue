@@ -167,16 +167,6 @@ const resendVerification = async () => {
           <u-button to="/forgot" color="neutral" variant="link" size="sm">パスワードを忘れた方はこちら</u-button>
           <u-button to="/signup" color="neutral" variant="link" size="sm">アカウントをお持ちでない方はこちら</u-button>
         </div>
-        <template #footer>
-          <u-button
-            to="/forgot"
-            color="info"
-            variant="subtle"
-            label="旧WikiからのID移行はこちら"
-            icon="i-lucide-terminal"
-            block
-          />
-        </template>
       </u-card>
     </div>
   </u-container>

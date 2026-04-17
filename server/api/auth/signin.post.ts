@@ -13,7 +13,14 @@ export default defineEventHandler(async (event) => {
   }
   const user = await db.select().from(usersTable).where(eq(usersTable.email, email)).get()
 
-  if (!user || !(await verifyPassword(user.password, password))) {
+  if (
+    !user ||
+    !(
+      (user.password.startsWith('$scrypt$') && (await verifyPassword(user.password, password))) ||
+      (user.password.startsWith('$2y$') && verifyPasswordBcrypt(user.password, password)) ||
+      (user.password.startsWith('$1$') && verifyPasswordMD5Crypt(user.password, password))
+    )
+  ) {
     throw createError({
       statusCode: 401,
       message: 'Invalid email or password'

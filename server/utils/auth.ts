@@ -2,6 +2,8 @@ import { db } from '@nuxthub/db'
 import { tokensTable } from '../db/schema'
 import { eq, and, gt } from 'drizzle-orm'
 import type { H3Event } from 'h3'
+import cryptmd5 from 'cryptmd5'
+import bcrypt from 'bcryptjs'
 
 export const generateToken = async (userId: number, type: 'verification' | 'reset') => {
   const token = crypto.randomUUID()
@@ -66,4 +68,13 @@ export const verifyAndUseToken = async (token: string, type: 'verification' | 'r
   await db.delete(tokensTable).where(eq(tokensTable.id, foundToken.id))
 
   return foundToken
+}
+
+export const verifyPasswordMD5Crypt = (hash: string, password: string) => {
+  const salt = hash.match(/^\$1\$([^$]+)\$/)?.[1] // $1$xxxxxxxx$
+  return salt && cryptmd5.cryptMD5(password, salt) === hash
+}
+
+export const verifyPasswordBcrypt = (hash: string, password: string) => {
+  return bcrypt.compareSync(password, hash)
 }
