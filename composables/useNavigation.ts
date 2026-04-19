@@ -51,7 +51,8 @@ export const useNavigation = (showButtons: boolean = true) => {
             children: [
               {
                 label: 'アカウント設定',
-                to: '/profile'
+                to: '/profile',
+                icon: 'i-heroicons-cog-6-tooth-solid'
               },
               {
                 label: '返信一覧',
@@ -60,6 +61,7 @@ export const useNavigation = (showButtons: boolean = true) => {
               },
               {
                 label: 'ログアウト',
+                icon: 'i-heroicons-arrow-right-on-rectangle',
                 onSelect: () => signOut()
               }
             ]
