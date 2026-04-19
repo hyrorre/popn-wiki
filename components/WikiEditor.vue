@@ -21,6 +21,7 @@ const saving = ref(false)
 const loadingHistory = ref(false)
 const restoring = ref<number | null>(null)
 const revisions = ref<Page[]>([])
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const isViewModalOpen = ref(false)
 const isDiffModalOpen = ref(false)
@@ -177,9 +178,11 @@ await loadHistory()
           <span class="text-xs font-bold text-muted uppercase">Editor</span>
           <span class="text-xs text-muted">{{ body.length }} characters</span>
         </div>
+        <MarkdownToolbar v-model="body" :textarea="textareaRef" />
         <textarea
+          ref="textareaRef"
           v-model="body"
-          class="border border-default rounded-lg p-4 w-full h-full min-h-[400px] font-mono text-sm leading-relaxed focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+          class="border border-default rounded-t-none rounded-b-lg p-4 w-full h-full min-h-[400px] font-mono text-sm leading-relaxed focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
           placeholder="Markdownを入力してください..."
         />
       </div>

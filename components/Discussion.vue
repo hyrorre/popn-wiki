@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import type { Comment } from '~/shared/types'
 
 const props = defineProps<{
@@ -35,6 +36,7 @@ const handleJump = () => {
 }
 
 const newCommentBody = ref('')
+const textareaRef = ref<ComponentPublicInstance | null>(null)
 const isSubmitting = ref(false)
 
 const submitComment = async () => {
@@ -143,7 +145,9 @@ watch(page, (newVal) => {
         <u-icon name="i-heroicons-pencil" class="w-5 h-5" />
         新しくコメントする
       </h4>
+      <MarkdownToolbar v-model="newCommentBody" :textarea="textareaRef" />
       <u-textarea
+        ref="textareaRef"
         v-model="newCommentBody"
         placeholder="ページについての意見や質問を書いてみましょう。"
         :rows="3"
