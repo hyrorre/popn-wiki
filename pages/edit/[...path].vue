@@ -94,10 +94,7 @@ useHead({
 <template>
   <Header />
 
-  <u-container class="flex flex-col lg:flex-row gap-4">
-    <!-- デスクトップ用サイドバー -->
-    <Sidebar class="hidden lg:block border-r border-default min-w-[200px] max-w-[250px]" />
-
+  <u-container class="flex flex-col gap-4">
     <!-- モバイル用サイドバー (Slideover) -->
     <u-slideover v-model:open="isSidebarOpen" title="Menu" side="left">
       <template #body>
