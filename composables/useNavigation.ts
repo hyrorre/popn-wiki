@@ -7,11 +7,6 @@ export const useNavigation = (showButtons: boolean = true) => {
   const route = useRoute()
   const router = useRouter()
 
-  const { data: profile } = useFetch('/api/profile', {
-    lazy: true,
-    server: false
-  })
-
   const signOut = async () => {
     await $fetch('/api/auth/logout', { method: 'POST' })
     await clearSession()
@@ -46,7 +41,7 @@ export const useNavigation = (showButtons: boolean = true) => {
       ? [
           {
             class: 'profile',
-            label: profile.value?.name ?? user.value.name ?? user.value.login ?? 'プロフィール',
+            label: user.value.name ?? user.value.login ?? 'プロフィール',
             icon: 'i-tabler-user',
             children: [
               {
