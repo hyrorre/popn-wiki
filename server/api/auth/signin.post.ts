@@ -1,8 +1,10 @@
 import { usersTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { checkRateLimit } from '~/server/utils/rateLimit'
 
 export default defineEventHandler(async (event) => {
+  await checkRateLimit(event, { key: 'auth:signin', limit: 10 })
   const { email, password } = await readBody(event)
 
   if (!email || !password) {
