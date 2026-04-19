@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import type { Comment } from '~/shared/types'
 
 const props = defineProps<{
@@ -20,6 +21,9 @@ const editBody = ref(props.comment.body)
 const isEditing = ref(false)
 const isEditingOpen = ref(false)
 const isDeleting = ref(false)
+
+const replyTextareaRef = ref<ComponentPublicInstance | null>(null)
+const editTextareaRef = ref<ComponentPublicInstance | null>(null)
 
 const openReply = () => {
   isReplyingOpen.value = true
@@ -121,8 +125,9 @@ const formatDate = (dateStr: string) => {
     </div>
 
     <!-- 編集モード -->
-    <div v-if="isEditingOpen" class="mt-2">
-      <u-textarea v-model="editBody" :rows="3" class="w-full" />
+    <div v-if="isEditingOpen" class="mt-2 text-foreground">
+      <MarkdownToolbar v-model="editBody" :textarea="editTextareaRef" />
+      <u-textarea ref="editTextareaRef" v-model="editBody" :rows="3" class="w-full" />
       <div v-if="editBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
@@ -164,7 +169,14 @@ const formatDate = (dateStr: string) => {
 
     <!-- 返信フォーム -->
     <div v-if="isReplyingOpen" class="mt-4 pl-4 border-l-2 border-primary">
-      <u-textarea v-model="replyBody" placeholder="Markdownで返信を入力..." :rows="3" class="w-full" />
+      <MarkdownToolbar v-model="replyBody" :textarea="replyTextareaRef" />
+      <u-textarea
+        ref="replyTextareaRef"
+        v-model="replyBody"
+        placeholder="Markdownで返信を入力..."
+        :rows="3"
+        class="w-full"
+      />
       <div v-if="replyBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
