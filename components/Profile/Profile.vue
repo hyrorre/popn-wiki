@@ -36,7 +36,7 @@ const submit = async () => {
     <div v-if="status === 'pending'">読込中...</div>
     <div v-else-if="error">{{ error.message }}</div>
     <u-form v-else-if="form" :state="form" @submit="submit">
-      <u-form-field label="name" name="name">
+      <u-form-field label="ユーザー名" name="name">
         <u-input v-model="form.name" required class="w-full" size="lg" />
       </u-form-field>
       <div class="mt-4 flex justify-end items-center">

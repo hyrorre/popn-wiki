@@ -132,7 +132,7 @@ const restore = async (revision: number) => {
     })
     emit('saved', saved)
   } catch {
-    errorMessage.value = '差し戻しに失敗しました。'
+    errorMessage.value = '復元に失敗しました。'
   } finally {
     restoring.value = null
   }

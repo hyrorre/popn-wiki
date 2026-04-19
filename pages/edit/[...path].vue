@@ -71,7 +71,7 @@ const reloadLatest = async () => {
 
 // ページ削除
 const deletePage = async () => {
-  if (!confirm('このページを削除しますか？この操作は履歴から差し戻しで復元できます。')) return
+  if (!confirm('このページを削除しますか？この操作は履歴から復元できます。')) return
   deleting.value = true
   try {
     await $fetch('/api/page', {
