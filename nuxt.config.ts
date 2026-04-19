@@ -110,9 +110,5 @@ export default defineNuxtConfig({
         ]
       }
     }
-  },
-  routeRules: {
-    '/_media/score/start/**': { redirect: { to: '/api/image/**', statusCode: 301 } },
-    '/score/start/**': { redirect: { to: '/api/image/**', statusCode: 301 } }
   }
 })
