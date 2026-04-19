@@ -2,45 +2,7 @@
 
 Sample : https://popn-wiki.hyrorre.workers.dev/
 
-(WIP)
-
-## TODO
-
-- [x] fix: external link
-- [x] page create/delete
-- [x] image upload
-- [x] recent edit/comment
-- [x] fix: converting link (pagename)
-- [x] fix: google-analytics
-- [x] table sort
-- [x] convert comments
-- [x] comment paging
-- [x] edit page layout (vertical/horizontal)
-- [x] sidebar layout
-- [x] revision view/diff
-- [x] definition list
-- [x] auto link label
-- [x] user email confirmation
-- [x] staging
-- [x] fix: seeding comments
-- [x] NOTOC
-- [x] NOCACHE
-- [x] display page title (RecentEdits/RecentComments)
-- [x] fix: nested span tag (MDC style)
-- [x] annotation (注釈)
-- [x] feat(auth): add auth provider (google)
-- [x] feat: migrate images
-- [x] media file redirect
-- [x] feat(wiki): minor change
-- [ ] fix(wiki): sort table
-- [ ] TOC
-- [ ] feat: monaco-editor (vscode like)
-- [ ] breadcrumb
-- [ ] user role (admin/editor/commenter/viewer)
-- [ ] cache strategy (swr/isr)
-- [ ] test codes (bun test)
-
-## Feature
+## Features
 
 - Markdown based syntax
 - Auth
@@ -49,10 +11,12 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 
 ## Powered by
 
-- [Nuxt](https://nuxt.com) : SSR Framework
+- [Nuxt](https://nuxt.com) : SSR/SSG Framework
 - [@nuxtjs/mdc](https://nuxt.com/modules/mdc) : Markdown parser
-- [NuxtHub](https://hub.nuxt.com) : DB (D1), Blob (R2)
-- [Cloudflare](https://www.cloudflare.com/) : Hosting, Edge Functions
+- [nuxt-auth-utils](https://nuxt.com/modules/auth-utils) : Auth utils
+- [NuxtHub](https://hub.nuxt.com) : DB, Blob, KV Wrapper
+- [Cloudflare](https://www.cloudflare.com/) : Hosting, Edge Functions, DB, Blob, KV
+- [Resend](https://resend.com/) : Email Service
 
 ## Setup
 
@@ -89,3 +53,12 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## TODO
+
+- [ ] feat(core): cache strategy (swr/isr)
+- [ ] feat(test): test codes (bun test)
+- [ ] feat(core): monaco-editor (vscode like)
+- [ ] feat(core): toc component
+- [ ] feat(ui): breadcrumb ui
+- [ ] feat(core): user role (admin/editor/commenter/viewer)
