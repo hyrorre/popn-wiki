@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'fs'
 import path from 'path'
 import { db } from '@nuxthub/db'
@@ -1150,7 +1149,7 @@ function parseUsersAuth(filePath: string): Map<string, { id: string; name: strin
 /**
  * スキーマ定義を介さずに Raw SQL で挿入を行うヘルパー
  */
-async function rawInsert(tableName: string, data: Record<string, any>) {
+async function rawInsert(tableName: string, data: Record<string, string | number | boolean | null>) {
   const keys = Object.keys(data)
   const values = Object.values(data)
   const prefix = `INSERT INTO "${tableName}" (${keys.map((k) => `"${k}"`).join(', ')}) VALUES (`
@@ -1217,7 +1216,7 @@ export default defineTask({
             VALUES (${user.name}, ${user.email}, ${user.password}, ${userNow}, ${userNow}, 1)
             ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
             RETURNING *
-          `)) as any
+          `)) as { id?: number; ID?: number } | null
           if (res) console.log(`[Debug] User insert res for ${oldId}: ${JSON.stringify(res)}`)
           const newId = Array.isArray(res) ? res[0] : res?.id || res?.ID
           if (newId) {
@@ -1225,8 +1224,8 @@ export default defineTask({
           } else {
             console.warn(`[Warn] Could not get newId for user: ${oldId}. res: ${JSON.stringify(res)}`)
           }
-        } catch (e: any) {
-          console.error(`[Error] User insert failed ${oldId}: ${e.message}`)
+        } catch (e: unknown) {
+          console.error(`[Error] User insert failed ${oldId}: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
       console.log(`[Debug] oldUserIdToNewId size: ${oldUserIdToNewId.size}`)
@@ -1361,8 +1360,8 @@ export default defineTask({
             cidToNewId.set(comment.cid, newId)
           }
           insertedCount++
-        } catch (e: any) {
-          console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e.message}`)
+        } catch (e: unknown) {
+          console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
       console.log(`Inserted ${insertedCount} comments.`)
