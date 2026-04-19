@@ -2,11 +2,18 @@
 import { useAttrs } from 'vue'
 
 const attrs = useAttrs()
+const route = useRoute()
 const container = ref<HTMLElement | null>(null)
 const thElements = ref<HTMLTableCellElement[]>([])
 
-const sortCol = ref<number | null>(null)
-const sortDir = ref<'asc' | 'desc' | null>(null)
+// ページ遷移間でソート状態を維持するためのステート（リロードでリセットされる）
+const sortState = useState<{ col: number | null; dir: 'asc' | 'desc' | null }>(`sort-state-${route.path}`, () => ({
+  col: null,
+  dir: null
+}))
+
+const sortCol = computed(() => sortState.value.col)
+const sortDir = computed(() => sortState.value.dir)
 
 function getSortValue(text: string, type: string) {
   if (type === 'category') {
@@ -25,18 +32,18 @@ function getSortValue(text: string, type: string) {
   return text.trim().toLowerCase()
 }
 
-function sortTable(table: HTMLTableElement, colIndex: number) {
+function sortTable(table: HTMLTableElement, colIndex: number, forceDir?: 'asc' | 'desc') {
   const tbody = table.querySelector('tbody')
   if (!tbody) return
 
   const rows = Array.from(tbody.querySelectorAll('tr'))
   const type = (attrs[`c${colIndex + 1}`] as string) || 'text'
 
-  const currentSortCol = table.getAttribute('data-sort-col')
-  const currentSortDir = table.getAttribute('data-sort-dir')
+  const currentSortCol = sortState.value.col
+  const currentSortDir = sortState.value.dir
 
-  const isAsc = currentSortCol === String(colIndex) && currentSortDir === 'asc'
-  const newDir = isAsc ? 'desc' : 'asc'
+  const isAsc = currentSortCol === colIndex && currentSortDir === 'asc'
+  const newDir = forceDir || (isAsc ? 'desc' : 'asc')
 
   rows.sort((a, b) => {
     const valA = getSortValue(a.cells[colIndex]?.innerText || '', type)
@@ -55,11 +62,8 @@ function sortTable(table: HTMLTableElement, colIndex: number) {
 
   rows.forEach((row) => tbody.appendChild(row))
 
-  table.setAttribute('data-sort-col', String(colIndex))
-  table.setAttribute('data-sort-dir', newDir)
-
-  sortCol.value = colIndex
-  sortDir.value = newDir
+  sortState.value.col = colIndex
+  sortState.value.dir = newDir
 }
 
 onMounted(() => {
@@ -75,6 +79,11 @@ onMounted(() => {
     th.title = 'クリックでソート'
     th.addEventListener('click', () => sortTable(table, index))
   })
+
+  // 初期ソートの適用
+  if (sortState.value.col !== null && sortState.value.dir !== null) {
+    sortTable(table, sortState.value.col, sortState.value.dir)
+  }
 })
 
 const quantify_category = (a: string) => {
