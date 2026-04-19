@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
     .insert(pagesTable)
     .values({
       path,
+      title: targetPage.title,
       revision: nextRevision,
       body: targetPage.body,
       bodyAst: JSON.stringify(ast),

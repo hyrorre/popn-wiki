@@ -2,6 +2,7 @@ import { pagesTable } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+import { extractTitleFromMarkdown } from '../utils/page'
 
 type UpdatePageRequest = {
   path?: string
@@ -48,8 +49,7 @@ export default defineEventHandler(async (event) => {
   // Markdown を解析
   const ast = await parseMarkdown(body)
 
-  const titleMatch = body.match(/^#{1,6}\s+(.*)$/m)
-  const title = titleMatch?.[1] ? titleMatch[1].trim() : path === '/' ? 'Home' : path.split('/').pop() || path
+  const title = extractTitleFromMarkdown(body) || (path === '/' ? 'Home' : path.split('/').pop() || path)
 
   const inserted = await db
     .insert(pagesTable)

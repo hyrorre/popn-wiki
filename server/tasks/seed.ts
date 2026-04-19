@@ -620,12 +620,28 @@ function getFilesRecursively(dir: string): string[] {
 }
 
 /**
- * DokuWiki 形式のテキストから最初の見出し（====== タイトル ======）を抽出する
+ * テキストから最初の見出しを抽出する（DokuWiki形式とMarkdown形式の両方に対応）
+ * [タイトル]{.hoge} のようなMDC形式の属性も除去する
  */
-function extractTitleFromDokuwiki(content: string): string | null {
-  // 最初の見出し行を探す
-  const match = content.match(/^(={2,6})\s*(.*?)\s*\1\s*$/m)
-  if (match?.[2] !== undefined) return match[2].trim()
+function extractTitle(content: string): string | null {
+  // 1. DokuWiki形式 (====== Title =====)
+  const dokuMatch = content.match(/^(={2,6})\s*(.*?)\s*\1\s*$/m)
+  if (dokuMatch?.[2]) {
+    let title = dokuMatch[2].trim()
+    const cleanMatch = title?.match(/^\[(.*?)\]\{.*?\}$/) || ''
+    if (cleanMatch) title = cleanMatch[1]?.trim() || ''
+    return title || null
+  }
+
+  // 2. Markdown形式 (# Title)
+  const mdMatch = content.match(/^#{1,6}\s+(.*)$/m)
+  if (mdMatch?.[1]) {
+    let title = mdMatch[1].trim()
+    const cleanMatch = title.match(/^\[(.*?)\]\{.*?\}$/)
+    if (cleanMatch) title = cleanMatch[1]?.trim() || ''
+    return title || null
+  }
+
   return null
 }
 
@@ -645,7 +661,7 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
 
     try {
       const content = fs.readFileSync(file, 'utf8')
-      const title = extractTitleFromDokuwiki(content)
+      const title = extractTitle(content)
       if (title) {
         titleMap.set(dbPath, title)
       }
