@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo)))
+    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
     .get()
   const total = countResult?.count ?? 0
 
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const rootIdsResult = await db
     .select({ id: commentsTable.id })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo)))
+    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
     .orderBy(desc(commentsTable.createdAt))
     .limit(limit)
     .offset(offset)
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
         rootCreatedAt: sql<string>`${commentsTable.createdAt}`.as('rootCreatedAt')
       })
       .from(commentsTable)
-      .where(inArray(commentsTable.id, rootIds))
+      .where(and(inArray(commentsTable.id, rootIds), isNull(commentsTable.deletedAt)))
       .unionAll(
         db
           .select({
@@ -71,6 +71,7 @@ export default defineEventHandler(async (event) => {
           })
           .from(commentsTable)
           .innerJoin(sql`tree`, eq(commentsTable.replyTo, sql`tree.id`))
+          .where(isNull(commentsTable.deletedAt))
       )
   )
 

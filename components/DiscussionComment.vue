@@ -19,6 +19,7 @@ const isReplyingOpen = ref(false)
 const editBody = ref(props.comment.body)
 const isEditing = ref(false)
 const isEditingOpen = ref(false)
+const isDeleting = ref(false)
 
 const openReply = () => {
   isReplyingOpen.value = true
@@ -76,6 +77,25 @@ const submitEdit = async () => {
   }
 }
 
+const submitDelete = async () => {
+  if (!confirm('このコメントを削除しますか？\n（返信がある場合、それらも非表示になります）')) return
+  isDeleting.value = true
+  try {
+    await $fetch('/api/comment', {
+      method: 'DELETE',
+      body: {
+        id: props.comment.id
+      }
+    })
+    emit('refresh')
+  } catch (error) {
+    console.error(error)
+    alert('コメントの削除に失敗しました')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('ja-JP', {
     year: 'numeric',
@@ -128,6 +148,14 @@ const formatDate = (dateStr: string) => {
         @click="openEdit"
       >
         <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
+      </button>
+      <button
+        v-if="comment.userId === user.id"
+        class="text-muted hover:text-error transition-colors flex items-center gap-1"
+        :disabled="isDeleting"
+        @click="submitDelete"
+      >
+        <u-icon name="i-heroicons-trash" class="w-4 h-4" /> 削除
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
         <u-icon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" /> 返信

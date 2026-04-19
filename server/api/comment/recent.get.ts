@@ -1,5 +1,5 @@
 import { commentsTable, usersTable, pagesTable } from '../../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
     })
     .from(commentsTable)
     .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
+    .where(isNull(commentsTable.deletedAt))
     .orderBy(desc(commentsTable.createdAt))
     .limit(200)
     .all()

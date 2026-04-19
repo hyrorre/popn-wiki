@@ -38,7 +38,8 @@ export const commentsTable = sqliteTable('comments', {
   replyTo: integer(),
   userId: integer().notNull(),
   createdAt: text().notNull(),
-  updatedAt: text().notNull()
+  updatedAt: text().notNull(),
+  deletedAt: text()
 })
 
 export const tokensTable = sqliteTable('tokens', {

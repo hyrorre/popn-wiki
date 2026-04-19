@@ -43,6 +43,7 @@ export type Comment = {
   replyToName: string | null
   createdAt: string
   updatedAt: string
+  deletedAt?: string | null
   profiles: {
     id: string
     name: string | null
