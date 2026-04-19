@@ -8,11 +8,19 @@ const thElements = ref<HTMLTableCellElement[]>([])
 const sortCol = ref<number | null>(null)
 const sortDir = ref<'asc' | 'desc' | null>(null)
 
-// TODO: fix sort of category and difficulty
 function getSortValue(text: string, type: string) {
-  if (type === 'numeric' || type === 'bpm') {
-    const match = text.match(/[\d.]+/)
-    return match ? parseFloat(match[0]) : 0
+  if (type === 'category') {
+    return quantify_category(text)
+  }
+  if (type === 'numeric') {
+    // 弱(-0.505±0.5) や 中(+0.040) からカッコ内の数値を抽出
+    const match = text.match(/([-+]?\d+(?:\.\d+)?)/)
+    return parseFloat(match?.[1] ?? '0')
+  }
+  if (type === 'bpm') {
+    // 210～360 などの範囲表記から最初の数値を抽出
+    const match = text.match(/\d+/)
+    return parseInt(match?.[0] ?? '0')
   }
   return text.trim().toLowerCase()
 }
@@ -68,6 +76,52 @@ onMounted(() => {
     th.addEventListener('click', () => sortTable(table, index))
   })
 })
+
+const quantify_category = (a: string) => {
+  a = a.replace(/\[(.*?)\]/u, '$1')
+  if (a.match(/^[0-9]+$/u)) {
+    return Number(a)
+  }
+  if (a.match(/^CS[0-9]*$/u)) {
+    return 5000 + Number(a.substr(2))
+  }
+  switch (a) {
+    case 'SP':
+      return 21
+    case 'LT':
+      return 22
+    case 'écl':
+    case 'ecl':
+      return 23
+    case 'うさ':
+      return 24
+    case 'pe':
+      return 25
+    case '解':
+      return 26
+    case 'UL':
+      return 27
+    case 'JF':
+      return 28
+    case 'HC':
+      return 29
+    case '版権':
+      return 3001
+    case 'CSbest':
+      return 5501
+    case 'PMP':
+      return 6001
+    case 'うたっち':
+      return 6501
+    case 'PMP2':
+      return 7002
+    case 'ee':
+      return 8001
+    case 'ee2':
+      return 8002
+  }
+  return 9999
+}
 </script>
 
 <template>
