@@ -1,13 +1,13 @@
 import { pagesTable } from '../../db/schema'
-import { eq, desc, not } from 'drizzle-orm'
+import { eq, desc, not, and, or, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limit = Math.min(Number(query.limit) || 10, 50)
+  const includeMinor = query.includeMinor === 'true'
 
   // 各ページの最新リビジョンを取得
-  // SQLite では WINDOW FUNCTION や SUBQUERY を使用
   const data = await db
     .select({
       path: pagesTable.path,
@@ -18,7 +18,11 @@ export default defineEventHandler(async (event) => {
       updatedAt: pagesTable.updatedAt
     })
     .from(pagesTable)
-    .where(not(eq(pagesTable.body, ''))) // 削除済みを除外
+    .where(
+      includeMinor
+        ? not(eq(pagesTable.body, ''))
+        : and(not(eq(pagesTable.body, '')), or(isNull(pagesTable.minor), eq(pagesTable.minor, 0)))
+    )
     .orderBy(desc(pagesTable.updatedAt))
     .all()
 

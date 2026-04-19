@@ -22,6 +22,7 @@ const loadingHistory = ref(false)
 const restoring = ref<number | null>(null)
 const revisions = ref<Page[]>([])
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isMinor = ref(false)
 
 const isViewModalOpen = ref(false)
 const isDiffModalOpen = ref(false)
@@ -101,7 +102,8 @@ const save = async () => {
         path: props.path,
         body: body.value,
         baseRevision: props.baseRevision,
-        message: message.value
+        message: message.value,
+        minor: isMinor.value ? 1 : 0
       }
     })
     emit('saved', saved)
@@ -160,6 +162,7 @@ await loadHistory()
           placeholder="変更メッセージ（任意）"
           icon="i-heroicons-chat-bubble-bottom-center-text"
         />
+        <u-checkbox v-model="isMinor" label="小変更" class="text-xs" />
       </div>
     </div>
 

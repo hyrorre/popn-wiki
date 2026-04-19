@@ -30,8 +30,8 @@ Sample : https://popn-wiki.hyrorre.workers.dev/
 - [x] annotation (注釈)
 - [x] feat(auth): add auth provider (google)
 - [x] feat: migrate images
-- [ ] media file redirect
-- [ ] feat(wiki): minor change
+- [x] media file redirect
+- [x] feat(wiki): minor change
 - [ ] fix(wiki): sort table
 - [ ] TOC
 - [ ] feat: monaco-editor (vscode like)

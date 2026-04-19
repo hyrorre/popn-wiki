@@ -8,6 +8,7 @@ type UpdatePageRequest = {
   body?: string
   baseRevision?: number
   message?: string
+  minor?: number
 }
 
 export default defineEventHandler(async (event) => {
@@ -59,6 +60,7 @@ export default defineEventHandler(async (event) => {
       body,
       bodyAst: JSON.stringify(ast),
       message: payload.message?.trim() || null,
+      minor: payload.minor ?? 0,
       createdAt: now,
       updatedAt: now,
       createdBy: user.id,

@@ -7,15 +7,20 @@ const props = withDefaults(
   defineProps<{
     limit?: number | string
     hideDetail?: boolean | string
+    includeMinor?: boolean | string
   }>(),
   {
     limit: 10,
-    hideDetail: false
+    hideDetail: false,
+    includeMinor: false
   }
 )
 
 const { data: pages, status } = await useFetch<RecentPage[]>('/api/page/recent', {
-  query: { limit: Number(props.limit) }
+  query: {
+    limit: Number(props.limit),
+    includeMinor: props.includeMinor.toString()
+  }
 })
 
 const { format } = useAppConfig()
