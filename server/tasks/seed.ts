@@ -932,9 +932,33 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     } else {
       url = fixMalformedUrl(url)
     }
+
+    // urlに?linkonlyが含まれている場合は削除
+    url = url.replace(/\?linkonly/g, '')
+
+    // specialCharacters (#以外)を_に変換
+    url = url.replace(
+      new RegExp(
+        `[${specialCharacters
+          .filter((c) => c !== '#' && c !== '/')
+          .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
+          .join('')}]`,
+        'g'
+      ),
+      '_'
+    )
+
+    // 連続した_を1つにまとめる
+    url = url.replace(/_+/g, '_')
+
+    // 先頭と末尾 host の_を削除
+    url = url.replace(/^_/, '').replace(/_$/, '')
+
+    // urlを小文字に変換
+    url = url.toLowerCase()
+
     const altText = (alt || '').trim()
-    const prefix = url.endsWith('?linkonly') ? '' : '!'
-    return `${prefix}[${altText}](${url})`
+    return `[${altText}](${url})`
   })
 
   // 整形無効領域を復元（''等幅'' との組み合わせも考慮してインラインコードにする）
@@ -1361,7 +1385,9 @@ export default defineTask({
           }
           insertedCount++
         } catch (e: unknown) {
-          console.error(`[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e instanceof Error ? e.message : String(e)}`)
+          console.error(
+            `[Error] Failed to insert comment ${comment.cid} for ${pagePath}: ${e instanceof Error ? e.message : String(e)}`
+          )
         }
       }
       console.log(`Inserted ${insertedCount} comments.`)
