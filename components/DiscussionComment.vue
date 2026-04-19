@@ -112,7 +112,7 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <template>
-  <div class="rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-default shadow-sm relative">
+  <div :id="`comment-${comment.id}`" class="rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-default shadow-sm relative">
     <div class="flex justify-between items-center text-sm text-muted mb-3">
       <span class="font-medium text-foreground flex items-center gap-2">
         <u-avatar size="xs" :alt="comment.profiles?.name || '名無しさん'" />

@@ -54,6 +54,11 @@ export const useNavigation = (showButtons: boolean = true) => {
                 to: '/profile'
               },
               {
+                label: '返信一覧',
+                to: '/reply',
+                icon: 'i-heroicons-bell'
+              },
+              {
                 label: 'ログアウト',
                 onSelect: () => signOut()
               }
