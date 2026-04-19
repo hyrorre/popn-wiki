@@ -45,6 +45,9 @@ export default defineNuxtConfig({
       }
     ]
   },
+  colorMode: {
+    preference: 'light'
+  },
   hub: {
     blob: true,
     db: {
