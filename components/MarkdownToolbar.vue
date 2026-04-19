@@ -78,6 +78,7 @@ const insertLink = () => {
 const items = [
   { label: '太', action: () => wrapSelection('**', '**'), tooltip: '太字', style: 'font-bold' },
   { label: '斜', action: () => wrapSelection('*', '*'), tooltip: '斜体', style: 'italic' },
+  { label: '消', action: () => wrapSelection('~~', '~~'), tooltip: '取り消し線', style: 'line-through' },
   { icon: 'i-heroicons-hashtag', action: () => addPrefix('## '), tooltip: '見出し' },
   { icon: 'i-heroicons-list-bullet', action: () => addPrefix('- '), tooltip: 'リスト' },
   { icon: 'i-heroicons-link', action: () => insertLink(), tooltip: 'リンク' },
