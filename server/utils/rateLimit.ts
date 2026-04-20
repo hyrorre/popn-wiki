@@ -20,7 +20,7 @@ const localCounters = new Map<string, { count: number, expiresAt: number }>()
 export async function checkRateLimit(event: H3Event, options: RateLimitOptions) {
   const { key, limit, window = 60 } = options
 
-  const ip = getRequestIP(event, { xForwardedFor: true }) || 'unknown'
+  const ip = getClientIP(event)
   const kvKey = `rl:${key}:${ip}`
 
   const storage = useStorage('kv')
@@ -86,4 +86,14 @@ function setLocalCounter(key: string, count: number, ttl: number) {
 
 function isLocalDev() {
   return process.env.NODE_ENV !== 'production'
+}
+
+function getClientIP(event: H3Event) {
+  return (
+    getRequestHeader(event, 'cf-connecting-ip') ||
+    getRequestHeader(event, 'true-client-ip') ||
+    getRequestIP(event, { xForwardedFor: true }) ||
+    getRequestHeader(event, 'x-real-ip') ||
+    'unknown'
+  )
 }
