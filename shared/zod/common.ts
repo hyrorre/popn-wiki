@@ -1,9 +1,31 @@
 import * as z from 'zod'
 
+const commonPasswords = new Set([
+  '123456789012345',
+  '1234567890123456',
+  '111111111111111',
+  'passwordpassword',
+  'password123456789',
+  'qwertyqwerty123',
+  'adminadminadmin',
+  'letmeinletmein',
+  'welcome123456789',
+  'iloveyouiloveyou'
+])
+
 const hasControlCharacter = (value: string) => {
   for (const char of value) {
     const code = char.charCodeAt(0)
     if (code <= 31 || code === 127) {
+      return true
+    }
+  }
+  return false
+}
+
+const hasSymbol = (value: string) => {
+  for (const char of value) {
+    if (!/[\p{L}\p{N}\s]/u.test(char)) {
       return true
     }
   }
@@ -25,6 +47,11 @@ export const strongPasswordSchema = z
   .string()
   .min(8, 'パスワードは8文字以上で入力してください')
   .max(128, 'パスワードは128文字以内で入力してください')
+  .refine(
+    (value) => value.length >= 15 || hasSymbol(value),
+    'パスワードは15文字以上、または記号を含む8文字以上で入力してください'
+  )
+  .refine((value) => !commonPasswords.has(value.trim().toLowerCase()), '推測されやすいパスワードは使用できません')
 
 export const userNameSchema = z
   .string()

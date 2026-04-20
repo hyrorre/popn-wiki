@@ -71,6 +71,14 @@ const submit = async (payload: FormSubmitEvent<SignupInput>) => {
           @submit="submit"
         >
           <template #validation>
+            <u-alert
+              color="info"
+              variant="soft"
+              icon="i-lucide-shield-check"
+              title="パスワードは15文字以上、または記号を含む8文字以上で入力してください。"
+              description="推測されやすい文字列、名前、メールアドレスの一部は使用できません。"
+              class="mb-4 text-left"
+            />
             <u-alert v-if="error_message" color="error" icon="i-lucide-info" :title="error_message" />
           </template>
         </u-auth-form>

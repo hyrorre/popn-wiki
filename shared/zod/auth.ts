@@ -10,6 +10,15 @@ export const signupSchema = z.object({
   name: userNameSchema,
   email: emailSchema,
   password: strongPasswordSchema
+}).refine(({ name, password }) => !includesComparableValue(password, name), {
+  path: ['password'],
+  message: 'パスワードに名前を含めることはできません'
+}).refine(({ email, password }) => {
+  const localPart = email.split('@')[0] ?? ''
+  return !includesComparableValue(password, localPart)
+}, {
+  path: ['password'],
+  message: 'パスワードにメールアドレスの一部を含めることはできません'
 })
 
 export const emailOnlySchema = z.object({
@@ -30,3 +39,14 @@ export type SignupInput = z.output<typeof signupSchema>
 export type EmailOnlyInput = z.output<typeof emailOnlySchema>
 export type ResetPasswordFormInput = z.output<typeof resetPasswordFormSchema>
 export type ResetPasswordInput = z.output<typeof resetPasswordSchema>
+
+function includesComparableValue(password: string, value: string) {
+  const normalizedValue = normalizePasswordComparison(value)
+  if (normalizedValue.length < 4) return false
+
+  return normalizePasswordComparison(password).includes(normalizedValue)
+}
+
+function normalizePasswordComparison(value: string) {
+  return value.trim().toLowerCase()
+}
