@@ -3,14 +3,8 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
-
-type UpdatePageRequest = {
-  path?: string
-  body?: string
-  baseRevision?: number
-  message?: string
-  minor?: number
-}
+import { readZodBody } from '~/server/utils/validation'
+import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -18,14 +12,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody<UpdatePageRequest>(event)
-  const path = payload.path?.trim()
-  const body = payload.body
-  const baseRevision = payload.baseRevision ?? -1
-
-  if (!path || typeof body !== 'string' || !Number.isInteger(baseRevision) || baseRevision < 0) {
-    throw createError({ statusCode: 400, message: 'Invalid payload.' })
-  }
+  const payload = await readZodBody(event, updatePageSchema)
+  const { path, body, baseRevision } = payload
 
   const latest = await db
     .select()

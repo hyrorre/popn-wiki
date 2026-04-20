@@ -2,6 +2,8 @@ import { commentsTable, usersTable } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { readZodBody } from '~/server/utils/validation'
+import { createCommentSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'comment:post', limit: 10 })
@@ -10,14 +12,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody(event)
-  const path = payload.path?.trim()
-  const body = payload.body?.trim()
-  const replyTo = payload.replyTo || null
+  const { path, body, replyTo } = await readZodBody(event, createCommentSchema)
 
-  if (!path || !body) {
-    throw createError({ statusCode: 400, message: 'Path and body are required.' })
-  }
   const now = new Date().toISOString()
 
   const inserted = await db
