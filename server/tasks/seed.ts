@@ -769,21 +769,25 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
 
   // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
   // 強制改行 (\\) より先に処理し、セル内の \\ は <br> に変換する
-  text = text.replace(/(^[ \t]*[\^|].*(?:\n[ \t]*[\^|].*)*)/gm, (block) => {
-    const lines = block
+  // DokuWiki テーブル内のコメント行は Markdown テーブルを分断するため、テーブル直前へ移動する
+  text = text.replace(/(^[ \t]*[\^|].*(?:\n[ \t]*(?:[\^|].*|<!--.*-->[ \t]*))*)/gm, (block) => {
+    const blockLines = block
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.startsWith('^') || l.startsWith('|'))
+      .filter(Boolean)
+    const liftedComments = blockLines.filter((l) => /^<!--.*-->$/.test(l))
+    const lines = blockLines.filter((l) => l.startsWith('^') || l.startsWith('|'))
 
     if (lines.length === 0) return block
 
     // 1行をセル配列に変換
-    // 空白なしの空セル (||) は結合マーカー ">" にする
+    // 空白なしの空セル (||) は横結合マーカー ">"、DokuWiki の縦結合 (:::) は "~" にする
     const parseRow = (line: string) => {
       const marker = line[0] as string // '^' または '|'
       const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
       return inner.split(marker).map((cell) => {
         if (cell === '') return '>'
+        if (cell.trim() === ':::') return '~'
         // セル内の \\ を <br> に変換（テーブル行を壊さないように）
         return cell.replace(/\\\\([ \t]*)/g, '<br>').trim()
       })
@@ -810,7 +814,9 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
       }
     }
 
-    return mdLines.join('\n')
+    const markdownTable = mdLines.join('\n')
+    if (liftedComments.length === 0) return markdownTable
+    return `${liftedComments.join('\n')}\n${markdownTable}`
   })
 
   // 強制改行: \\ -> 改行（表示時は remark-breaks 前提で改行として扱う）
