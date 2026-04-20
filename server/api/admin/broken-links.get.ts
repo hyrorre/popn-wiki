@@ -110,7 +110,7 @@ export default defineEventHandler(async (_) => {
               sourcePath: page.path,
               targetUrl: url,
               text: text.substring(0, 100),
-              type: type,
+              type: type === 'link' ? 'internal' : type,
               error: type === 'image' ? 'Image not found' : 'Page not found'
             })
           }
