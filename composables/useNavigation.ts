@@ -36,14 +36,6 @@ export const useNavigation = (showButtons: boolean = true) => {
         to: (isEditPage ? `/${path}` : `/edit/${path}`).replace('//', '/')
       })
     }
-    if (showButtons) {
-      actionItems.push({
-        label: 'リンク切れ',
-        icon: 'i-heroicons-link-slash',
-        to: '/admin/broken-links'
-      })
-    }
-
     const userItems: NavigationMenuItem[] = user.value
       ? [
           {
