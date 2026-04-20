@@ -1,4 +1,5 @@
-import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { integer, sqliteTable, text, primaryKey, index } from 'drizzle-orm/sqlite-core'
 
 export const usersTable = sqliteTable('users', {
   id: integer().primaryKey({ autoIncrement: true }),
@@ -27,7 +28,15 @@ export const pagesTable = sqliteTable(
     bodyAst: text()
   },
   (table) => {
-    return [primaryKey({ columns: [table.path, table.revision] })]
+    return [
+      primaryKey({ columns: [table.path, table.revision] }),
+      index('pages_recent_all_idx')
+        .on(table.updatedAt, table.path, table.revision)
+        .where(sql`${table.body} != ''`),
+      index('pages_recent_major_idx')
+        .on(table.updatedAt, table.path, table.revision)
+        .where(sql`${table.body} != '' AND (${table.minor} IS NULL OR ${table.minor} = 0)`)
+    ]
   }
 )
 
