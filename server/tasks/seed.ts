@@ -3,6 +3,11 @@ import path from 'path'
 import { db } from '@nuxthub/db'
 import { sql } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+
+const D1_STATEMENT_CHUNK_SIZE = 80000
+const BODY_AST_SOURCE_MAX_LENGTH = 80000
+const BODY_AST_JSON_MAX_LENGTH = 80000
 
 const specialCharacters = [
   '\u{1a}',
@@ -657,7 +662,8 @@ function buildTitleMap(pagesDir: string): Map<string, string> {
       .relative(pagesDir, file)
       .replace(/\.txt$/, '')
       .replace(/\\/g, '/')
-    const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
+    const pagePath = relativePath === 'start' ? '/' : decodeLegacyPath(relativePath)
+    const dbPath = pagePath.toLowerCase()
 
     try {
       const content = fs.readFileSync(file, 'utf8')
@@ -701,6 +707,37 @@ function fixMalformedUrl(url: string): string {
       }
     })
   }
+}
+
+function decodeLegacyPath(pathValue: string): string {
+  if (!pathValue.includes('%')) return pathValue
+
+  try {
+    return decodeURI(pathValue)
+  } catch {
+    const decoded = fixMalformedUrl(pathValue)
+    if (decoded !== pathValue) {
+      console.warn(`[Warn] Decoded malformed legacy path: ${pathValue} -> ${decoded}`)
+    } else {
+      console.warn(`[Warn] Could not decode malformed legacy path: ${pathValue}`)
+    }
+    return decoded
+  }
+}
+
+function containsMalformedPercentEncodedUrl(markdown: string): boolean {
+  const urlMatches = markdown.matchAll(/(?:https?:\/\/|\/)[^\s<>"')\]]*%[^\s<>"')\]]*/g)
+
+  for (const match of urlMatches) {
+    const url = match[0]
+    try {
+      decodeURIComponent(url)
+    } catch {
+      return true
+    }
+  }
+
+  return false
 }
 
 function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
@@ -774,7 +811,7 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     return mdLines.join('\n')
   })
 
-  // 強制改行: \\ -> スペース2個 + 改行
+  // 強制改行: \\ -> 改行（表示時は remark-breaks 前提で改行として扱う）
   text = text.replace(/\\\\([ \t]*)/g, '\n')
 
   // 見出し: ====== Title ====== など -> # Title
@@ -940,7 +977,8 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     return `[${label.trim()}](${url})`
   })
 
-  // 画像: {{path|alt}} / {{path}} -> ![alt](url)
+  // 画像: {{path|alt}} / {{path}} -> [alt](url)
+  // 移行後は画像を直接埋め込まず、あえてリンクとして扱う
   text = text.replace(/\{\{([^|}]+?)(?:\|([^}]*))?\}\}/g, (_m, src, alt) => {
     let url = src.trim().replace(/:/g, '/')
     if (!/^[a-z]+:\/\/|^\//i.test(url)) {
@@ -1126,7 +1164,7 @@ function collectAllComments(metaDir: string): {
       .replace(/\.comments$/, '')
       .replace(/\\/g, '/')
     console.log(`[Debug] Processing comment file: ${relativePath}`)
-    const pagePath = relativePath === 'start' ? '/' : decodeURI(relativePath)
+    const pagePath = relativePath === 'start' ? '/' : decodeLegacyPath(relativePath)
 
     let parsed: DokuWikiCommentsFile
     try {
@@ -1206,6 +1244,29 @@ async function rawInsert(tableName: string, data: Record<string, string | number
   statement = sql`${statement}${sql.raw(suffix)}`
 
   await db.run(statement)
+}
+
+async function createBodyAstForSeed(markdown: string, pagePath: string): Promise<string | null> {
+  if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
+  if (containsMalformedPercentEncodedUrl(markdown)) {
+    console.log(`[Body AST] Skipped ${pagePath}: malformed percent-encoded URL`)
+    return null
+  }
+
+  try {
+    const ast = await parseMarkdown(markdown)
+    const bodyAst = JSON.stringify(ast)
+    if (bodyAst.length > BODY_AST_JSON_MAX_LENGTH) {
+      console.log(
+        `[Body AST] Skipped ${pagePath}: AST is too large (${bodyAst.length}/${BODY_AST_JSON_MAX_LENGTH} chars)`
+      )
+      return null
+    }
+    return bodyAst
+  } catch (e) {
+    console.warn(`[Body AST] Failed to parse ${pagePath}: ${e instanceof Error ? e.message : String(e)}`)
+    return null
+  }
 }
 
 export default defineTask({
@@ -1290,41 +1351,50 @@ export default defineTask({
     console.log(`Built title map with ${titleMap.size} entries.`)
 
     const files = getFilesRecursively(pagesDir)
-    const pageEntries = files
-      .filter((file) => file.endsWith('.txt'))
-      .map((file) => {
-        const relativePath = path
-          .relative(pagesDir, file)
-          .replace(/\.txt$/, '')
-          .replace(/\\/g, '/')
-        const bodyContent = fs.readFileSync(file, 'utf8')
-        const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
-        const now = new Date().toISOString()
+    const pageEntries: Record<string, string | number | boolean | null>[] = []
+    let bodyAstCount = 0
 
-        const dbPath = relativePath === 'start' ? '/' : decodeURI(relativePath).toLowerCase()
-        const title =
-          titleMap.get(dbPath) || (relativePath === 'start' ? 'Home' : decodeURI(relativePath.split('/').pop() || ''))
+    for (const file of files.filter((file) => file.endsWith('.txt'))) {
+      const relativePath = path
+        .relative(pagesDir, file)
+        .replace(/\.txt$/, '')
+        .replace(/\\/g, '/')
+      const bodyContent = fs.readFileSync(file, 'utf8')
+      const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
+      const now = new Date().toISOString()
 
-        return {
-          path: relativePath === 'start' ? '/' : decodeURI(relativePath),
-          title: title,
-          revision: 1,
-          body: markdown,
-          message: null,
-          minor: 0,
-          created_at: now,
-          updated_at: now,
-          created_by: defaultUserId,
-          updated_by: defaultUserId
-        }
+      const pagePath = relativePath === 'start' ? '/' : decodeLegacyPath(relativePath)
+      const dbPath = pagePath.toLowerCase()
+      const title =
+        titleMap.get(dbPath) ||
+        (relativePath === 'start' ? 'Home' : decodeLegacyPath(relativePath.split('/').pop() || ''))
+      const bodyAst = await createBodyAstForSeed(markdown, pagePath)
+      if (bodyAst) bodyAstCount++
+
+      pageEntries.push({
+        path: pagePath,
+        title: title,
+        revision: 1,
+        body: markdown,
+        bodyAst,
+        message: null,
+        minor: 0,
+        created_at: now,
+        updated_at: now,
+        created_by: defaultUserId,
+        updated_by: defaultUserId
       })
+    }
+
+    console.log(
+      `Prepared ${bodyAstCount}/${pageEntries.length} page ASTs under ${BODY_AST_SOURCE_MAX_LENGTH} source chars and ${BODY_AST_JSON_MAX_LENGTH} AST chars.`
+    )
 
     if (pageEntries.length > 0) {
       // ページテーブルのデータをすべて削除
       await db.run(sql`DELETE FROM pages`)
 
       // ページテーブルに挿入
-      const CHUNK_SIZE = 80000 // 80KB limit for D1 HTTP API
       let pageCount = 0
       for (const pageEntry of pageEntries) {
         pageCount++
@@ -1333,19 +1403,31 @@ export default defineTask({
         }
         try {
           const fullBody = pageEntry.body
-          if (fullBody.length > CHUNK_SIZE) {
+          const bodyAst = pageEntry.bodyAst
+          const insertPageEntry = { ...pageEntry }
+          delete insertPageEntry.bodyAst
+
+          if (typeof fullBody === 'string' && fullBody.length > D1_STATEMENT_CHUNK_SIZE) {
             // Raw INSERT for first chunk
-            const firstChunk = fullBody.substring(0, CHUNK_SIZE)
-            await rawInsert('pages', { ...pageEntry, body: firstChunk })
+            const firstChunk = fullBody.substring(0, D1_STATEMENT_CHUNK_SIZE)
+            await rawInsert('pages', { ...insertPageEntry, body: firstChunk })
 
             // Raw UPDATE for subsequent chunks
-            for (let offset = CHUNK_SIZE; offset < fullBody.length; offset += CHUNK_SIZE) {
-              const chunk = fullBody.substring(offset, offset + CHUNK_SIZE)
+            for (let offset = D1_STATEMENT_CHUNK_SIZE; offset < fullBody.length; offset += D1_STATEMENT_CHUNK_SIZE) {
+              const chunk = fullBody.substring(offset, offset + D1_STATEMENT_CHUNK_SIZE)
               await db.run(sql`UPDATE pages SET body = body || ${chunk} WHERE path = ${pageEntry.path}`)
             }
             console.log(`[Large Page] Split and inserted: ${pageEntry.path} (${fullBody.length} chars)`)
           } else {
-            await rawInsert('pages', pageEntry)
+            await rawInsert('pages', insertPageEntry)
+          }
+
+          if (typeof bodyAst === 'string' && bodyAst.length > 0) {
+            await db.run(sql`
+              UPDATE pages
+              SET body_ast = ${bodyAst}
+              WHERE path = ${pageEntry.path} AND revision = ${pageEntry.revision}
+            `)
           }
         } catch {
           console.error(`[Error] Failed to insert page: ${pageEntry.path}`)
