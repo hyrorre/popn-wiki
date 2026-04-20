@@ -1,8 +1,4 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-const isDevelopment = process.env.NODE_ENV !== 'production'
-const kvBinding = process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV'
-const kvNamespaceId = process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
-
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
@@ -54,16 +50,11 @@ export default defineNuxtConfig({
   },
   hub: {
     blob: true,
-    kv: isDevelopment
-      ? {
-          driver: 'fs-lite',
-          base: '.data/kv'
-        }
-      : {
-          driver: 'cloudflare-kv-binding',
-          binding: kvBinding,
-          ...(kvNamespaceId ? { namespaceId: kvNamespaceId } : {})
-        },
+    kv: {
+      driver: 'cloudflare-kv-binding',
+      binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
+      namespaceId: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
+    },
     db: {
       dialect: 'sqlite',
       casing: 'snake_case'
@@ -127,8 +118,8 @@ export default defineNuxtConfig({
         ],
         kv_namespaces: [
           {
-            binding: kvBinding,
-            ...(kvNamespaceId ? { id: kvNamespaceId } : {})
+            binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
+            id: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
           }
         ]
       }
