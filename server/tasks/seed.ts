@@ -725,13 +725,15 @@ function decodeLegacyPath(pathValue: string): string {
   }
 }
 
-function containsMalformedPercentEncodedUrl(markdown: string): boolean {
-  const urlMatches = markdown.matchAll(/(?:https?:\/\/|\/)[^\s<>"')\]]*%[^\s<>"')\]]*/g)
+function containsUnsafePercentEncoding(markdown: string): boolean {
+  const percentRuns = markdown.matchAll(/%(?:[0-9A-Fa-f]{2})*/g)
 
-  for (const match of urlMatches) {
-    const url = match[0]
+  for (const match of percentRuns) {
+    const value = match[0]
+    if (!value || value.length % 3 !== 0) return true
+
     try {
-      decodeURIComponent(url)
+      decodeURIComponent(value)
     } catch {
       return true
     }
@@ -907,9 +909,19 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
     let target = inner
     let label = ''
     let isExplicitLabel = false
+    let linkAttrs = ''
 
-    const pipeIndex = inner.indexOf('|')
-    if (pipeIndex !== -1) {
+    const colorLinkMatch = inner.match(/^(.*?)<:color>>(.*?)\|<color\s+([^>]+)$/i)
+    if (colorLinkMatch) {
+      label = colorLinkMatch[1]?.trim() || ''
+      target = colorLinkMatch[2]?.trim() || ''
+      const color = colorLinkMatch[3]?.trim()
+      if (color) {
+        linkAttrs = `{style="color: ${color.replace(/"/g, '&quot;')}"}`
+      }
+      isExplicitLabel = true
+    } else if (inner.includes('|')) {
+      const pipeIndex = inner.indexOf('|')
       target = inner.slice(0, pipeIndex)
       label = inner.slice(pipeIndex + 1).trim()
       isExplicitLabel = true
@@ -974,7 +986,7 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
       label = label.replace(/:/g, '/')
     }
 
-    return `[${label.trim()}](${url})`
+    return `[${label.trim()}](${url})${linkAttrs}`
   })
 
   // 画像: {{path|alt}} / {{path}} -> [alt](url)
@@ -1248,8 +1260,8 @@ async function rawInsert(tableName: string, data: Record<string, string | number
 
 async function createBodyAstForSeed(markdown: string, pagePath: string): Promise<string | null> {
   if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
-  if (containsMalformedPercentEncodedUrl(markdown)) {
-    console.log(`[Body AST] Skipped ${pagePath}: malformed percent-encoded URL`)
+  if (containsUnsafePercentEncoding(markdown)) {
+    console.log(`[Body AST] Skipped ${pagePath}: unsafe percent encoding`)
     return null
   }
 
