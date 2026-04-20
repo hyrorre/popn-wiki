@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
 import { readZodBody } from '~/server/utils/validation'
+import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
 import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const payload = await readZodBody(event, updatePageSchema)
   const { path, body, baseRevision } = payload
+  const sanitizedBody = sanitizeDangerousMarkdownHtml(body)
 
   const latest = await db
     .select()
@@ -35,9 +37,9 @@ export default defineEventHandler(async (event) => {
   const now = new Date().toISOString()
 
   // Markdown を解析
-  const ast = await parseMarkdown(body)
+  const ast = await parseMarkdown(sanitizedBody)
 
-  const title = extractTitleFromMarkdown(body) || (path === '/' ? 'Home' : path.split('/').pop() || path)
+  const title = extractTitleFromMarkdown(sanitizedBody) || (path === '/' ? 'Home' : path.split('/').pop() || path)
 
   const inserted = await db
     .insert(pagesTable)
@@ -45,7 +47,7 @@ export default defineEventHandler(async (event) => {
       path,
       title,
       revision: nextRevision,
-      body,
+      body: sanitizedBody,
       bodyAst: JSON.stringify(ast),
       message: payload.message?.trim() || null,
       minor: payload.minor ?? 0,

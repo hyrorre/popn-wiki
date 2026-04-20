@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { readZodBody } from '~/server/utils/validation'
+import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
@@ -13,6 +14,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const { path, body, replyTo } = await readZodBody(event, createCommentSchema)
+  const sanitizedBody = sanitizeDangerousMarkdownHtml(body).trim()
+
+  if (!sanitizedBody) {
+    throw createError({ statusCode: 400, message: 'Invalid payload.' })
+  }
 
   const now = new Date().toISOString()
 
@@ -20,7 +26,7 @@ export default defineEventHandler(async (event) => {
     .insert(commentsTable)
     .values({
       path,
-      body,
+      body: sanitizedBody,
       replyTo,
       userId: parseInt(user.id),
       createdAt: now,
