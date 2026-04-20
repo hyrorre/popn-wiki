@@ -12,6 +12,7 @@
     "lint": "eslint . --fix",
     "format": "prettier . --write",
     "db:generate": "drizzle-kit generate",
+    "db:seed:sql": "bun scripts/generate-d1-seed.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate"

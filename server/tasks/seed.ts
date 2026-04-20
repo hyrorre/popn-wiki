@@ -5,9 +5,9 @@ import { sql } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 
-const D1_STATEMENT_CHUNK_SIZE = 80000
-const BODY_AST_SOURCE_MAX_LENGTH = 80000
-const BODY_AST_JSON_MAX_LENGTH = 80000
+export const D1_STATEMENT_CHUNK_SIZE = 80000
+export const BODY_AST_SOURCE_MAX_LENGTH = 80000
+export const BODY_AST_JSON_MAX_LENGTH = 80000
 
 const specialCharacters = [
   '\u{1a}',
@@ -606,7 +606,7 @@ const specialCharacters = [
   '\u{c2a0}'
 ]
 
-function getFilesRecursively(dir: string): string[] {
+export function getFilesRecursively(dir: string): string[] {
   let results: string[] = []
   const list = fs.readdirSync(dir)
 
@@ -653,7 +653,7 @@ function extractTitle(content: string): string | null {
 /**
  * 全ページをスキャンしてパスとタイトルの対応マップを作成する
  */
-function buildTitleMap(pagesDir: string): Map<string, string> {
+export function buildTitleMap(pagesDir: string): Map<string, string> {
   const titleMap = new Map<string, string>()
   const files = getFilesRecursively(pagesDir).filter((f) => f.endsWith('.txt'))
 
@@ -709,7 +709,7 @@ function fixMalformedUrl(url: string): string {
   }
 }
 
-function decodeLegacyPath(pathValue: string): string {
+export function decodeLegacyPath(pathValue: string): string {
   if (!pathValue.includes('%')) return pathValue
 
   try {
@@ -742,7 +742,7 @@ function containsUnsafePercentEncoding(markdown: string): boolean {
   return false
 }
 
-function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
+export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
   let text = input
 
   // 単一の [ または ] をエスケープ (DokuWiki のリンク [[...]] を除く)
@@ -1137,7 +1137,7 @@ function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>
 }
 
 // DokuWiki Discussion プラグインの .comments ファイルの型定義
-interface DokuWikiCommentUser {
+export interface DokuWikiCommentUser {
   id: string
   name: string
   mail: string
@@ -1145,7 +1145,7 @@ interface DokuWikiCommentUser {
   url: string
 }
 
-interface DokuWikiComment {
+export interface DokuWikiComment {
   user: DokuWikiCommentUser
   date: { created: number; replied?: number; modified?: number }
   raw: string
@@ -1156,7 +1156,7 @@ interface DokuWikiComment {
   cid: string
 }
 
-interface DokuWikiCommentsFile {
+export interface DokuWikiCommentsFile {
   title: string
   status: number
   number: number
@@ -1168,7 +1168,7 @@ interface DokuWikiCommentsFile {
  * .local/meta 配下の .comments ファイルを再帰的に取得して
  * パースし、全コメントを収集する
  */
-function collectAllComments(metaDir: string): {
+export function collectAllComments(metaDir: string): {
   comments: { pagePath: string; comment: DokuWikiComment }[]
   users: Map<string, { id: string; name: string }>
 } {
@@ -1219,7 +1219,7 @@ function collectAllComments(metaDir: string): {
   return { comments: allComments, users }
 }
 
-function parseUsersAuth(filePath: string): Map<string, { id: string; name: string; email: string; password: string }> {
+export function parseUsersAuth(filePath: string): Map<string, { id: string; name: string; email: string; password: string }> {
   const usersMap = new Map<string, { id: string; name: string; email: string; password: string }>()
   if (!fs.existsSync(filePath)) return usersMap
 
@@ -1264,7 +1264,7 @@ async function rawInsert(tableName: string, data: Record<string, string | number
   await db.run(statement)
 }
 
-async function createBodyAstForSeed(markdown: string, pagePath: string): Promise<string | null> {
+export async function createBodyAstForSeed(markdown: string, pagePath: string): Promise<string | null> {
   if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
   if (containsUnsafePercentEncoding(markdown)) {
     console.log(`[Body AST] Skipped ${pagePath}: unsafe percent encoding`)
