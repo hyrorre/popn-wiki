@@ -8,6 +8,7 @@ dist
 
 # Wrangler / Miniflare local state
 .wrangler
+wrangler.jsonc
 
 # Node dependencies
 node_modules

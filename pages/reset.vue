@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { resetPasswordFormSchema, type ResetPasswordFormInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 const route = useRoute()
@@ -21,13 +21,9 @@ const fields = ref<AuthFormField[]>([
 const error_message = ref('')
 const success = ref(false)
 
-const schema = z.object({
-  password: z.string().min(8, 'パスワードは8文字以上で入力してください')
-})
+const schema = resetPasswordFormSchema
 
-type Schema = z.output<typeof schema>
-
-const submit = async (payload: FormSubmitEvent<Schema>) => {
+const submit = async (payload: FormSubmitEvent<ResetPasswordFormInput>) => {
   if (!token) {
     error_message.value = '無効なリクエストです。'
     return

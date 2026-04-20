@@ -1,0 +1,2 @@
+CREATE INDEX `pages_recent_all_idx` ON `pages` (`updated_at`,`path`,`revision`) WHERE "pages"."body" != '';--> statement-breakpoint
+CREATE INDEX `pages_recent_major_idx` ON `pages` (`updated_at`,`path`,`revision`) WHERE "pages"."body" != '' AND ("pages"."minor" IS NULL OR "pages"."minor" = 0);

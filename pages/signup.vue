@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { signupSchema, type SignupInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 
@@ -29,13 +29,7 @@ const fields = ref<AuthFormField[]>([
 const error_message = ref('')
 const open = ref(false)
 
-const schema = z.object({
-  name: z.string().min(1, '名前を入力してください'),
-  email: z.email('有効なメールアドレスを入力してください'),
-  password: z.string().min(8, 'パスワードは8文字以上で入力してください')
-})
-
-type Schema = z.output<typeof schema>
+const schema = signupSchema
 
 const providers = [
   {
@@ -46,7 +40,7 @@ const providers = [
   }
 ]
 
-const submit = async (payload: FormSubmitEvent<Schema>) => {
+const submit = async (payload: FormSubmitEvent<SignupInput>) => {
   try {
     await $fetch('/api/auth/signup', {
       method: 'POST',
@@ -77,6 +71,14 @@ const submit = async (payload: FormSubmitEvent<Schema>) => {
           @submit="submit"
         >
           <template #validation>
+            <u-alert
+              color="info"
+              variant="soft"
+              icon="i-lucide-shield-check"
+              title="パスワードは15文字以上、または記号を含む8文字以上で入力してください。"
+              description="推測されやすい文字列、名前、メールアドレスの一部は使用できません。"
+              class="mb-4 text-left"
+            />
             <u-alert v-if="error_message" color="error" icon="i-lucide-info" :title="error_message" />
           </template>
         </u-auth-form>

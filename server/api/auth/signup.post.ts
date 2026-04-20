@@ -1,16 +1,13 @@
 import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
+import { checkRateLimit } from '~/server/utils/rateLimit'
+import { readZodBody } from '~/server/utils/validation'
+import { signupSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
-  const { email, password, name } = await readBody(event)
-
-  if (!email || !password) {
-    throw createError({
-      statusCode: 400,
-      message: 'Email and password are required'
-    })
-  }
+  await checkRateLimit(event, { key: 'auth:signup', limit: 5 })
+  const { email, password, name } = await readZodBody(event, signupSchema)
 
   // Check if user already exists
   const existingUser = await db.select().from(usersTable).where(eq(usersTable.email, email)).get()

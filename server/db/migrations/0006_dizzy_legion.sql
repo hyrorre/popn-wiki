@@ -1,0 +1,2 @@
+CREATE INDEX `comments_recent_idx` ON `comments` (`created_at`,`path`,`id`,`user_id`) WHERE "comments"."deleted_at" IS NULL;--> statement-breakpoint
+CREATE INDEX `comments_path_recent_idx` ON `comments` (`path`,`created_at`,`id`) WHERE "comments"."deleted_at" IS NULL;

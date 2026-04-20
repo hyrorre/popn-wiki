@@ -1,9 +1,11 @@
 import { blob } from '@nuxthub/blob'
+import { checkRateLimit } from '~/server/utils/rateLimit'
 
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default defineEventHandler(async (event) => {
+  await checkRateLimit(event, { key: 'image:post', limit: 10 })
   const { user } = await getUserSession(event)
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })

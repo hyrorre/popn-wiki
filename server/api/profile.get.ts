@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const data = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, user.id))
     .get()
 
   if (!data) {
