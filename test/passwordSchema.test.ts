@@ -58,4 +58,14 @@ describe('Password schemas', () => {
 
     expect(result.success).toBe(false)
   })
+
+  test('ignores very short names when checking password contents', () => {
+    const result = signupSchema.safeParse({
+      name: 'Aki',
+      email: 'user@example.com',
+      password: 'aki safe passphrase'
+    })
+
+    expect(result.success).toBe(true)
+  })
 })

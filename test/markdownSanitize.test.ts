@@ -20,6 +20,18 @@ describe('Markdown sanitizer', () => {
     expect(sanitizeDangerousMarkdownHtml(markdown)).toBe('\n')
   })
 
+  test('removes unclosed blocked tags without dropping following markdown', () => {
+    const markdown = 'before\n<script src="/x.js">\nafter'
+
+    expect(sanitizeDangerousMarkdownHtml(markdown)).toBe('before\n\nafter')
+  })
+
+  test('removes closing blocked tags by themselves', () => {
+    const markdown = 'before</iframe>after'
+
+    expect(sanitizeDangerousMarkdownHtml(markdown)).toBe('beforeafter')
+  })
+
   test('keeps ordinary markdown and allowed raw html', () => {
     const markdown = 'hello **world**\n<div>allowed</div>'
 
