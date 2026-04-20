@@ -1,13 +1,21 @@
 import { db } from '@nuxthub/db'
 import { tokensTable } from '../db/schema'
-import { eq, and, gt } from 'drizzle-orm'
+import { eq, and, gt, lte } from 'drizzle-orm'
 import type { H3Event } from 'h3'
 import cryptmd5 from 'cryptmd5'
 import bcrypt from 'bcryptjs'
 
+const TOKEN_EXPIRES_IN_HOURS = 24
+const TOKEN_EXPIRES_IN_MS = 1000 * 60 * 60 * TOKEN_EXPIRES_IN_HOURS
+
 export const generateToken = async (userId: number, type: 'verification' | 'reset') => {
+  const now = Date.now()
   const token = crypto.randomUUID()
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 24 // 24 hours
+  const expiresAt = now + TOKEN_EXPIRES_IN_MS
+
+  await db.delete(tokensTable).where(lte(tokensTable.expiresAt, now))
+  await db.delete(tokensTable).where(and(eq(tokensTable.userId, userId), eq(tokensTable.type, type)))
+
   await db.insert(tokensTable).values({
     userId,
     token,
@@ -31,6 +39,7 @@ export const sendVerificationEmail = async (event: H3Event, email: string, token
     html: `<p>ユーザー登録ありがとうございます。</p>
 <p>以下のリンクをクリックして、メールアドレスの確認を完了してください：</p>
 <p><a href="${url}">${url}</a></p>
+<p>このリンクの有効期限は${TOKEN_EXPIRES_IN_HOURS}時間です。</p>
 <p>このメールに心当たりがない場合は、無視していただいて構いません。</p>`
   })
 }
@@ -49,6 +58,7 @@ export const sendResetPasswordEmail = async (event: H3Event, email: string, toke
     html: `<p>パスワード再設定のリクエストを受け付けました。</p>
 <p>以下のリンクをクリックして、新しいパスワードを設定してください：</p>
 <p><a href="${url}">${url}</a></p>
+<p>このリンクの有効期限は${TOKEN_EXPIRES_IN_HOURS}時間です。</p>
 <p>このメールに心当たりがない場合は、第三者が誤ってメールアドレスを入力した可能性があります。その場合、パスワードが変更されることはありません。</p>`
   })
 }
