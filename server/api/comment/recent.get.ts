@@ -1,47 +1,79 @@
 import { commentsTable, usersTable, pagesTable } from '../../db/schema'
-import { eq, desc, isNull } from 'drizzle-orm'
+import { eq, desc, isNull, and, or, gt, aliasedTable, notExists, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const limit = Math.min(Number(query.limit) || 10, 50)
+  const limit = parseLimit(query.limit)
 
-  // Drizzle Join を使用してプロフィール名を取得
-  const data = await db
+  const newerComment = aliasedTable(commentsTable, 'newer_comment')
+  const newerPage = aliasedTable(pagesTable, 'newer_page')
+  const latestPages = db
+    .select({
+      path: pagesTable.path,
+      title: pagesTable.title,
+      revision: pagesTable.revision
+    })
+    .from(pagesTable)
+    .where(
+      and(
+        sql`${pagesTable.body} != ''`,
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(newerPage)
+            .where(
+              and(
+                eq(newerPage.path, pagesTable.path),
+                gt(newerPage.revision, pagesTable.revision)
+              )
+            )
+        )
+      )
+    )
+    .as('latest_pages')
+
+  return await db
     .select({
       path: commentsTable.path,
-      createdAt: commentsTable.createdAt,
-      name: usersTable.name
+      title: latestPages.title,
+      created_at: commentsTable.createdAt,
+      commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
     })
     .from(commentsTable)
     .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
-    .where(isNull(commentsTable.deletedAt))
+    .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
+    .where(
+      and(
+        isNull(commentsTable.deletedAt),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(newerComment)
+            .where(
+              and(
+                eq(newerComment.path, commentsTable.path),
+                or(
+                  gt(newerComment.createdAt, commentsTable.createdAt),
+                  and(eq(newerComment.createdAt, commentsTable.createdAt), gt(newerComment.id, commentsTable.id))
+                ),
+                isNull(newerComment.deletedAt)
+              )
+            )
+        )
+      )
+    )
     .orderBy(desc(commentsTable.createdAt))
-    .limit(200)
+    .limit(limit)
     .all()
+})
 
-  const seen = new Set<string>()
-  const recent = []
+function parseLimit(value: unknown) {
+  const limit = Number(value)
 
-  for (const row of data) {
-    if (seen.has(row.path)) continue
-    seen.add(row.path)
-
-    const latestPage = await db
-      .select({ title: pagesTable.title })
-      .from(pagesTable)
-      .where(eq(pagesTable.path, row.path))
-      .orderBy(desc(pagesTable.revision))
-      .get()
-
-    recent.push({
-      path: row.path,
-      title: latestPage?.title || row.path,
-      created_at: row.createdAt,
-      commenter: row.name ?? '匿名'
-    })
-    if (recent.length >= limit) break
+  if (!Number.isFinite(limit)) {
+    return 10
   }
 
-  return recent
-})
+  return Math.min(Math.max(Math.trunc(limit), 1), 50)
+}

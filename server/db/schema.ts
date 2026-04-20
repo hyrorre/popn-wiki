@@ -40,16 +40,29 @@ export const pagesTable = sqliteTable(
   }
 )
 
-export const commentsTable = sqliteTable('comments', {
-  id: integer().primaryKey({ autoIncrement: true }),
-  path: text().notNull(),
-  body: text().notNull(),
-  replyTo: integer(),
-  userId: integer().notNull(),
-  createdAt: text().notNull(),
-  updatedAt: text().notNull(),
-  deletedAt: text()
-})
+export const commentsTable = sqliteTable(
+  'comments',
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    path: text().notNull(),
+    body: text().notNull(),
+    replyTo: integer(),
+    userId: integer().notNull(),
+    createdAt: text().notNull(),
+    updatedAt: text().notNull(),
+    deletedAt: text()
+  },
+  (table) => {
+    return [
+      index('comments_recent_idx')
+        .on(table.createdAt, table.path, table.id, table.userId)
+        .where(sql`${table.deletedAt} IS NULL`),
+      index('comments_path_recent_idx')
+        .on(table.path, table.createdAt, table.id)
+        .where(sql`${table.deletedAt} IS NULL`)
+    ]
+  }
+)
 
 export const tokensTable = sqliteTable('tokens', {
   id: integer().primaryKey({ autoIncrement: true }),
