@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       path,
       body: sanitizedBody,
       replyTo,
-      userId: parseInt(user.id),
+      userId: user.id,
       createdAt: now,
       updatedAt: now
     })
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
   const profile = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, user.id))
     .get()
 
   return {

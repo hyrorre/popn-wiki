@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
       avatar: payload.avatar,
       updatedAt: now
     })
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, user.id))
     .returning()
     .get()
 

@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     .set({
       deletedAt: now
     })
-    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, parseInt(user.id))))
+    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
     .returning()
     .get()
 

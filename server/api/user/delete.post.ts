@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // ユーザーを削除
-  await db.delete(usersTable).where(eq(usersTable.id, parseInt(user.id)))
+  await db.delete(usersTable).where(eq(usersTable.id, user.id))
 
   await clearUserSession(event)
 
