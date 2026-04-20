@@ -32,11 +32,12 @@ const hasSymbol = (value: string) => {
   return false
 }
 
-export const emailSchema = z
-  .email('有効なメールアドレスを入力してください')
-  .trim()
-  .toLowerCase()
-  .max(255, 'メールアドレスは255文字以内で入力してください')
+export const emailSchema = z.preprocess(
+  (value) => typeof value === 'string' ? value.trim().toLowerCase() : value,
+  z
+    .email('有効なメールアドレスを入力してください')
+    .max(255, 'メールアドレスは255文字以内で入力してください')
+)
 
 export const passwordSchema = z
   .string()
