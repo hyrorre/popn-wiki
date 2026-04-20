@@ -121,7 +121,13 @@ export default defineNuxtConfig({
             binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
             id: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
           }
-        ]
+        ],
+        observability: {
+          logs: {
+            enabled: true,
+            invocation_logs: true
+          }
+        }
       }
     }
   }
