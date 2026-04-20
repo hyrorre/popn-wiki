@@ -56,6 +56,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 ## TODO
 
+- [ ] fix(core): malformed url
 - [ ] feat(core): cache strategy (swr/isr)
 - [ ] feat(test): test codes (bun test)
 - [ ] feat(core): monaco-editor (vscode like)

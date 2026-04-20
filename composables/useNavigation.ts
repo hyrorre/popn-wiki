@@ -36,7 +36,6 @@ export const useNavigation = (showButtons: boolean = true) => {
         to: (isEditPage ? `/${path}` : `/edit/${path}`).replace('//', '/')
       })
     }
-
     const userItems: NavigationMenuItem[] = user.value
       ? [
           {
