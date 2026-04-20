@@ -50,6 +50,11 @@ export default defineNuxtConfig({
   },
   hub: {
     blob: true,
+    kv: {
+      driver: 'cloudflare-kv-binding',
+      binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
+      namespaceId: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
+    },
     db: {
       dialect: 'sqlite',
       casing: 'snake_case'
@@ -100,15 +105,21 @@ export default defineNuxtConfig({
         name: 'popn-wiki',
         d1_databases: [
           {
-            binding: 'DB',
-            database_name: 'popn-wiki-db',
-            database_id: process.env.NUXT_HUB_CLOUDFLARE_DATABASE_ID
+            binding: process.env.NUXT_HUB_CLOUDFLARE_DB_BINDING,
+            database_name: process.env.NUXT_HUB_CLOUDFLARE_DB_NAME,
+            database_id: process.env.NUXT_HUB_CLOUDFLARE_DB_ID
           }
         ],
         r2_buckets: [
           {
             binding: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BINDING || 'BLOB',
             bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
+          }
+        ],
+        kv_namespaces: [
+          {
+            binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
+            id: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
           }
         ]
       }
