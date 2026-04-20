@@ -3,14 +3,9 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
-
-type UpdatePageRequest = {
-  path?: string
-  body?: string
-  baseRevision?: number
-  message?: string
-  minor?: number
-}
+import { readZodBody } from '~/server/utils/validation'
+import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
+import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -18,14 +13,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody<UpdatePageRequest>(event)
-  const path = payload.path?.trim()
-  const body = payload.body
-  const baseRevision = payload.baseRevision ?? -1
-
-  if (!path || typeof body !== 'string' || !Number.isInteger(baseRevision) || baseRevision < 0) {
-    throw createError({ statusCode: 400, message: 'Invalid payload.' })
-  }
+  const payload = await readZodBody(event, updatePageSchema)
+  const { path, body, baseRevision } = payload
+  const sanitizedBody = sanitizeDangerousMarkdownHtml(body)
 
   const latest = await db
     .select()
@@ -47,9 +37,9 @@ export default defineEventHandler(async (event) => {
   const now = new Date().toISOString()
 
   // Markdown を解析
-  const ast = await parseMarkdown(body)
+  const ast = await parseMarkdown(sanitizedBody)
 
-  const title = extractTitleFromMarkdown(body) || (path === '/' ? 'Home' : path.split('/').pop() || path)
+  const title = extractTitleFromMarkdown(sanitizedBody) || (path === '/' ? 'Home' : path.split('/').pop() || path)
 
   const inserted = await db
     .insert(pagesTable)
@@ -57,7 +47,7 @@ export default defineEventHandler(async (event) => {
       path,
       title,
       revision: nextRevision,
-      body,
+      body: sanitizedBody,
       bodyAst: JSON.stringify(ast),
       message: payload.message?.trim() || null,
       minor: payload.minor ?? 0,

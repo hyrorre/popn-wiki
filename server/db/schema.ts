@@ -1,4 +1,5 @@
-import { integer, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { integer, sqliteTable, text, primaryKey, index } from 'drizzle-orm/sqlite-core'
 
 export const usersTable = sqliteTable('users', {
   id: integer().primaryKey({ autoIncrement: true }),
@@ -27,20 +28,41 @@ export const pagesTable = sqliteTable(
     bodyAst: text()
   },
   (table) => {
-    return [primaryKey({ columns: [table.path, table.revision] })]
+    return [
+      primaryKey({ columns: [table.path, table.revision] }),
+      index('pages_recent_all_idx')
+        .on(table.updatedAt, table.path, table.revision)
+        .where(sql`${table.body} != ''`),
+      index('pages_recent_major_idx')
+        .on(table.updatedAt, table.path, table.revision)
+        .where(sql`${table.body} != '' AND (${table.minor} IS NULL OR ${table.minor} = 0)`)
+    ]
   }
 )
 
-export const commentsTable = sqliteTable('comments', {
-  id: integer().primaryKey({ autoIncrement: true }),
-  path: text().notNull(),
-  body: text().notNull(),
-  replyTo: integer(),
-  userId: integer().notNull(),
-  createdAt: text().notNull(),
-  updatedAt: text().notNull(),
-  deletedAt: text()
-})
+export const commentsTable = sqliteTable(
+  'comments',
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    path: text().notNull(),
+    body: text().notNull(),
+    replyTo: integer(),
+    userId: integer().notNull(),
+    createdAt: text().notNull(),
+    updatedAt: text().notNull(),
+    deletedAt: text()
+  },
+  (table) => {
+    return [
+      index('comments_recent_idx')
+        .on(table.createdAt, table.path, table.id, table.userId)
+        .where(sql`${table.deletedAt} IS NULL`),
+      index('comments_path_recent_idx')
+        .on(table.path, table.createdAt, table.id)
+        .where(sql`${table.deletedAt} IS NULL`)
+    ]
+  }
+)
 
 export const tokensTable = sqliteTable('tokens', {
   id: integer().primaryKey({ autoIncrement: true }),

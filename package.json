@@ -8,10 +8,11 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "tsc": "tsc --noEmit",
+    "tsc": "vue-tsc --noEmit",
     "lint": "eslint . --fix",
     "format": "prettier . --write",
     "db:generate": "drizzle-kit generate",
+    "db:seed:sql": "bun scripts/generate-d1-seed.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate"
@@ -48,6 +49,7 @@
     "rehype-stringify": "^10.0.1",
     "remark-rehype": "^11.1.2",
     "typescript": "^6.0.2",
+    "vue-tsc": "^3.2.7",
     "wrangler": "^4.81.1"
   },
   "overrides": {

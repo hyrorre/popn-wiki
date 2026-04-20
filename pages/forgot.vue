@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { emailOnlySchema, type EmailOnlyInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 
@@ -19,13 +19,9 @@ const fields = ref<AuthFormField[]>([
 const error_message = ref('')
 const success_message = ref('')
 
-const schema = z.object({
-  email: z.email('有効なメールアドレスを入力してください')
-})
+const schema = emailOnlySchema
 
-type Schema = z.output<typeof schema>
-
-const submit = async (payload: FormSubmitEvent<Schema>) => {
+const submit = async (payload: FormSubmitEvent<EmailOnlyInput>) => {
   try {
     await $fetch('/api/auth/forgot', {
       method: 'POST',

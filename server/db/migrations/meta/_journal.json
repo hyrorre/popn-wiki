@@ -36,6 +36,20 @@
       "when": 1776577918550,
       "tag": "0004_strange_masked_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1776710744464,
+      "tag": "0005_blushing_freak",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776711367936,
+      "tag": "0006_dizzy_legion",
+      "breakpoints": true
     }
   ]
 }

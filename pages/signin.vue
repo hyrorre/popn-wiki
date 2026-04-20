@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import { signinSchema, type SigninInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 const route = useRoute()
@@ -33,12 +33,7 @@ const resend_message = ref('')
 
 const { fetch: refreshSession } = useUserSession()
 
-const schema = z.object({
-  email: z.email('有効なメールアドレスを入力してください'),
-  password: z.string().min(1, 'パスワードを入力してください')
-})
-
-type Schema = z.output<typeof schema>
+const schema = signinSchema
 
 const providers = [
   {
@@ -49,7 +44,7 @@ const providers = [
   }
 ]
 
-const submit = async (payload: FormSubmitEvent<Schema>) => {
+const submit = async (payload: FormSubmitEvent<SigninInput>) => {
   resend_message.value = ''
   await $fetch('/api/auth/signin', {
     method: 'POST',

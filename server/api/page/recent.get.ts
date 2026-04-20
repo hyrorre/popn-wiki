@@ -1,13 +1,19 @@
 import { pagesTable } from '../../db/schema'
-import { eq, desc, not, and, or, isNull } from 'drizzle-orm'
+import { eq, desc, and, or, isNull, aliasedTable, gt, notExists, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const limit = Math.min(Number(query.limit) || 10, 50)
+  const limit = parseLimit(query.limit)
   const includeMinor = query.includeMinor === 'true'
 
-  // 各ページの最新リビジョンを取得
+  const newerRevision = aliasedTable(pagesTable, 'newer_revision')
+  const newerVisibleRevision = aliasedTable(pagesTable, 'newer_visible_revision')
+  const newerDeletedRevision = aliasedTable(pagesTable, 'newer_deleted_revision')
+
+  const visiblePage = sql`${pagesTable.body} != ''`
+  const majorRevision = or(isNull(pagesTable.minor), eq(pagesTable.minor, 0))
+
   const data = await db
     .select({
       path: pagesTable.path,
@@ -20,22 +26,58 @@ export default defineEventHandler(async (event) => {
     .from(pagesTable)
     .where(
       includeMinor
-        ? not(eq(pagesTable.body, ''))
-        : and(not(eq(pagesTable.body, '')), or(isNull(pagesTable.minor), eq(pagesTable.minor, 0)))
+        ? and(
+            visiblePage,
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(newerRevision)
+                .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
+            )
+          )
+        : and(
+            visiblePage,
+            majorRevision,
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(newerVisibleRevision)
+                .where(
+                  and(
+                    eq(newerVisibleRevision.path, pagesTable.path),
+                    gt(newerVisibleRevision.revision, pagesTable.revision),
+                    sql`${newerVisibleRevision.body} != ''`,
+                    or(isNull(newerVisibleRevision.minor), eq(newerVisibleRevision.minor, 0))
+                  )
+                )
+            ),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(newerDeletedRevision)
+                .where(
+                  and(
+                    eq(newerDeletedRevision.path, pagesTable.path),
+                    gt(newerDeletedRevision.revision, pagesTable.revision),
+                    eq(newerDeletedRevision.body, '')
+                  )
+                )
+            )
+          )
     )
     .orderBy(desc(pagesTable.updatedAt))
+    .limit(limit)
     .all()
 
-  // 重複排除 (メモリ上で行うのが簡単)
-  const seen = new Set<string>()
-  const recent = []
+  return data
+})
 
-  for (const row of data) {
-    if (seen.has(row.path)) continue
-    seen.add(row.path)
-    recent.push(row)
-    if (recent.length >= limit) break
+function parseLimit(value: unknown) {
+  const limit = Number(value)
+
+  if (!Number.isFinite(limit)) {
+    return 10
   }
 
-  return recent
-})
+  return Math.min(Math.max(Math.trunc(limit), 1), 50)
+}

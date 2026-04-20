@@ -2,6 +2,9 @@ import { commentsTable, usersTable } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { readZodBody } from '~/server/utils/validation'
+import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
+import { createCommentSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'comment:post', limit: 10 })
@@ -10,23 +13,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody(event)
-  const path = payload.path?.trim()
-  const body = payload.body?.trim()
-  const replyTo = payload.replyTo || null
+  const { path, body, replyTo } = await readZodBody(event, createCommentSchema)
+  const sanitizedBody = sanitizeDangerousMarkdownHtml(body).trim()
 
-  if (!path || !body) {
-    throw createError({ statusCode: 400, message: 'Path and body are required.' })
+  if (!sanitizedBody) {
+    throw createError({ statusCode: 400, message: 'Invalid payload.' })
   }
+
   const now = new Date().toISOString()
 
   const inserted = await db
     .insert(commentsTable)
     .values({
       path,
-      body,
+      body: sanitizedBody,
       replyTo,
-      userId: parseInt(user.id),
+      userId: user.id,
       createdAt: now,
       updatedAt: now
     })
@@ -37,7 +39,7 @@ export default defineEventHandler(async (event) => {
   const profile = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.id, parseInt(user.id)))
+    .where(eq(usersTable.id, user.id))
     .get()
 
   return {
