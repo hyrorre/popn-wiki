@@ -3,6 +3,7 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
+import { invalidateLatestPageCache } from '../utils/pageCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
 import { updatePageSchema } from '~/shared/zod'
@@ -58,6 +59,8 @@ export default defineEventHandler(async (event) => {
     })
     .returning()
     .get()
+
+  await invalidateLatestPageCache(path)
 
   return inserted
 })

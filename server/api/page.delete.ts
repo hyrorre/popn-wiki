@@ -1,6 +1,7 @@
 import { pagesTable } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { invalidateLatestPageCache } from '../utils/pageCache'
 
 type DeletePageRequest = {
   path?: string
@@ -47,6 +48,8 @@ export default defineEventHandler(async (event) => {
     })
     .returning()
     .get()
+
+  await invalidateLatestPageCache(path)
 
   return inserted
 })

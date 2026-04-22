@@ -2,6 +2,7 @@ import { pagesTable } from '../../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+import { invalidateLatestPageCache } from '../../utils/pageCache'
 
 type RestorePageRequest = {
   path?: string
@@ -63,6 +64,8 @@ export default defineEventHandler(async (event) => {
     })
     .returning()
     .get()
+
+  await invalidateLatestPageCache(path)
 
   return inserted
 })
