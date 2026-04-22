@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "popn-wiki",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "popn-wiki-db",
+      "database_id": "783f9203-1334-4c69-b704-b69347ab34d3",
+      "migrations_table": "_hub_migrations",
+      "migrations_dir": "db/migrations/sqlite/"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BLOB",
+      "bucket_name": "popn-wiki-images"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "ff30a67255bc4caaadc22867f05c20af"
+    },
+    {
+      "binding": "CACHE",
+      "id": "0e79e45969814332ae7dd78224207e3c"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  }
+}
