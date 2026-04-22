@@ -86,6 +86,12 @@ export default defineNuxtConfig({
         'rehype-external-links',
         'remark-parse'
       ]
+    },
+    vue: {
+      features: {
+        // Options APIを無効化することでバンドルサイズを削減
+        optionsAPI: false
+      }
     }
   },
   nitro: {
