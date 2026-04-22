@@ -1219,7 +1219,9 @@ export function collectAllComments(metaDir: string): {
   return { comments: allComments, users }
 }
 
-export function parseUsersAuth(filePath: string): Map<string, { id: string; name: string; email: string; password: string }> {
+export function parseUsersAuth(
+  filePath: string
+): Map<string, { id: string; name: string; email: string; password: string }> {
   const usersMap = new Map<string, { id: string; name: string; email: string; password: string }>()
   if (!fs.existsSync(filePath)) return usersMap
 

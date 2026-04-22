@@ -22,12 +22,7 @@ export default defineEventHandler(async (event) => {
           db
             .select({ one: sql`1` })
             .from(newerPage)
-            .where(
-              and(
-                eq(newerPage.path, pagesTable.path),
-                gt(newerPage.revision, pagesTable.revision)
-              )
-            )
+            .where(and(eq(newerPage.path, pagesTable.path), gt(newerPage.revision, pagesTable.revision)))
         )
       )
     )

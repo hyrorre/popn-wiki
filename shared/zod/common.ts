@@ -33,10 +33,8 @@ const hasSymbol = (value: string) => {
 }
 
 export const emailSchema = z.preprocess(
-  (value) => typeof value === 'string' ? value.trim().toLowerCase() : value,
-  z
-    .email('有効なメールアドレスを入力してください')
-    .max(255, 'メールアドレスは255文字以内で入力してください')
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  z.email('有効なメールアドレスを入力してください').max(255, 'メールアドレスは255文字以内で入力してください')
 )
 
 export const passwordSchema = z
@@ -88,9 +86,7 @@ export const commentBodySchema = z
   .min(1, 'コメントを入力してください')
   .max(10000, 'コメントは10000文字以内で入力してください')
 
-export const pageBodySchema = z
-  .string()
-  .max(1000000, '本文は1000000文字以内で入力してください')
+export const pageBodySchema = z.string().max(1000000, '本文は1000000文字以内で入力してください')
 
 export const pageMessageSchema = z
   .string()

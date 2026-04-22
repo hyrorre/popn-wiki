@@ -8,11 +8,7 @@ export default defineEventHandler(async (event) => {
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
-  const data = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, user.id))
-    .get()
+  const data = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
 
   if (!data) {
     return { id: user.id, name: user.name, avatar: user.avatar }

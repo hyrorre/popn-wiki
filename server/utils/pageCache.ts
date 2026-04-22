@@ -1,6 +1,6 @@
 const PAGE_CACHE_GROUP = 'pages'
 const PAGE_LATEST_CACHE_NAME = 'latest'
-const PAGE_REVISION_CACHE_NAME = 'revision'
+// const PAGE_REVISION_CACHE_NAME = 'revision'
 
 export function getLatestPageCacheRawKey(path: string) {
   return `latest:${path}`

@@ -100,7 +100,7 @@ function readBlockedTag(markdown: string, start: number): BlockedTag | null {
 }
 
 function findTagEnd(markdown: string, start: number) {
-  let quote: '"' | '\'' | null = null
+  let quote: '"' | "'" | null = null
 
   for (let index = start + 1; index < markdown.length; index++) {
     const char = markdown[index]
@@ -108,7 +108,7 @@ function findTagEnd(markdown: string, start: number) {
       if (char === quote) quote = null
       continue
     }
-    if (char === '"' || char === '\'') {
+    if (char === '"' || char === "'") {
       quote = char
       continue
     }

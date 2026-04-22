@@ -19,13 +19,7 @@ export default defineEventHandler(async (event) => {
       .select({ id: commentsTable.id })
       .from(commentsTable)
       .innerJoin(myComments, eq(commentsTable.replyTo, myComments.id))
-      .where(
-        and(
-          eq(myComments.userId, userId),
-          ne(commentsTable.userId, userId),
-          isNull(commentsTable.deletedAt)
-        )
-      )
+      .where(and(eq(myComments.userId, userId), ne(commentsTable.userId, userId), isNull(commentsTable.deletedAt)))
       .orderBy(desc(commentsTable.createdAt))
       .limit(limit)
       .offset(offset)
