@@ -99,7 +99,6 @@ const submitDelete = async () => {
     isDeleting.value = false
   }
 }
-
 </script>
 
 <template>

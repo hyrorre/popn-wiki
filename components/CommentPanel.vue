@@ -17,18 +17,7 @@ const props = withDefaults(
   }
 )
 
-const { format } = useAppConfig()
 const linkComponent = resolveComponent('NuxtLink')
-
-const formatDate = (dateStr: string) => {
-  const options: Intl.DateTimeFormatOptions = {}
-  if (format.option.year) options.year = format.option.year as 'numeric' | '2-digit'
-  if (format.option.month) options.month = format.option.month as 'numeric' | '2-digit'
-  if (format.option.date) options.day = format.option.date as 'numeric' | '2-digit'
-  if (format.option.hour) options.hour = format.option.hour as 'numeric' | '2-digit'
-  if (format.option.minute) options.minute = format.option.minute as 'numeric' | '2-digit'
-  return new Date(dateStr).toLocaleDateString(format.locale || 'ja-JP', options)
-}
 
 const panelClass = computed(() => [
   'group block rounded-lg border border-default bg-gray-50/50 dark:bg-gray-800/30 shadow-sm',

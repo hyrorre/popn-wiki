@@ -1,5 +1,14 @@
 import { ja } from '@nuxt/ui/locale'
 
+const dateTimeFormatOptions: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: undefined
+}
+
 export default defineAppConfig({
   app: {
     locale: ja,
@@ -14,13 +23,6 @@ export default defineAppConfig({
   },
   format: {
     locale: 'ja-JP',
-    option: {
-      year: 'numeric',
-      month: '2-digit',
-      date: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: undefined
-    }
+    dateTimeFormatOptions
   }
 })

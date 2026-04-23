@@ -22,18 +22,6 @@ const { data: pages, status } = await useFetch<RecentPage[]>('/api/page/recent',
     includeMinor: props.includeMinor.toString()
   }
 })
-
-const { format } = useAppConfig()
-
-const formatDate = (dateStr: string) => {
-  const options: Intl.DateTimeFormatOptions = {}
-  if (format.option.year) options.year = format.option.year as 'numeric' | '2-digit'
-  if (format.option.month) options.month = format.option.month as 'numeric' | '2-digit'
-  if (format.option.date) options.day = format.option.date as 'numeric' | '2-digit'
-  if (format.option.hour) options.hour = format.option.hour as 'numeric' | '2-digit'
-  if (format.option.minute) options.minute = format.option.minute as 'numeric' | '2-digit'
-  return new Date(dateStr).toLocaleDateString(format.locale || 'ja-JP', options)
-}
 </script>
 
 <template>
