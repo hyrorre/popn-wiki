@@ -57,14 +57,14 @@ const getTypeLabel = (type: BrokenLink['type']) => {
           Wiki内のすべてのページをスキャンし、存在しないページへのリンクや画像を探します。
         </p>
       </div>
-      <UButton icon="i-heroicons-magnifying-glass" size="lg" :loading="pending" @click="() => execute()">
+      <UButton icon="i-lucide-search" size="lg" :loading="pending" @click="() => execute()">
         スキャンを開始
       </UButton>
     </div>
 
     <UAlert
       v-if="error"
-      icon="i-heroicons-exclamation-triangle"
+      icon="i-lucide-triangle-alert"
       color="warning"
       variant="soft"
       title="エラーが発生しました"
@@ -74,7 +74,7 @@ const getTypeLabel = (type: BrokenLink['type']) => {
     <UAlert
       v-for="warning in warnings"
       :key="warning"
-      icon="i-heroicons-exclamation-triangle"
+      icon="i-lucide-triangle-alert"
       color="warning"
       variant="soft"
       :description="warning"
@@ -118,7 +118,7 @@ const getTypeLabel = (type: BrokenLink['type']) => {
         <template #actions-cell="{ row }">
           <div class="flex gap-2">
             <UButton
-              icon="i-heroicons-pencil-square"
+              icon="i-lucide-square-pen"
               size="xs"
               variant="ghost"
               color="neutral"
@@ -131,7 +131,7 @@ const getTypeLabel = (type: BrokenLink['type']) => {
         <template #empty>
           <div class="flex flex-col items-center justify-center py-12">
             <template v-if="!pending">
-              <UIcon name="i-heroicons-check-circle" class="w-12 h-12 text-green-500 mb-4" />
+              <UIcon name="i-lucide-circle-check" class="w-12 h-12 text-green-500 mb-4" />
               <p class="text-gray-500">リンク切れは見つかりませんでした！素晴らしい！</p>
             </template>
           </div>
@@ -143,7 +143,7 @@ const getTypeLabel = (type: BrokenLink['type']) => {
       v-else-if="!pending"
       class="flex flex-col items-center justify-center py-20 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl"
     >
-      <UIcon name="i-heroicons-link-slash" class="w-16 h-16 text-gray-300 dark:text-gray-700 mb-4" />
+      <UIcon name="i-lucide-unlink" class="w-16 h-16 text-gray-300 dark:text-gray-700 mb-4" />
       <p class="text-gray-400 font-medium">「スキャンを開始」ボタンを押してリンク切れを確認してください</p>
     </div>
   </div>

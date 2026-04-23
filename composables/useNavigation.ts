@@ -32,7 +32,7 @@ export const useNavigation = (showButtons: boolean = true) => {
     if (canEdit.value && showButtons) {
       actionItems.push({
         label: isEditPage ? '閲覧に戻る' : revision.value ? '編集する' : '新規作成',
-        icon: isEditPage ? 'i-heroicons-eye' : revision.value ? 'i-heroicons-pencil-square' : 'i-heroicons-plus',
+        icon: isEditPage ? 'i-lucide-eye' : revision.value ? 'i-lucide-square-pen' : 'i-lucide-plus',
         to: (isEditPage ? `/${path}` : `/edit/${path}`).replace('//', '/')
       })
     }
@@ -41,21 +41,21 @@ export const useNavigation = (showButtons: boolean = true) => {
           {
             class: 'profile',
             label: user.value.name ?? user.value.login ?? 'プロフィール',
-            icon: 'i-tabler-user',
+            icon: 'i-lucide-user',
             children: [
               {
                 label: 'アカウント設定',
                 to: '/profile',
-                icon: 'i-heroicons-cog-6-tooth-solid'
+                icon: 'i-lucide-settings'
               },
               {
                 label: '返信一覧',
                 to: '/reply',
-                icon: 'i-heroicons-bell'
+                icon: 'i-lucide-bell'
               },
               {
                 label: 'ログアウト',
-                icon: 'i-heroicons-arrow-right-on-rectangle',
+                icon: 'i-lucide-log-out',
                 onSelect: () => signOut()
               }
             ]
@@ -64,12 +64,12 @@ export const useNavigation = (showButtons: boolean = true) => {
       : [
           {
             label: 'ログイン',
-            icon: 'i-tabler-login',
+            icon: 'i-lucide-log-in',
             to: '/signin'
           },
           {
             label: '新規登録',
-            icon: 'i-tabler-user-plus',
+            icon: 'i-lucide-user-plus',
             to: '/signup'
           }
         ]

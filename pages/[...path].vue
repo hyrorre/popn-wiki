@@ -61,7 +61,7 @@ useHead({
       <template v-if="pageNotFound">
         <div class="py-12 text-center">
           <p class="text-muted mb-6 text-lg">このページはまだ存在しません。</p>
-          <u-button v-if="user" size="lg" icon="i-heroicons-plus" :to="`/edit/${path}`">新規作成</u-button>
+          <u-button v-if="user" size="lg" icon="i-lucide-plus" :to="`/edit/${path}`">新規作成</u-button>
         </div>
       </template>
 
@@ -69,7 +69,7 @@ useHead({
       <template v-else-if="isDeleted">
         <div class="text-center py-12">
           <p class="text-muted mb-6 text-lg">このページは削除されています。</p>
-          <u-button v-if="user" size="lg" icon="i-heroicons-arrow-path-rounded-square" :to="`/edit/${path}`">
+          <u-button v-if="user" size="lg" icon="i-lucide-rotate-ccw" :to="`/edit/${path}`">
             新規作成 または 復元
           </u-button>
         </div>

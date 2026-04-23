@@ -133,7 +133,7 @@ const formatDate = (dateStr: string) => {
       <u-textarea ref="editTextareaRef" v-model="editBody" :rows="3" class="w-full" />
       <div v-if="editBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
-          <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
+          <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
         <MDC :value="editBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
@@ -155,7 +155,7 @@ const formatDate = (dateStr: string) => {
         class="text-muted hover:text-primary transition-colors flex items-center gap-1"
         @click="openEdit"
       >
-        <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
+        <u-icon name="i-lucide-square-pen" class="w-4 h-4" /> 編集
       </button>
       <button
         v-if="comment.userId === user.id"
@@ -163,10 +163,10 @@ const formatDate = (dateStr: string) => {
         :disabled="isDeleting"
         @click="submitDelete"
       >
-        <u-icon name="i-heroicons-trash" class="w-4 h-4" /> 削除
+        <u-icon name="i-lucide-trash-2" class="w-4 h-4" /> 削除
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
-        <u-icon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" /> 返信
+        <u-icon name="i-lucide-undo-2" class="w-4 h-4" /> 返信
       </button>
     </div>
 
@@ -182,7 +182,7 @@ const formatDate = (dateStr: string) => {
       />
       <div v-if="replyBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
-          <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
+          <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
         <MDC :value="replyBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
