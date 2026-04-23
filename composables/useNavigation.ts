@@ -28,7 +28,14 @@ export const useNavigation = (showButtons: boolean = true) => {
       }
     ]
 
-    const actionItems: NavigationMenuItem[] = []
+    const actionItems: NavigationMenuItem[] = [
+      {
+        label: '検索',
+        icon: 'i-lucide-search',
+        to: '/search'
+      }
+    ]
+
     if (canEdit.value && showButtons) {
       actionItems.push({
         label: isEditPage ? '閲覧に戻る' : revision.value ? '編集する' : '新規作成',
