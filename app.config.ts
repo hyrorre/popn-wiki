@@ -5,7 +5,7 @@ export default defineAppConfig({
     locale: ja,
     lang: 'ja',
     title: 'ポップンミュージック上級攻略Wiki',
-    description: 'ポップンミュージック中級・上級・超上級曲の難易度表・攻略情報をまとめるサイト',
+    description: 'ポップンミュージック中級・上級・超上級曲の難易度表・攻略情報まとめ',
     type: 'website',
     url: 'https://popn.wiki',
     image: 'https://popn.wiki/icon.svg',
