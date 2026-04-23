@@ -57,9 +57,7 @@ const getTypeLabel = (type: BrokenLink['type']) => {
           Wiki内のすべてのページをスキャンし、存在しないページへのリンクや画像を探します。
         </p>
       </div>
-      <UButton icon="i-lucide-search" size="lg" :loading="pending" @click="() => execute()">
-        スキャンを開始
-      </UButton>
+      <UButton icon="i-lucide-search" size="lg" :loading="pending" @click="() => execute()"> スキャンを開始 </UButton>
     </div>
 
     <UAlert

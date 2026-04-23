@@ -208,13 +208,7 @@ await loadHistory()
           <u-icon name="i-lucide-history" />
           編集履歴
         </h3>
-        <u-button
-          variant="ghost"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          :loading="loadingHistory"
-          @click="loadHistory"
-        >
+        <u-button variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingHistory" @click="loadHistory">
           再読み込み
         </u-button>
       </div>

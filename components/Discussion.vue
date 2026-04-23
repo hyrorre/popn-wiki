@@ -166,9 +166,7 @@ watch(page, (newVal) => {
       </div>
 
       <div class="flex justify-end mt-3">
-        <u-button icon="i-lucide-send" color="primary" :loading="isSubmitting" @click="submitComment">
-          送信
-        </u-button>
+        <u-button icon="i-lucide-send" color="primary" :loading="isSubmitting" @click="submitComment"> 送信 </u-button>
       </div>
     </div>
     <div v-else class="text-sm text-muted bg-gray-50 border border-default p-4 rounded-md text-center">
