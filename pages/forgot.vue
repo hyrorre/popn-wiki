@@ -44,6 +44,7 @@ const submit = async (payload: FormSubmitEvent<EmailOnlyInput>) => {
     </h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
+        <!-- @vue-expect-error -->
         <u-auth-form
           title="パスワード再設定"
           description="登録されているメールアドレスを入力してください。再設定用のリンクを送信します。"
