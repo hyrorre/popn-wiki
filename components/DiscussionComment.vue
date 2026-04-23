@@ -100,33 +100,17 @@ const submitDelete = async () => {
   }
 }
 
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 </script>
 
 <template>
-  <div
+  <CommentPanel
     :id="`comment-${comment.id}`"
-    class="rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-default shadow-sm relative"
+    :author-name="comment.profiles?.name || '名無しさん'"
+    :author-alt="comment.profiles?.name || '名無しさん'"
+    :created-at="comment.createdAt"
+    :updated-at="comment.updatedAt"
+    class="relative"
   >
-    <div class="flex justify-between items-center text-sm text-muted mb-3">
-      <span class="font-medium text-foreground flex items-center gap-2">
-        <u-avatar size="xs" :alt="comment.profiles?.name || '名無しさん'" />
-        {{ comment.profiles?.name || '名無しさん' }}
-      </span>
-      <span>
-        {{ formatDate(comment.createdAt) }}
-        <span v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt" class="text-xs ml-1">(編集済)</span>
-      </span>
-    </div>
-
     <!-- 編集モード -->
     <div v-if="isEditingOpen" class="mt-2 text-foreground">
       <MarkdownToolbar v-model="editBody" :textarea="editTextareaRef" />
@@ -205,5 +189,5 @@ const formatDate = (dateStr: string) => {
         @refresh="emit('refresh')"
       />
     </div>
-  </div>
+  </CommentPanel>
 </template>

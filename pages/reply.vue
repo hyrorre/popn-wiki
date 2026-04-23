@@ -10,15 +10,6 @@ const { data: replies, status } = useFetch('/api/reply', {
   query: { type: activeTab }
 })
 
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('ja-JP', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 useHead({
   title: '返信一覧'
 })
@@ -43,53 +34,35 @@ useHead({
       </div>
 
       <div v-else-if="replies && replies.length > 0" class="flex flex-col gap-4">
-        <u-card
+        <CommentPanel
           v-for="reply in replies"
           :key="reply.id"
-          class="hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-md group"
+          :to="`/${reply.path}#comment-${reply.id}`"
+          :author-name="reply.userName ?? '名無しさん'"
+          :author-alt="reply.userName ?? '名無しさん'"
+          :created-at="reply.createdAt"
+          avatar-size="md"
         >
-          <div class="flex items-start gap-4">
-            <u-avatar :alt="reply.userName ?? '名無しさん'" size="md" class="bg-primary/10 text-primary font-bold" />
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between mb-2">
-                <span class="font-bold text-sm text-foreground truncate">{{ reply.userName }}</span>
-                <span class="text-xs text-muted whitespace-nowrap">{{ formatDate(reply.createdAt) }}</span>
-              </div>
-
-              <div class="mb-3">
-                <u-link
-                  :to="`/${reply.path}`"
-                  class="text-xs font-semibold text-primary hover:underline flex items-center gap-1 max-w-full"
-                >
-                  <u-icon name="i-lucide-file-text" class="w-3.5 h-3.5 shrink-0" />
-                  <span class="truncate">{{ reply.pageTitle || reply.path }}</span>
-                </u-link>
-              </div>
-
-              <div
-                class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-default relative group-hover:bg-white dark:group-hover:bg-gray-900 transition-colors"
-              >
-                <p class="text-sm text-foreground opacity-90 line-clamp-3 leading-relaxed">
-                  {{ reply.bodyPreview }}
-                </p>
-              </div>
-
-              <div class="mt-4 flex justify-end">
-                <u-button
-                  :to="`/${reply.path}#comment-${reply.id}`"
-                  variant="ghost"
-                  size="sm"
-                  icon="i-lucide-arrow-right"
-                  color="neutral"
-                  trailing
-                  class="text-xs group-hover:text-primary transition-colors"
-                >
-                  詳細を見る
-                </u-button>
-              </div>
+          <template #headerMeta>
+            <div class="flex items-center gap-1.5 min-w-0 text-xs font-medium text-primary">
+              <u-icon name="i-lucide-file-text" class="h-3.5 w-3.5 shrink-0" />
+              <span class="truncate">{{ reply.pageTitle || reply.path }}</span>
             </div>
+          </template>
+
+          <div class="rounded-md border border-default bg-white/70 p-3 text-sm dark:bg-gray-900/50">
+            <p class="line-clamp-3 whitespace-pre-wrap break-words opacity-90">
+              {{ reply.bodyPreview }}
+            </p>
           </div>
-        </u-card>
+
+          <template #footer>
+            <div class="flex items-center justify-end gap-1 text-xs font-medium text-muted group-hover:text-primary">
+              <span>コメントを開く</span>
+              <u-icon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+            </div>
+          </template>
+        </CommentPanel>
       </div>
 
       <div
@@ -107,21 +80,3 @@ useHead({
   </u-container>
   <Footer />
 </template>
-
-<style scoped>
-/* スムーズな遷移のためのアニメーション */
-.u-card {
-  animation: fadeIn 0.4s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>
