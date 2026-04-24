@@ -1120,18 +1120,18 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   text = text.replace(/<\/sortable>/gi, '::')
 
   // other convert
-  text = text.replaceAll('![](/upload>/score/start/*)', ':ImageUploader')
-  text = text.replaceAll('![](/medialist>/score/start/*)', ':ImageList')
+  text = text.replaceAll('[](/upload_/score/start/*)', ':ImageUploader')
+  text = text.replaceAll('[](/medialist_/score/start/*)', ':ImageList')
   text = text.replaceAll(
-    '![](/changes>count=7&type=create,edit&render=list(nosummary))',
+    '[](/changes_count_7_type_create_edit_render_list_nosummary)',
     ':RecentEdits{limit="7" hideDetail="true"}'
   )
-  text = text.replaceAll('![](/threads>*&count=7&simplelist&skipempty)', ':RecentComments{limit="7" hideDetail="true"}')
-  text = text.replaceAll('合計: ![total](/counter)', '')
-  text = text.replaceAll('今日: ![today](/counter)', '')
-  text = text.replaceAll('昨日: ![yesterday](/counter)', '')
+  text = text.replaceAll('[](/threads_*_count_7_simplelist_skipempty)', ':RecentComments{limit="7" hideDetail="true"}')
+  text = text.replaceAll('合計: [total](/counter)', '')
+  text = text.replaceAll('今日: [today](/counter)', '')
+  text = text.replaceAll('昨日: [yesterday](/counter)', '')
 
-  text = text.replaceAll('![](/threads>*&count=40&skipempty)', ':RecentComments')
+  text = text.replaceAll('[](/threads_*_count_40_skipempty)', ':RecentComments')
 
   return text
 }
