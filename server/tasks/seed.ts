@@ -905,14 +905,59 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   })
 
   // DokuWiki リスト内のコメント行は Markdown リストを分断するため、リスト直前へ移動する
-  text = text.replace(/(^(?: {2,}|\t[ \t]*)[*-].*(?:\n[ \t]*(?:(?: {2,}|\t[ \t]*)[*-].*|<!--.*-->[ \t]*))*)/gm, (block) => {
-    const lines = block.split('\n').filter(Boolean)
-    const comments = lines.filter((line) => /^<!--.*-->$/.test(line.trim())).map((line) => line.trim())
-    if (comments.length === 0) return block
+  // 複数行コメントもリストの途中に挟まることがあるため、行単位でコメントブロックを拾う
+  {
+    const lines = text.split('\n')
+    const movedLines: string[] = []
+    const isListLine = (line: string) => /^[ \t]*[*-]\s+\S/.test(line) || /^((?: {2,}|\t[ \t]*))[*-].+$/.test(line)
+    const isCommentStart = (line: string) => line.trimStart().startsWith('<!--')
 
-    const listLines = lines.filter((line) => !/^<!--.*-->$/.test(line.trim()))
-    return `${comments.join('\n')}\n${listLines.join('\n')}`
-  })
+    for (let i = 0; i < lines.length; ) {
+      if (!isListLine(lines[i] ?? '')) {
+        movedLines.push(lines[i] ?? '')
+        i++
+        continue
+      }
+
+      const listLines: string[] = []
+      const comments: string[] = []
+
+      while (i < lines.length) {
+        const line = lines[i] ?? ''
+
+        if (isListLine(line)) {
+          listLines.push(line)
+          i++
+          continue
+        }
+
+        if (isCommentStart(line)) {
+          const commentLines = [line.trim()]
+          i++
+
+          while (i < lines.length && !commentLines[commentLines.length - 1]?.trimEnd().endsWith('-->')) {
+            commentLines.push((lines[i] ?? '').trim())
+            i++
+          }
+
+          comments.push(commentLines.join('\n'))
+          continue
+        }
+
+        if (line.trim() !== '') {
+          listLines.push(line)
+          i++
+          continue
+        }
+
+        break
+      }
+
+      movedLines.push(...comments, ...listLines)
+    }
+
+    text = movedLines.join('\n')
+  }
 
   // 強制改行: \\ -> 改行（表示時は remark-breaks 前提で改行として扱う）
   text = text.replace(/\\\\([ \t]*)/g, '\n')

@@ -77,6 +77,39 @@ describe('DokuWiki list seed conversion', () => {
     expect(markdown).toContain(['<!-- comment -->', '* parent', '  * child', '    - ordered child'].join('\n'))
   })
 
+  test('moves multiline comments out of list blocks', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '  * parent',
+        '<!--    * commented child',
+        'comment detail',
+        '-->',
+        '    * child'
+      ].join('\n')
+    )
+
+    expect(markdown).toContain(['<!--    * commented child', 'comment detail', '-->', '* parent', '  * child'].join('\n'))
+  })
+
+  test('moves multiline comments after a continued list item', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '  * [[https://example.com|parent',
+        'continued label]]',
+        '<!--    * commented child',
+        'comment detail',
+        '-->',
+        '    * child'
+      ].join('\n')
+    )
+
+    expect(markdown).toContain(
+      ['<!--    * commented child', 'comment detail', '-->', '* [[https://example.com|parent', 'continued label]]', '  * child'].join('\n')
+    )
+  })
+
   test('moves DokuWiki line comments out of list blocks', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(['  * parent', '// comment', '    * child'].join('\n'))
