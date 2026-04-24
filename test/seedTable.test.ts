@@ -105,4 +105,18 @@ describe('DokuWiki bold link seed conversion', () => {
 
     expect(markdown).toBe('* [**上達法指南のページ**](/その他/上達法指南のページ)にも有力')
   })
+
+  test('trims spaces inside bold markers', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['  * ** ハイパーJパーティーロック(EX) **', '  * ** 太字** と **太字 **'].join('\n'))
+
+    expect(markdown).toBe(['* **ハイパーJパーティーロック(EX)**', '* **太字** と **太字**'].join('\n'))
+  })
+
+  test('does not trim bold-looking markers inside code or comments', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['  * %%** text **%%', '/* ** text ** */'].join('\n'))
+
+    expect(markdown).toBe(['<!-- ** text ** -->', '* `** text **`'].join('\n'))
+  })
 })

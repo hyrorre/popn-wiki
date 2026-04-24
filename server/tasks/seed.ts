@@ -977,6 +977,27 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   // インラインコード: ''code'' -> `code`
   text = text.replace(/''(.*?)''/g, '`$1`')
 
+  // 太字の内側にある先頭・末尾スペースは Markdown で強調扱いされないため詰める
+  {
+    const protectedBlocks: string[] = []
+    const protect = (value: string) => {
+      const idx = protectedBlocks.length
+      protectedBlocks.push(value)
+      return `__DOKU_BOLD_PROTECTED_${idx}__`
+    }
+
+    text = text
+      .replace(/```[\s\S]*?```/g, protect)
+      .replace(/`[^`\n]*`/g, protect)
+      .replace(/<!--[\s\S]*?-->/g, protect)
+
+    text = text.replace(/\*\*([ \t\u3000]*\S(?:[^*\n]*?\S)?)[ \t\u3000]*\*\*/g, (_m, content: string) => {
+      return `**${content.trim()}**`
+    })
+
+    text = text.replace(/__DOKU_BOLD_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
+  }
+
   // フォントサイズショートカット
   // 160%
   text = text.replace(/#{4}(.+?)#{4}/g, '[$1]{.text-2xl}')
