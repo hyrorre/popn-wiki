@@ -13,15 +13,8 @@ const parseInteger = (value: unknown) => {
 }
 
 export const searchQuerySchema = z.object({
-  q: z
-    .string()
-    .trim()
-    .min(2, '検索語は2文字以上で入力してください')
-    .max(100, '検索語は100文字以内で入力してください'),
-  page: z.preprocess(
-    parseInteger,
-    z.number().int().min(1, 'ページ番号が不正です').optional().default(1)
-  ),
+  q: z.string().trim().min(2, '検索語は2文字以上で入力してください').max(100, '検索語は100文字以内で入力してください'),
+  page: z.preprocess(parseInteger, z.number().int().min(1, 'ページ番号が不正です').optional().default(1)),
   limit: z.preprocess(
     parseInteger,
     z.number().int().min(1, '件数が不正です').max(50, '件数は50件以下で指定してください').optional().default(20)

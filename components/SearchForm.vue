@@ -8,7 +8,7 @@ withDefaults(
   {
     autofocus: false,
     size: 'md',
-    placeholder: 'ページ・本文・コメントを検索'
+    placeholder: '検索語を入力'
   }
 )
 
@@ -33,7 +33,10 @@ async function submitSearch() {
 
   await router.push({
     path: '/search',
-    query: { q: trimmedQuery.value }
+    query: {
+      q: trimmedQuery.value,
+      ...(route.query.type === 'comments' ? { type: 'comments' } : {})
+    }
   })
 }
 </script>
@@ -48,8 +51,6 @@ async function submitSearch() {
       icon="i-lucide-search"
       class="grow"
     />
-    <u-button type="submit" color="primary" icon="i-lucide-search" :size="size" :disabled="!canSubmit">
-      検索
-    </u-button>
+    <u-button type="submit" color="primary" icon="i-lucide-search" :size="size" :disabled="!canSubmit"> 検索 </u-button>
   </form>
 </template>

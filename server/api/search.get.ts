@@ -1,9 +1,9 @@
 import { db } from '@nuxthub/db'
-import { aliasedTable, and, eq, gt, inArray, isNull, notExists, sql } from 'drizzle-orm'
-import { commentsTable, pagesTable } from '../db/schema'
+import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
+import { pagesTable } from '../db/schema'
 import { searchQuerySchema } from '~/shared/zod'
 
-type SearchMatchType = 'title' | 'path' | 'body' | 'comment'
+type SearchMatchType = 'title' | 'path' | 'body'
 type SnippetType = SearchMatchType
 
 type LatestPage = {
@@ -22,7 +22,6 @@ type SearchResultItem = {
   matchTypes: SearchMatchType[]
   snippet: string
   snippetType: SnippetType
-  commentCountMatched: number
   score: number
 }
 
@@ -45,25 +44,8 @@ export default defineEventHandler(async (event) => {
     return { query: q, page, limit, total: 0, items: [] }
   }
 
-  const latestPagePaths = latestPages.map((entry) => entry.path)
-  const comments = await db
-    .select({
-      path: commentsTable.path,
-      body: commentsTable.body
-    })
-    .from(commentsTable)
-    .where(and(isNull(commentsTable.deletedAt), inArray(commentsTable.path, latestPagePaths)))
-    .all()
-
-  const commentsByPath = new Map<string, string[]>()
-  for (const comment of comments) {
-    const bucket = commentsByPath.get(comment.path) ?? []
-    bucket.push(comment.body)
-    commentsByPath.set(comment.path, bucket)
-  }
-
   const items = latestPages
-    .map((entry) => buildSearchResult(entry, commentsByPath.get(entry.path) ?? [], terms))
+    .map((entry) => buildSearchResult(entry, terms))
     .filter((entry): entry is SearchResultItem => entry !== null)
     .sort((left, right) => {
       if (right.score !== left.score) {
@@ -119,13 +101,6 @@ function buildTermCandidateCondition(term: string) {
     lower(${pagesTable.title}) LIKE ${pattern} ESCAPE ${escape}
     OR lower(${pagesTable.path}) LIKE ${pattern} ESCAPE ${escape}
     OR lower(${pagesTable.body}) LIKE ${pattern} ESCAPE ${escape}
-    OR EXISTS (
-      SELECT 1
-      FROM ${commentsTable}
-      WHERE ${commentsTable.path} = ${pagesTable.path}
-        AND ${commentsTable.deletedAt} IS NULL
-        AND lower(${commentsTable.body}) LIKE ${pattern} ESCAPE ${escape}
-    )
   )`
 }
 
@@ -134,31 +109,21 @@ function escapeLikePattern(value: string) {
 }
 
 function splitTerms(query: string) {
-  return query
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(normalizeText)
+  return query.trim().split(/\s+/).filter(Boolean).map(normalizeText)
 }
 
 function normalizeText(value: string) {
   return value.toLocaleLowerCase('ja-JP')
 }
 
-function buildSearchResult(page: LatestPage, comments: string[], terms: string[]): SearchResultItem | null {
+function buildSearchResult(page: LatestPage, terms: string[]): SearchResultItem | null {
   const title = page.title || (page.path === '/' ? 'Home' : page.path.split('/').pop() || page.path)
   const normalizedTitle = normalizeText(title)
   const normalizedPath = normalizeText(page.path)
   const normalizedBody = normalizeText(page.body)
-  const matchedComments = comments.filter((comment) => matchesAnyTerm(comment, terms))
-  const normalizedMatchedComments = matchedComments.map(normalizeText)
 
   const allTermsMatched = terms.every((term) => {
-    if (normalizedTitle.includes(term) || normalizedPath.includes(term) || normalizedBody.includes(term)) {
-      return true
-    }
-
-    return normalizedMatchedComments.some((comment) => comment.includes(term))
+    return normalizedTitle.includes(term) || normalizedPath.includes(term) || normalizedBody.includes(term)
   })
 
   if (!allTermsMatched) {
@@ -168,24 +133,16 @@ function buildSearchResult(page: LatestPage, comments: string[], terms: string[]
   const titleMatched = terms.some((term) => normalizedTitle.includes(term))
   const pathMatched = terms.some((term) => normalizedPath.includes(term))
   const bodyMatched = terms.some((term) => normalizedBody.includes(term))
-  const commentMatched = matchedComments.length > 0
 
   const matchTypes = [
     ...(titleMatched ? (['title'] as const) : []),
     ...(pathMatched ? (['path'] as const) : []),
-    ...(bodyMatched ? (['body'] as const) : []),
-    ...(commentMatched ? (['comment'] as const) : [])
+    ...(bodyMatched ? (['body'] as const) : [])
   ]
 
-  const snippetType: SnippetType = titleMatched
-    ? 'title'
-    : pathMatched
-      ? 'path'
-      : bodyMatched
-        ? 'body'
-        : 'comment'
+  const snippetType: SnippetType = titleMatched ? 'title' : pathMatched ? 'path' : 'body'
 
-  const snippetSource = snippetType === 'title' ? title : snippetType === 'path' ? page.path : snippetType === 'body' ? page.body : matchedComments[0] || ''
+  const snippetSource = snippetType === 'title' ? title : snippetType === 'path' ? page.path : page.body
 
   return {
     path: page.path,
@@ -195,20 +152,13 @@ function buildSearchResult(page: LatestPage, comments: string[], terms: string[]
     matchTypes,
     snippet: createSnippet(snippetSource, terms),
     snippetType,
-    commentCountMatched: matchedComments.length,
     score: calculateScore({
       title: normalizedTitle,
       path: normalizedPath,
       body: normalizedBody,
-      comments: normalizedMatchedComments,
       terms
     })
   }
-}
-
-function matchesAnyTerm(text: string, terms: string[]) {
-  const normalized = normalizeText(text)
-  return terms.some((term) => normalized.includes(term))
 }
 
 function createSnippet(source: string, terms: string[]) {
@@ -238,19 +188,7 @@ function createSnippet(source: string, terms: string[]) {
   return `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`
 }
 
-function calculateScore({
-  title,
-  path,
-  body,
-  comments,
-  terms
-}: {
-  title: string
-  path: string
-  body: string
-  comments: string[]
-  terms: string[]
-}) {
+function calculateScore({ title, path, body, terms }: { title: string; path: string; body: string; terms: string[] }) {
   let score = 0
 
   for (const term of terms) {
@@ -270,10 +208,6 @@ function calculateScore({
 
     if (body.includes(term)) {
       score += 10
-    }
-
-    if (comments.some((comment) => comment.includes(term))) {
-      score += 8
     }
   }
 
