@@ -97,3 +97,12 @@ describe('DokuWiki list seed conversion', () => {
     expect(markdown).toContain(['<!-- comment -->', '* parent line 1', 'parent line 2', '  * child'].join('\n'))
   })
 })
+
+describe('DokuWiki bold link seed conversion', () => {
+  test('moves bold markers inside Markdown links for MDC', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown('  * **[[その他:上達法指南のページ|上達法指南のページ]]**にも有力')
+
+    expect(markdown).toBe('* [**上達法指南のページ**](/その他/上達法指南のページ)にも有力')
+  })
+})

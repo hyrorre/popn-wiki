@@ -1074,6 +1074,9 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     return `[${label.trim()}](${url})${linkAttrs}`
   })
 
+  // MDC は **[label](url)** を太字リンクとして解釈しないため、リンク文字列側を太字にする
+  text = text.replace(/\*\*\[([^\]\n]+)\]\(([^)\n]+)\)\*\*/g, '[**$1**]($2)')
+
   // 画像: {{path|alt}} / {{path}} -> [alt](url)
   // 移行後は画像を直接埋め込まず、あえてリンクとして扱う
   text = text.replace(/\{\{([^|}]+?)(?:\|([^}]*))?\}\}/g, (_m, src, alt) => {
