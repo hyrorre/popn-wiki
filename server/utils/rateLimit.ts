@@ -9,7 +9,7 @@ type RateLimitOptions = {
   window?: number
 }
 
-const localCounters = new Map<string, { count: number, expiresAt: number }>()
+const localCounters = new Map<string, { count: number; expiresAt: number }>()
 
 /**
  * Fixed Window Counter 方式のレート制限。
@@ -51,12 +51,7 @@ async function getCounter(storage: ReturnType<typeof useStorage>, key: string) {
   }
 }
 
-async function setCounter(
-  storage: ReturnType<typeof useStorage>,
-  key: string,
-  count: number,
-  ttl: number
-) {
+async function setCounter(storage: ReturnType<typeof useStorage>, key: string, count: number, ttl: number) {
   try {
     await storage.setItem(key, count, { ttl })
   } catch (error) {

@@ -50,11 +50,8 @@ export default defineNuxtConfig({
   },
   hub: {
     blob: true,
-    kv: {
-      driver: 'cloudflare-kv-binding',
-      binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
-      namespaceId: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
-    },
+    cache: true,
+    kv: true,
     db: {
       dialect: 'sqlite',
       casing: 'snake_case'
@@ -89,6 +86,12 @@ export default defineNuxtConfig({
         'rehype-external-links',
         'remark-parse'
       ]
+    },
+    vue: {
+      features: {
+        // Options APIを無効化することでバンドルサイズを削減
+        optionsAPI: false
+      }
     }
   },
   nitro: {
@@ -100,29 +103,7 @@ export default defineNuxtConfig({
     },
     cloudflare: {
       deployConfig: true,
-      nodeCompat: true,
-      wrangler: {
-        name: 'popn-wiki',
-        d1_databases: [
-          {
-            binding: process.env.NUXT_HUB_CLOUDFLARE_DB_BINDING,
-            database_name: process.env.NUXT_HUB_CLOUDFLARE_DB_NAME,
-            database_id: process.env.NUXT_HUB_CLOUDFLARE_DB_ID
-          }
-        ],
-        r2_buckets: [
-          {
-            binding: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BINDING || 'BLOB',
-            bucket_name: process.env.NUXT_HUB_CLOUDFLARE_BLOB_BUCKET
-          }
-        ],
-        kv_namespaces: [
-          {
-            binding: process.env.NUXT_HUB_CLOUDFLARE_KV_BINDING || 'KV',
-            id: process.env.NUXT_HUB_CLOUDFLARE_KV_NAMESPACE
-          }
-        ]
-      }
+      nodeCompat: true
     }
   }
 })

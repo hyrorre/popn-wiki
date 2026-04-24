@@ -6,20 +6,26 @@ export const signinSchema = z.object({
   password: passwordSchema
 })
 
-export const signupSchema = z.object({
-  name: userNameSchema,
-  email: emailSchema,
-  password: strongPasswordSchema
-}).refine(({ name, password }) => !includesComparableValue(password, name), {
-  path: ['password'],
-  message: 'パスワードに名前を含めることはできません'
-}).refine(({ email, password }) => {
-  const localPart = email.split('@')[0] ?? ''
-  return !includesComparableValue(password, localPart)
-}, {
-  path: ['password'],
-  message: 'パスワードにメールアドレスの一部を含めることはできません'
-})
+export const signupSchema = z
+  .object({
+    name: userNameSchema,
+    email: emailSchema,
+    password: strongPasswordSchema
+  })
+  .refine(({ name, password }) => !includesComparableValue(password, name), {
+    path: ['password'],
+    message: 'パスワードに名前を含めることはできません'
+  })
+  .refine(
+    ({ email, password }) => {
+      const localPart = email.split('@')[0] ?? ''
+      return !includesComparableValue(password, localPart)
+    },
+    {
+      path: ['password'],
+      message: 'パスワードにメールアドレスの一部を含めることはできません'
+    }
+  )
 
 export const emailOnlySchema = z.object({
   email: emailSchema

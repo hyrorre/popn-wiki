@@ -111,7 +111,7 @@ useHead({
       <template v-else>
         <div class="mb-8">
           <h2 class="text-2xl font-bold flex items-center gap-2">
-            <u-icon name="i-heroicons-pencil-square" class="text-primary" />
+            <u-icon name="i-lucide-square-pen" class="text-primary" />
             {{ pageNotFound || isDeleted ? '新規作成' : '編集モード' }}
           </h2>
           <p class="text-muted text-sm mt-1">パス : {{ path === '/' ? '/' : '/' + path }}</p>
@@ -141,7 +141,7 @@ useHead({
           <u-button
             class="text-red-600 border-red-300"
             variant="outline"
-            icon="i-heroicons-trash"
+            icon="i-lucide-trash-2"
             size="lg"
             :disabled="deleting"
             @click="deletePage"

@@ -62,6 +62,7 @@ const submit = async (payload: FormSubmitEvent<SignupInput>) => {
     </h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
+        <!-- @vue-expect-error -->
         <u-auth-form
           title="新規アカウント登録"
           :fields="fields"

@@ -13,7 +13,7 @@ const { items } = useNavigation(props.showButtons)
       <div class="flex items-center gap-2">
         <u-button
           v-if="props.showButtons"
-          icon="i-heroicons-bars-3"
+          icon="i-lucide-menu"
           variant="ghost"
           color="neutral"
           class="lg:hidden"

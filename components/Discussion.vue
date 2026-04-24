@@ -97,7 +97,7 @@ watch(page, (newVal) => {
 <template>
   <div id="discussion" class="discussion-container">
     <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
-      <u-icon name="i-heroicons-chat-bubble-left-right" class="w-6 h-6" />
+      <u-icon name="i-lucide-messages-square" class="w-6 h-6" />
       コメント
     </h3>
 
@@ -136,13 +136,13 @@ watch(page, (newVal) => {
           @keyup.enter="handleJump"
         />
         <span class="text-xs text-muted font-medium">ページへ</span>
-        <u-button size="xs" color="neutral" variant="ghost" icon="i-heroicons-magnifying-glass" @click="handleJump" />
+        <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
       </div>
     </div>
 
     <div v-if="user" class="border border-default rounded-lg p-5 bg-white dark:bg-gray-900 shadow-sm">
       <h4 class="font-bold mb-3 flex items-center gap-2">
-        <u-icon name="i-heroicons-pencil" class="w-5 h-5" />
+        <u-icon name="i-lucide-square-pen" class="w-5 h-5" />
         新しくコメントする
       </h4>
       <MarkdownToolbar v-model="newCommentBody" :textarea="textareaRef" />
@@ -160,15 +160,13 @@ watch(page, (newVal) => {
         class="mt-3 p-3 border border-default rounded bg-gray-50 dark:bg-gray-800/50 transition-all"
       >
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
-          <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
+          <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
         <MDC :value="newCommentBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
 
       <div class="flex justify-end mt-3">
-        <u-button icon="i-heroicons-paper-airplane" color="primary" :loading="isSubmitting" @click="submitComment">
-          送信
-        </u-button>
+        <u-button icon="i-lucide-send" color="primary" :loading="isSubmitting" @click="submitComment"> 送信 </u-button>
       </div>
     </div>
     <div v-else class="text-sm text-muted bg-gray-50 border border-default p-4 rounded-md text-center">

@@ -6,7 +6,10 @@ export const updatePageSchema = z.object({
   body: pageBodySchema,
   baseRevision: nonNegativeIntSchema,
   message: pageMessageSchema,
-  minor: z.union([z.literal(0), z.literal(1)]).optional().default(0)
+  minor: z
+    .union([z.literal(0), z.literal(1)])
+    .optional()
+    .default(0)
 })
 
 export type UpdatePageInput = z.output<typeof updatePageSchema>

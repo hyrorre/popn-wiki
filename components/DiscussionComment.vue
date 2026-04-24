@@ -99,38 +99,24 @@ const submitDelete = async () => {
     isDeleting.value = false
   }
 }
-
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 </script>
 
 <template>
-  <div :id="`comment-${comment.id}`" class="rounded-lg p-4 bg-gray-50/50 dark:bg-gray-800/30 border border-default shadow-sm relative">
-    <div class="flex justify-between items-center text-sm text-muted mb-3">
-      <span class="font-medium text-foreground flex items-center gap-2">
-        <u-avatar size="xs" :alt="comment.profiles?.name || '名無しさん'" />
-        {{ comment.profiles?.name || '名無しさん' }}
-      </span>
-      <span>
-        {{ formatDate(comment.createdAt) }}
-        <span v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt" class="text-xs ml-1">(編集済)</span>
-      </span>
-    </div>
-
+  <CommentPanel
+    :id="`comment-${comment.id}`"
+    :author-name="comment.profiles?.name || '名無しさん'"
+    :author-alt="comment.profiles?.name || '名無しさん'"
+    :created-at="comment.createdAt"
+    :updated-at="comment.updatedAt"
+    class="relative"
+  >
     <!-- 編集モード -->
     <div v-if="isEditingOpen" class="mt-2 text-foreground">
       <MarkdownToolbar v-model="editBody" :textarea="editTextareaRef" />
       <u-textarea ref="editTextareaRef" v-model="editBody" :rows="3" class="w-full" />
       <div v-if="editBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
-          <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
+          <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
         <MDC :value="editBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
@@ -152,7 +138,7 @@ const formatDate = (dateStr: string) => {
         class="text-muted hover:text-primary transition-colors flex items-center gap-1"
         @click="openEdit"
       >
-        <u-icon name="i-heroicons-pencil-square" class="w-4 h-4" /> 編集
+        <u-icon name="i-lucide-square-pen" class="w-4 h-4" /> 編集
       </button>
       <button
         v-if="comment.userId === user.id"
@@ -160,10 +146,10 @@ const formatDate = (dateStr: string) => {
         :disabled="isDeleting"
         @click="submitDelete"
       >
-        <u-icon name="i-heroicons-trash" class="w-4 h-4" /> 削除
+        <u-icon name="i-lucide-trash-2" class="w-4 h-4" /> 削除
       </button>
       <button class="text-muted hover:text-primary transition-colors flex items-center gap-1" @click="openReply">
-        <u-icon name="i-heroicons-arrow-uturn-left" class="w-4 h-4" /> 返信
+        <u-icon name="i-lucide-undo-2" class="w-4 h-4" /> 返信
       </button>
     </div>
 
@@ -179,7 +165,7 @@ const formatDate = (dateStr: string) => {
       />
       <div v-if="replyBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
-          <u-icon name="i-heroicons-eye" class="w-3.5 h-3.5" />プレビュー
+          <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
         <MDC :value="replyBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
@@ -202,5 +188,5 @@ const formatDate = (dateStr: string) => {
         @refresh="emit('refresh')"
       />
     </div>
-  </div>
+  </CommentPanel>
 </template>

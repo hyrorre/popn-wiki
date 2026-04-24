@@ -151,7 +151,7 @@ await loadHistory()
   <section class="flex flex-col gap-4">
     <div class="flex flex-wrap gap-3 items-center justify-between bg-muted/30 p-2 rounded-lg border border-default">
       <div class="flex gap-2 items-center flex-1 min-w-[300px]">
-        <u-button icon="i-heroicons-check" :loading="saving" @click="save">
+        <u-button icon="i-lucide-check" :loading="saving" @click="save">
           {{ saving ? '保存中...' : '保存' }}
         </u-button>
         <u-button variant="outline" color="neutral" :disabled="saving" @click="$emit('cancel')">キャンセル</u-button>
@@ -160,7 +160,7 @@ await loadHistory()
           type="text"
           class="flex-1"
           placeholder="変更メッセージ（任意）"
-          icon="i-heroicons-chat-bubble-bottom-center-text"
+          icon="i-lucide-message-square-text"
         />
         <u-checkbox v-model="isMinor" label="小変更" class="text-xs" />
       </div>
@@ -205,16 +205,10 @@ await loadHistory()
     <section class="border border-default rounded-lg p-4 bg-muted/10">
       <div class="flex items-center justify-between mb-4 border-b border-default pb-2">
         <h3 class="font-bold flex items-center gap-2">
-          <u-icon name="i-heroicons-history" />
+          <u-icon name="i-lucide-history" />
           編集履歴
         </h3>
-        <u-button
-          variant="ghost"
-          size="sm"
-          icon="i-heroicons-arrow-path"
-          :loading="loadingHistory"
-          @click="loadHistory"
-        >
+        <u-button variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingHistory" @click="loadHistory">
           再読み込み
         </u-button>
       </div>
@@ -237,11 +231,11 @@ await loadHistory()
               <p v-if="item.message" class="text-sm text-gray-700 dark:text-gray-300 italic">{{ item.message }}</p>
             </div>
             <div class="flex items-center gap-2">
-              <u-button size="sm" variant="ghost" icon="i-heroicons-eye" @click="openViewModal(item)"> 表示 </u-button>
+              <u-button size="sm" variant="ghost" icon="i-lucide-eye" @click="openViewModal(item)"> 表示 </u-button>
               <u-button
                 size="sm"
                 variant="ghost"
-                icon="i-heroicons-arrows-right-left"
+                icon="i-lucide-arrow-left-right"
                 @click="openDiffModal(item, 'current')"
               >
                 現在との差分
@@ -249,7 +243,7 @@ await loadHistory()
               <u-button
                 size="sm"
                 variant="ghost"
-                icon="i-heroicons-arrow-uturn-left"
+                icon="i-lucide-undo-2"
                 :disabled="revisions.indexOf(item) === revisions.length - 1"
                 @click="openDiffModal(item, 'previous')"
               >

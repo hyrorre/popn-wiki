@@ -79,11 +79,11 @@ const items = [
   { label: '太', action: () => wrapSelection('**', '**'), tooltip: '太字', style: 'font-bold' },
   { label: '斜', action: () => wrapSelection('*', '*'), tooltip: '斜体', style: 'italic' },
   { label: '消', action: () => wrapSelection('~~', '~~'), tooltip: '取り消し線', style: 'line-through' },
-  { icon: 'i-heroicons-hashtag', action: () => addPrefix('## '), tooltip: '見出し' },
-  { icon: 'i-heroicons-list-bullet', action: () => addPrefix('- '), tooltip: 'リスト' },
-  { icon: 'i-heroicons-link', action: () => insertLink(), tooltip: 'リンク' },
-  { icon: 'i-heroicons-code-bracket', action: () => wrapSelection('`', '`'), tooltip: 'コード' },
-  { icon: 'i-heroicons-chat-bubble-bottom-center-text', action: () => addPrefix('> '), tooltip: '引用' }
+  { label: '#', action: () => addPrefix('## '), tooltip: '見出し', style: 'text-lg' },
+  { icon: 'i-lucide-list', action: () => addPrefix('- '), tooltip: 'リスト' },
+  { icon: 'i-lucide-link', action: () => insertLink(), tooltip: 'リンク' },
+  { icon: 'i-lucide-code', action: () => wrapSelection('`', '`'), tooltip: 'コード' },
+  { icon: 'i-lucide-message-square-text', action: () => addPrefix('> '), tooltip: '引用' }
 ]
 </script>
 
@@ -101,7 +101,7 @@ const items = [
           :icon="item.icon"
           @click="item.action"
         >
-          <span v-if="item.label && !item.icon" class="text-xs" :class="item.style">{{ item.label }}</span>
+          <span v-if="item.label && !item.icon" :class="item.style">{{ item.label }}</span>
         </u-button>
       </u-tooltip>
     </template>
