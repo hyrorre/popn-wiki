@@ -781,11 +781,57 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     if (lines.length === 0) return block
 
     // 1行をセル配列に変換
-    // 空白なしの空セル (||) は横結合マーカー ">"、DokuWiki の縦結合 (:::) は "~" にする
+    // 空白なしの空セル (|| や |^) は横結合マーカー ">"、DokuWiki の縦結合 (:::) は "~" にする
     const parseRow = (line: string) => {
-      const marker = line[0] as string // '^' または '|'
-      const inner = line.slice(1, line.endsWith(marker) ? -1 : undefined)
-      return inner.split(marker).map((cell) => {
+      const cells: string[] = []
+      let cell = ''
+      let linkDepth = 0
+      let mediaDepth = 0
+
+      for (let i = 1; i < line.length; i++) {
+        const char = line[i]
+        const pair = line.slice(i, i + 2)
+
+        if (pair === '[[') {
+          linkDepth++
+          cell += pair
+          i++
+          continue
+        }
+
+        if (pair === ']]' && linkDepth > 0) {
+          linkDepth--
+          cell += pair
+          i++
+          continue
+        }
+
+        if (pair === '{{') {
+          mediaDepth++
+          cell += pair
+          i++
+          continue
+        }
+
+        if (pair === '}}' && mediaDepth > 0) {
+          mediaDepth--
+          cell += pair
+          i++
+          continue
+        }
+
+        if ((char === '^' || char === '|') && linkDepth === 0 && mediaDepth === 0) {
+          cells.push(cell)
+          cell = ''
+          continue
+        }
+
+        cell += char
+      }
+
+      if (cell !== '') cells.push(cell)
+
+      return cells.map((cell) => {
         if (cell === '') return '>'
         if (cell.trim() === ':::') return '~'
         // セル内の \\ を <br> に変換（テーブル行を壊さないように）
@@ -796,9 +842,11 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     const rows = lines.map(parseRow)
     if (rows.length === 0) return block
 
-    const header = rows[0]
+    const colCount = Math.max(...rows.map((row) => row.length))
+    const normalizedRows = rows.map((row) => row.concat(Array(Math.max(colCount - row.length, 0)).fill('')))
+
+    const header = normalizedRows[0]
     if (!header) return block
-    const colCount = header.length
     const separator = Array(colCount).fill('---')
 
     const toMarkdownRow = (cells: string[]) => `| ${cells.join(' | ')} |`
@@ -807,8 +855,8 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     mdLines.push(toMarkdownRow(header))
     mdLines.push(toMarkdownRow(separator))
 
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i]
+    for (let i = 1; i < normalizedRows.length; i++) {
+      const row = normalizedRows[i]
       if (row) {
         mdLines.push(toMarkdownRow(row))
       }
@@ -817,6 +865,25 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     const markdownTable = mdLines.join('\n')
     if (liftedComments.length === 0) return markdownTable
     return `${liftedComments.join('\n')}\n${markdownTable}`
+  })
+
+  // 1行コメント: // ... -> <!-- ... -->
+  // 行頭（空白のみ許可）にある // を対象とし、URL (http:// など) は変換しない
+  text = text.replace(/^(\s*)\/\/(.*)$/gm, (_m, indent, content) => {
+    // http://, https:// で始まる行はスキップ
+    const trimmed = content.trimStart()
+    if (/^https?:\/\//.test(trimmed)) return _m
+    return `${indent}<!--${content}-->`
+  })
+
+  // DokuWiki リスト内のコメント行は Markdown リストを分断するため、リスト直前へ移動する
+  text = text.replace(/(^[ \t]*[*-].*(?:\n[ \t]*(?:[*-].*|<!--.*-->[ \t]*))*)/gm, (block) => {
+    const lines = block.split('\n').filter(Boolean)
+    const comments = lines.filter((line) => /^<!--.*-->$/.test(line.trim())).map((line) => line.trim())
+    if (comments.length === 0) return block
+
+    const listLines = lines.filter((line) => !/^<!--.*-->$/.test(line.trim()))
+    return `${comments.join('\n')}\n${listLines.join('\n')}`
   })
 
   // 強制改行: \\ -> 改行（表示時は remark-breaks 前提で改行として扱う）
@@ -867,19 +934,11 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   // CommentIDタグ: &commentid{id}; -> [id]{.andcommentid}
   text = text.replace(/&commentid\{([^}]+)\};/g, '[$1]{.andcommentid}')
 
-  // リストマーカー: 行頭が * または - で、直後にスペースがない場合にスペースを追加
-  // 例: "*item" -> "* item", "-item" -> "- item"
-  text = text.replace(/^([ \t]*)([*-])(?!\s)(.+)$/gm, (_m, indent, marker, rest) => {
-    return `${indent}${marker} ${rest}`
-  })
-
-  // 1行コメント: // ... -> <!-- ... -->
-  // 行頭（空白のみ許可）にある // を対象とし、URL (http:// など) は変換しない
-  text = text.replace(/^(\s*)\/\/(.*)$/gm, (_m, indent, content) => {
-    // http://, https:// で始まる行はスキップ
-    const trimmed = content.trimStart()
-    if (/^https?:\/\//.test(trimmed)) return _m
-    return `${indent}<!--${content}-->`
+  // リストマーカー: DokuWiki のリスト判定用インデントを1段分削り、Markdown のマーカー後スペースを補う
+  // 例: "  * item" -> "* item", "    *item" -> "  * item"
+  text = text.replace(/^([ \t]*)([*-])(\s*)(.+)$/gm, (_m, indent: string, marker: string, space: string, rest: string) => {
+    const normalizedIndent = indent.startsWith('  ') ? indent.slice(2) : indent
+    return `${normalizedIndent}${marker}${space || ' '}${rest}`
   })
 
   // コードブロック: <code>...</code> -> ```...```
