@@ -1,5 +1,5 @@
 import { db } from '@nuxthub/db'
-import { aliasedTable, and, eq, gt, isNull, notExists, sql } from 'drizzle-orm'
+import { aliasedTable, and, eq, gt, inArray, isNull, notExists, sql } from 'drizzle-orm'
 import { commentsTable, pagesTable } from '../db/schema'
 import { searchQuerySchema } from '~/shared/zod'
 
@@ -39,28 +39,24 @@ export default defineEventHandler(async (event) => {
 
   const { q, page, limit } = parsed.data
   const terms = splitTerms(q)
-  const latestPages = await readLatestVisiblePages()
+  const latestPages = await readLatestVisiblePages(terms)
 
   if (latestPages.length === 0) {
     return { query: q, page, limit, total: 0, items: [] }
   }
 
-  const latestPagePaths = new Set(latestPages.map((entry) => entry.path))
+  const latestPagePaths = latestPages.map((entry) => entry.path)
   const comments = await db
     .select({
       path: commentsTable.path,
       body: commentsTable.body
     })
     .from(commentsTable)
-    .where(isNull(commentsTable.deletedAt))
+    .where(and(isNull(commentsTable.deletedAt), inArray(commentsTable.path, latestPagePaths)))
     .all()
 
   const commentsByPath = new Map<string, string[]>()
   for (const comment of comments) {
-    if (!latestPagePaths.has(comment.path)) {
-      continue
-    }
-
     const bucket = commentsByPath.get(comment.path) ?? []
     bucket.push(comment.body)
     commentsByPath.set(comment.path, bucket)
@@ -88,7 +84,7 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-async function readLatestVisiblePages() {
+async function readLatestVisiblePages(terms: string[]) {
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
 
   return db
@@ -108,10 +104,33 @@ async function readLatestVisiblePages() {
             .select({ one: sql`1` })
             .from(newerRevision)
             .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
-        )
+        ),
+        ...terms.map(buildTermCandidateCondition)
       )
     )
     .all()
+}
+
+function buildTermCandidateCondition(term: string) {
+  const pattern = `%${escapeLikePattern(term)}%`
+  const escape = '\\'
+
+  return sql`(
+    lower(${pagesTable.title}) LIKE ${pattern} ESCAPE ${escape}
+    OR lower(${pagesTable.path}) LIKE ${pattern} ESCAPE ${escape}
+    OR lower(${pagesTable.body}) LIKE ${pattern} ESCAPE ${escape}
+    OR EXISTS (
+      SELECT 1
+      FROM ${commentsTable}
+      WHERE ${commentsTable.path} = ${pagesTable.path}
+        AND ${commentsTable.deletedAt} IS NULL
+        AND lower(${commentsTable.body}) LIKE ${pattern} ESCAPE ${escape}
+    )
+  )`
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&')
 }
 
 function splitTerms(query: string) {
