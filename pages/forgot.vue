@@ -11,7 +11,7 @@ useHead({
 const fields = ref<AuthFormField[]>([
   {
     name: 'email',
-    type: 'text',
+    type: 'email',
     label: 'メールアドレス'
   }
 ])

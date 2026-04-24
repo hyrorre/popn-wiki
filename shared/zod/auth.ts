@@ -12,20 +12,16 @@ export const signupSchema = z
     email: emailSchema,
     password: strongPasswordSchema
   })
-  .refine(({ name, password }) => !includesComparableValue(password, name), {
-    path: ['password'],
-    message: 'パスワードに名前を含めることはできません'
-  })
-  .refine(
-    ({ email, password }) => {
-      const localPart = email.split('@')[0] ?? ''
-      return !includesComparableValue(password, localPart)
-    },
-    {
-      path: ['password'],
-      message: 'パスワードにメールアドレスの一部を含めることはできません'
+  .superRefine(({ name, email, password }, ctx) => {
+    const message = getAccountPasswordValidationMessage(password, { name, email })
+    if (message) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['password'],
+        message
+      })
     }
-  )
+  })
 
 export const emailOnlySchema = z.object({
   email: emailSchema
@@ -45,6 +41,19 @@ export type SignupInput = z.output<typeof signupSchema>
 export type EmailOnlyInput = z.output<typeof emailOnlySchema>
 export type ResetPasswordFormInput = z.output<typeof resetPasswordFormSchema>
 export type ResetPasswordInput = z.output<typeof resetPasswordSchema>
+
+export function getAccountPasswordValidationMessage(password: string, account: { name: string; email: string }) {
+  if (includesComparableValue(password, account.name)) {
+    return 'パスワードに名前を含めることはできません'
+  }
+
+  const localPart = account.email.split('@')[0] ?? ''
+  if (includesComparableValue(password, localPart)) {
+    return 'パスワードにメールアドレスの一部を含めることはできません'
+  }
+
+  return null
+}
 
 function includesComparableValue(password: string, value: string) {
   const normalizedValue = normalizePasswordComparison(value)

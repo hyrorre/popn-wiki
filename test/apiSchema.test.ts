@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   createCommentSchema,
   emailOnlySchema,
+  resetPasswordSchema,
   signinSchema,
   updateCommentSchema,
   updatePageSchema,
@@ -31,6 +32,12 @@ describe('API payload schemas', () => {
     const result = emailOnlySchema.parse({ email: ' USER@Example.COM ' })
 
     expect(result.email).toBe('user@example.com')
+  })
+
+  test('reset password schema requires a token and strong password', () => {
+    expect(resetPasswordSchema.safeParse({ token: 'abc', password: 'short' }).success).toBe(false)
+    expect(resetPasswordSchema.safeParse({ token: '', password: 'long-enough-passphrase' }).success).toBe(false)
+    expect(resetPasswordSchema.safeParse({ token: 'abc', password: 'long-enough-passphrase' }).success).toBe(true)
   })
 
   test('comment creation trims body and supports optional replyTo', () => {

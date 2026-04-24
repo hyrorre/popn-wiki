@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { resetPasswordSchema, signupSchema } from '../shared/zod'
+import { getAccountPasswordValidationMessage, resetPasswordSchema, signupSchema } from '../shared/zod'
 
 describe('Password schemas', () => {
   test('accepts long passphrases', () => {
@@ -57,6 +57,21 @@ describe('Password schemas', () => {
     })
 
     expect(result.success).toBe(false)
+  })
+
+  test('rejects reset passwords containing account context', () => {
+    expect(
+      getAccountPasswordValidationMessage('alice safe passphrase', {
+        name: 'Alice',
+        email: 'alice@example.com'
+      })
+    ).toBe('パスワードに名前を含めることはできません')
+    expect(
+      getAccountPasswordValidationMessage('wikiuser safe passphrase', {
+        name: 'Wiki User',
+        email: 'wikiuser@example.com'
+      })
+    ).toBe('パスワードにメールアドレスの一部を含めることはできません')
   })
 
   test('ignores very short names when checking password contents', () => {
