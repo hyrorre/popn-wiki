@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+@plugin '@egoist/tailwindcss-icons';
 
 * {
   text-autospace: normal;
@@ -143,5 +144,14 @@ body,
 
   hr {
     @apply border-default my-6;
+  }
+
+  a[target='_blank']:after {
+    @apply inline-block content-[''] i-lucide-external-link text-muted ms-1;
+  }
+
+  .andnew,
+  .andcommentid {
+    font-size: 0.6rem;
   }
 }
