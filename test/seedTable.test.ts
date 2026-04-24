@@ -106,6 +106,17 @@ describe('DokuWiki bold link seed conversion', () => {
     expect(markdown).toBe('* [**上達法指南のページ**](/その他/上達法指南のページ)にも有力')
   })
 
+  test('splits bold text that contains a link and following text', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      '* **[譜面画像製作](/その他/譜面画像製作案内ページ)の人手が不足しています。**協力してくれる方は[譜面画像製作](/その他/譜面画像製作案内ページ)に製作方法が載っているので宜しくお願いします'
+    )
+
+    expect(markdown).toBe(
+      '* [**譜面画像製作**](/その他/譜面画像製作案内ページ)**の人手が不足しています。** 協力してくれる方は[譜面画像製作](/その他/譜面画像製作案内ページ)に製作方法が載っているので宜しくお願いします'
+    )
+  })
+
   test('trims spaces inside bold markers', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(['  * ** ハイパーJパーティーロック(EX) **', '  * ** 太字** と **太字 **'].join('\n'))
@@ -118,5 +129,21 @@ describe('DokuWiki bold link seed conversion', () => {
     const markdown = convertDokuwikiToMarkdown(['  * %%** text **%%', '/* ** text ** */'].join('\n'))
 
     expect(markdown).toBe(['<!-- ** text ** -->', '* `** text **`'].join('\n'))
+  })
+
+  test('adds a space after bold ending with punctuation before Japanese text', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * **事前準備:**キャラ', '  * **完全無条件解禁。**未解禁', '  * **「乱ノック」**です'].join('\n')
+    )
+
+    expect(markdown).toBe(['* **事前準備:** キャラ', '* **完全無条件解禁。** 未解禁', '* **「乱ノック」** です'].join('\n'))
+  })
+
+  test('does not add a space after ordinary bold text', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown('  * **Lv**50')
+
+    expect(markdown).toBe('* **Lv**50')
   })
 })

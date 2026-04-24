@@ -746,8 +746,16 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   let text = input
 
   // 単一の [ または ] をエスケープ (DokuWiki のリンク [[...]] を除く)
+  // seed済み本文を再投入した場合の Markdown リンクは、そのまま維持する
+  const markdownLinkPlaceholders: string[] = []
+  text = text.replace(/\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]*")?\)(?:\{[^}\n]+\})?/g, (link) => {
+    const idx = markdownLinkPlaceholders.length
+    markdownLinkPlaceholders.push(link)
+    return `__DOKU_MARKDOWN_LINK_${idx}__`
+  })
   text = text.replace(/(?<!\[)\[(?!\[)/g, '\\[')
   text = text.replace(/(?<!\])\](?!\])/g, '\\]')
+  text = text.replace(/__DOKU_MARKDOWN_LINK_(\d+)__/g, (_m, idxStr) => markdownLinkPlaceholders[Number(idxStr)] ?? '')
 
   // 特殊コメントマーカー: %%//%% 以降をコメント扱い -> <!-- ... -->
   // 例: "text %%//%% comment" -> "text <!-- comment -->"
@@ -995,6 +1003,11 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       return `**${content.trim()}**`
     })
 
+    text = text.replace(/\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g, (match, content: string) => {
+      if (content.includes('[[')) return match
+      return `**${content}** `
+    })
+
     text = text.replace(/__DOKU_BOLD_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
   }
 
@@ -1095,8 +1108,71 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     return `[${label.trim()}](${url})${linkAttrs}`
   })
 
-  // MDC は **[label](url)** を太字リンクとして解釈しないため、リンク文字列側を太字にする
-  text = text.replace(/\*\*\[([^\]\n]+)\]\(([^)\n]+)\)\*\*/g, '[**$1**]($2)')
+  // MDC は **[label](url)** や **[label](url)text** を太字として解釈しないため、
+  // リンクはラベル側、残りの文字列は通常の太字として分割する
+  {
+    const protectedBlocks: string[] = []
+    const protect = (value: string) => {
+      const idx = protectedBlocks.length
+      protectedBlocks.push(value)
+      return `__DOKU_BOLD_LINK_PROTECTED_${idx}__`
+    }
+    const boldChunk = (value: string) => {
+      const leading = value.match(/^[ \t\u3000]*/)?.[0] ?? ''
+      const trailing = value.match(/[ \t\u3000]*$/)?.[0] ?? ''
+      const content = value.slice(leading.length, value.length - trailing.length)
+      return content ? `${leading}**${content}**${trailing}` : value
+    }
+
+    text = text
+      .replace(/```[\s\S]*?```/g, protect)
+      .replace(/`[^`\n]*`/g, protect)
+      .replace(/<!--[\s\S]*?-->/g, protect)
+
+    text = text.replace(/\*\*([^*\n]*\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]*")?\)[^*\n]*)\*\*/g, (_m, content: string) => {
+      const parts: string[] = []
+      let lastIndex = 0
+      const linkPattern = /\[([^\]\n]+)\]\(([^)\n]+)\)(\{[^}\n]+\})?/g
+
+      for (const match of content.matchAll(linkPattern)) {
+        const index = match.index ?? 0
+        const before = content.slice(lastIndex, index)
+        const label = match[1] ?? ''
+        const url = match[2] ?? ''
+        const attrs = match[3] ?? ''
+
+        if (before) parts.push(boldChunk(before))
+        parts.push(`[**${label}**](${url})${attrs}`)
+        lastIndex = index + match[0].length
+      }
+
+      const after = content.slice(lastIndex)
+      if (after) parts.push(boldChunk(after))
+
+      return parts.join('')
+    })
+
+    text = text.replace(/__DOKU_BOLD_LINK_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
+  }
+
+  {
+    const protectedBlocks: string[] = []
+    const protect = (value: string) => {
+      const idx = protectedBlocks.length
+      protectedBlocks.push(value)
+      return `__DOKU_BOLD_SPACE_PROTECTED_${idx}__`
+    }
+
+    text = text
+      .replace(/```[\s\S]*?```/g, protect)
+      .replace(/`[^`\n]*`/g, protect)
+      .replace(/<!--[\s\S]*?-->/g, protect)
+      .replace(/\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]*")?\)(?:\{[^}\n]+\})?/g, protect)
+
+    text = text.replace(/\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g, '**$1** ')
+
+    text = text.replace(/__DOKU_BOLD_SPACE_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
+  }
 
   // 画像: {{path|alt}} / {{path}} -> [alt](url)
   // 移行後は画像を直接埋め込まず、あえてリンクとして扱う
