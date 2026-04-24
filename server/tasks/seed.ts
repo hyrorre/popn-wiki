@@ -897,7 +897,7 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   })
 
   // DokuWiki リスト内のコメント行は Markdown リストを分断するため、リスト直前へ移動する
-  text = text.replace(/(^[ \t]*[*-].*(?:\n[ \t]*(?:[*-].*|<!--.*-->[ \t]*))*)/gm, (block) => {
+  text = text.replace(/(^(?: {2,}|\t[ \t]*)[*-].*(?:\n[ \t]*(?:(?: {2,}|\t[ \t]*)[*-].*|<!--.*-->[ \t]*))*)/gm, (block) => {
     const lines = block.split('\n').filter(Boolean)
     const comments = lines.filter((line) => /^<!--.*-->$/.test(line.trim())).map((line) => line.trim())
     if (comments.length === 0) return block
@@ -956,7 +956,7 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
   // リストマーカー: DokuWiki のリスト判定用インデントを1段分削り、Markdown のマーカー後スペースを補う
   // 例: "  * item" -> "* item", "    *item" -> "  * item"
-  text = text.replace(/^([ \t]*)([*-])(\s*)(.+)$/gm, (_m, indent: string, marker: string, space: string, rest: string) => {
+  text = text.replace(/^((?: {2,}|\t[ \t]*))([*-])(\s*)(.+)$/gm, (_m, indent: string, marker: string, space: string, rest: string) => {
     const normalizedIndent = indent.startsWith('  ') ? indent.slice(2) : indent
     return `${normalizedIndent}${marker}${space || ' '}${rest}`
   })

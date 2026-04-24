@@ -61,6 +61,13 @@ describe('DokuWiki list seed conversion', () => {
     expect(markdown).toContain(['* parent', '  - child'].join('\n'))
   })
 
+  test('does not treat one-space indented bold text as a list item', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(' **心構え**')
+
+    expect(markdown).toBe(' **心構え**')
+  })
+
   test('moves comments out of list blocks before normalizing indentation', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(
