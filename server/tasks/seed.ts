@@ -787,40 +787,57 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       let cell = ''
       let linkDepth = 0
       let mediaDepth = 0
+      let commentDepth = 0
 
       for (let i = 1; i < line.length; i++) {
         const char = line[i]
         const pair = line.slice(i, i + 2)
+        const commentStart = line.slice(i, i + 4)
+        const commentEnd = line.slice(i, i + 3)
 
-        if (pair === '[[') {
+        if (commentStart === '<!--') {
+          commentDepth++
+          cell += commentStart
+          i += 3
+          continue
+        }
+
+        if (commentEnd === '-->' && commentDepth > 0) {
+          commentDepth--
+          cell += commentEnd
+          i += 2
+          continue
+        }
+
+        if (pair === '[[' && commentDepth === 0) {
           linkDepth++
           cell += pair
           i++
           continue
         }
 
-        if (pair === ']]' && linkDepth > 0) {
+        if (pair === ']]' && linkDepth > 0 && commentDepth === 0) {
           linkDepth--
           cell += pair
           i++
           continue
         }
 
-        if (pair === '{{') {
+        if (pair === '{{' && commentDepth === 0) {
           mediaDepth++
           cell += pair
           i++
           continue
         }
 
-        if (pair === '}}' && mediaDepth > 0) {
+        if (pair === '}}' && mediaDepth > 0 && commentDepth === 0) {
           mediaDepth--
           cell += pair
           i++
           continue
         }
 
-        if ((char === '^' || char === '|') && linkDepth === 0 && mediaDepth === 0) {
+        if ((char === '^' || char === '|') && linkDepth === 0 && mediaDepth === 0 && commentDepth === 0) {
           cells.push(cell)
           cell = ''
           continue
@@ -835,7 +852,10 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
         if (cell === '') return '>'
         if (cell.trim() === ':::') return '~'
         // セル内の \\ を <br> に変換（テーブル行を壊さないように）
-        return cell.replace(/\\\\([ \t]*)/g, '<br>').trim()
+        return cell
+          .replace(/<!--([\s\S]*?)-->/g, (_m, comment) => `<!--${comment.replace(/\|/g, '&#124;')}-->`)
+          .replace(/\\\\([ \t]*)/g, '<br>')
+          .trim()
       })
     }
 

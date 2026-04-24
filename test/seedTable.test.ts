@@ -36,6 +36,14 @@ describe('DokuWiki table seed conversion', () => {
     expect(markdown).toContain('| Title | Image | Note |')
     expect(markdown).toContain('| [Example](https://example.com/page) | [Cover art](/cover.png) | done |')
   })
+
+  test('does not split table cells at pipes inside comments', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['^A^B^C^', '|1/* | */|2|3|', '|4/*// | */|5|6|'].join('\n'))
+
+    expect(markdown).toContain('| 1<!-- &#124; --> | 2 | 3 |')
+    expect(markdown).toContain('| 4<!--// &#124; --> | 5 | 6 |')
+  })
 })
 
 describe('DokuWiki list seed conversion', () => {
