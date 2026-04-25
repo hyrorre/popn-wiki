@@ -180,3 +180,20 @@ describe('DokuWiki bold link seed conversion', () => {
     expect(markdown).toBe('* **Lv**50')
   })
 })
+
+describe('DokuWiki legacy URL seed conversion', () => {
+  test('keeps EUC-JP percent-encoded external links unchanged', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const url = 'http://www.wikihouse.com/popnwakaba/index.php?%A5%E9%A5%D4%A5%B9%A5%C8%A5%EA%A5%A2%BF%B7%B6%CA'
+    const markdown = convertDokuwikiToMarkdown(`[[${url}|ラピストリア新曲]]`)
+
+    expect(markdown).toBe(`[ラピストリア新曲](${url})`)
+  })
+
+  test('leaves malformed legacy paths unchanged when URI decoding fails', async () => {
+    const { decodeLegacyPath } = await loadSeedTask()
+    const path = '%A5%E9%A5%D4'
+
+    expect(decodeLegacyPath(path)).toBe(path)
+  })
+})

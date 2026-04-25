@@ -679,49 +679,14 @@ export function buildTitleMap(pagesDir: string): Map<string, string> {
   return titleMap
 }
 
-/**
- * URL のパーセントエンコーディングが不正（非UTF-8など）な場合に修正を試みる
- */
-function fixMalformedUrl(url: string): string {
-  if (!url.includes('%')) return url
-  try {
-    decodeURIComponent(url)
-    return url
-  } catch {
-    // 不正なシーケンスが含まれる場合、EUC-JP としてデコードを試みる
-    return url.replace(/(?:%[0-9A-Fa-f]{2})+/g, (match) => {
-      try {
-        return decodeURIComponent(match)
-      } catch {
-        const bytes = new Uint8Array(
-          match
-            .split('%')
-            .filter(Boolean)
-            .map((h) => parseInt(h, 16))
-        )
-        try {
-          return new TextDecoder('euc-jp').decode(bytes)
-        } catch {
-          return match
-        }
-      }
-    })
-  }
-}
-
 export function decodeLegacyPath(pathValue: string): string {
   if (!pathValue.includes('%')) return pathValue
 
   try {
     return decodeURI(pathValue)
   } catch {
-    const decoded = fixMalformedUrl(pathValue)
-    if (decoded !== pathValue) {
-      console.warn(`[Warn] Decoded malformed legacy path: ${pathValue} -> ${decoded}`)
-    } else {
-      console.warn(`[Warn] Could not decode malformed legacy path: ${pathValue}`)
-    }
-    return decoded
+    console.warn(`[Warn] Could not decode legacy path: ${pathValue}`)
+    return pathValue
   }
 }
 
@@ -1111,9 +1076,6 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
       // urlを小文字に変換
       url = url.toLowerCase()
-    } else {
-      // 外部リンクの場合は不正なエンコーディングを修正
-      url = fixMalformedUrl(url)
     }
 
     // ラベルの自動補完 (内部リンクかつ明示的なラベルがないか、ラベルが空の場合)
@@ -1208,8 +1170,6 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     let url = src.trim().replace(/:/g, '/')
     if (!/^[a-z]+:\/\/|^\//i.test(url)) {
       url = '/' + url
-    } else {
-      url = fixMalformedUrl(url)
     }
 
     // urlに?linkonlyが含まれている場合は削除
