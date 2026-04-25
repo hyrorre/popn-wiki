@@ -725,23 +725,6 @@ export function decodeLegacyPath(pathValue: string): string {
   }
 }
 
-function containsUnsafePercentEncoding(markdown: string): boolean {
-  const percentRuns = markdown.matchAll(/%(?:[0-9A-Fa-f]{2})*/g)
-
-  for (const match of percentRuns) {
-    const value = match[0]
-    if (!value || value.length % 3 !== 0) return true
-
-    try {
-      decodeURIComponent(value)
-    } catch {
-      return true
-    }
-  }
-
-  return false
-}
-
 export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
   let text = input
 
@@ -1492,10 +1475,6 @@ async function rawInsert(tableName: string, data: Record<string, string | number
 
 export async function createBodyAstForSeed(markdown: string, pagePath: string): Promise<string | null> {
   if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
-  if (containsUnsafePercentEncoding(markdown)) {
-    console.log(`[Body AST] Skipped ${pagePath}: unsafe percent encoding`)
-    return null
-  }
 
   try {
     const ast = await parseMarkdown(markdown)

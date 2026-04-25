@@ -28,6 +28,9 @@ export default defineNuxtConfig({
       }
     },
     rehypePlugins: {
+      legacyUrl: {
+        src: '~/utils/rehype-legacy-url'
+      },
       'rehype-external-links': {
         src: 'rehype-external-links',
         options: {
