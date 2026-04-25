@@ -200,6 +200,14 @@ body,
     @apply inline-block content-[''] i-lucide-external-link text-muted ms-1;
   }
 
+  a[data-footnote-ref]:before {
+    content: '(';
+  }
+
+  a[data-footnote-ref]:after {
+    content: ')';
+  }
+
   .andnew,
   .andcommentid {
     font-size: 0.6rem;
