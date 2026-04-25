@@ -21,66 +21,6 @@ body,
 }
 
 .content {
-  text-align: start;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    a {
-      text-decoration: none;
-      pointer-events: none;
-    }
-  }
-
-  h1 {
-    font-size: xx-large;
-  }
-
-  h2 {
-    font-size: x-large;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-    padding-top: 2rem;
-  }
-
-  h3 {
-    font-size: x-large;
-    margin-top: 1rem;
-    padding-top: 1rem;
-  }
-
-  h4 {
-    font-size: x-large;
-    margin-top: 1rem;
-    padding-top: 1rem;
-  }
-
-  h5 {
-    font-size: x-large;
-    margin-top: 1rem;
-    padding-top: 1rem;
-  }
-
-  h6 {
-    font-size: x-large;
-    margin-top: 1rem;
-    padding-top: 1rem;
-  }
-
-  pre {
-    margin: 1rem;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    background-color: var(--ui-border);
-    overflow-x: auto;
-    max-width: 100%;
-  }
-
   details {
     @apply my-5 overflow-hidden rounded-lg border border-default bg-default shadow-xs;
 
@@ -193,7 +133,7 @@ body,
   }
 
   a[target='_blank']:after {
-    @apply inline-block content-[''] i-lucide-external-link text-muted ms-1;
+    @apply inline-block content-[''] i-lucide-external-link text-muted ms-0.5;
   }
 
   a[data-footnote-ref]:before {
@@ -206,6 +146,6 @@ body,
 
   .andnew,
   .andcommentid {
-    font-size: 0.6rem;
+    @apply text-xs text-muted;
   }
 }
