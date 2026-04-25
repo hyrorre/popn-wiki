@@ -1,6 +1,6 @@
 @import 'tailwindcss';
-@import '@nuxt/ui';
 @plugin '@egoist/tailwindcss-icons';
+@import '@nuxt/ui';
 
 * {
   text-autospace: normal;

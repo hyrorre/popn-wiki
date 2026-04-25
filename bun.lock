@@ -23,6 +23,7 @@
       },
       "devDependencies": {
         "@egoist/tailwindcss-icons": "^1.9.2",
+        "@iconify-json/lucide": "^1.2.101",
         "@nuxt/eslint": "1.15.2",
         "@types/bun": "^1.3.13",
         "drizzle-kit": "^0.31.10",
@@ -235,6 +236,8 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
+
+    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.103", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-A5WdDll62RPxYs1yeYa9b2mV1Vs+lK/wX0wYKR+xVnhwsfPGLBwo6qfyoAQLo7AaP7oHlkw3gnHdOCERegbwTA=="],
 
     "@iconify/collections": ["@iconify/collections@1.0.670", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-32kW4oJ+QV1HCndcjwAprDyJJ0+T9ahP4y2lmLfekdGWNMwG1pVZah4biqT+HrZdEiBm8InJrbCvaitIusTE3g=="],
 
