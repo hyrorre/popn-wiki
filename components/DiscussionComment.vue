@@ -113,7 +113,7 @@ const submitDelete = async () => {
     <!-- 編集モード -->
     <div v-if="isEditingOpen" class="mt-2 text-foreground">
       <MarkdownToolbar v-model="editBody" :textarea="editTextareaRef" />
-      <u-textarea ref="editTextareaRef" v-model="editBody" :rows="3" class="w-full" />
+      <u-textarea ref="editTextareaRef" v-model="editBody" :rows="3" class="w-full" :ui="{ base: 'rounded-t-none' }" />
       <div v-if="editBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
@@ -162,6 +162,7 @@ const submitDelete = async () => {
         placeholder="Markdownで返信を入力..."
         :rows="3"
         class="w-full"
+        :ui="{ base: 'rounded-t-none' }"
       />
       <div v-if="replyBody.trim()" class="mt-3 p-3 border border-default rounded bg-white dark:bg-gray-900/50">
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">

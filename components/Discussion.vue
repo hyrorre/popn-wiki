@@ -152,6 +152,7 @@ watch(page, (newVal) => {
         placeholder="ページについての意見や質問を書いてみましょう。"
         :rows="3"
         class="w-full"
+        :ui="{ base: 'rounded-t-none' }"
       />
 
       <!-- プレビュー領域 -->
