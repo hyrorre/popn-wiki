@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import * as Diff from 'diff'
+import type { EditorToolbarItem } from '@nuxt/ui'
 import type { Page } from '~/shared/types'
+import { wikiMarkdownExtensions } from '~/utils/tiptap/wiki-markdown-extensions'
 
 const props = defineProps<{
   path: string
@@ -30,6 +32,51 @@ const isRestoreConfirmOpen = ref(false)
 const selectedRevision = ref<Page | null>(null)
 const diffTarget = ref<'current' | 'previous'>('current')
 const viewMode = ref<'preview' | 'markdown'>('preview')
+const editorMode = ref<'rich' | 'markdown'>('rich')
+
+const editorModeTabs = [
+  { label: 'リッチ編集', value: 'rich', icon: 'i-lucide-edit-3' },
+  { label: 'Markdown', value: 'markdown', icon: 'i-lucide-code-2' }
+]
+
+const richEditorToolbarItems = [
+  [
+    {
+      icon: 'i-lucide-heading',
+      tooltip: { text: '見出し' },
+      content: {
+        align: 'start'
+      },
+      items: [
+        { kind: 'heading', level: 1, icon: 'i-lucide-heading-1', label: '見出し 1' },
+        { kind: 'heading', level: 2, icon: 'i-lucide-heading-2', label: '見出し 2' },
+        { kind: 'heading', level: 3, icon: 'i-lucide-heading-3', label: '見出し 3' },
+        { kind: 'heading', level: 4, icon: 'i-lucide-heading-4', label: '見出し 4' }
+      ]
+    }
+  ],
+  [
+    { kind: 'mark', mark: 'bold', icon: 'i-lucide-bold', tooltip: { text: '太字' } },
+    { kind: 'mark', mark: 'italic', icon: 'i-lucide-italic', tooltip: { text: '斜体' } },
+    { kind: 'mark', mark: 'strike', icon: 'i-lucide-strikethrough', tooltip: { text: '取り消し線' } },
+    { kind: 'mark', mark: 'code', icon: 'i-lucide-code', tooltip: { text: 'インラインコード' } }
+  ],
+  [
+    { kind: 'bulletList', icon: 'i-lucide-list', tooltip: { text: '箇条書き' } },
+    { kind: 'orderedList', icon: 'i-lucide-list-ordered', tooltip: { text: '番号付きリスト' } },
+    { kind: 'blockquote', icon: 'i-lucide-quote', tooltip: { text: '引用' } },
+    { kind: 'codeBlock', icon: 'i-lucide-square-code', tooltip: { text: 'コードブロック' } }
+  ],
+  [
+    { kind: 'link', icon: 'i-lucide-link', tooltip: { text: 'リンク' } },
+    { kind: 'image', icon: 'i-lucide-image', tooltip: { text: '画像' } },
+    { kind: 'horizontalRule', icon: 'i-lucide-minus', tooltip: { text: '区切り線' } }
+  ],
+  [
+    { kind: 'undo', icon: 'i-lucide-undo-2', tooltip: { text: '元に戻す' } },
+    { kind: 'redo', icon: 'i-lucide-redo-2', tooltip: { text: 'やり直す' } }
+  ]
+] satisfies EditorToolbarItem[][]
 
 const diffResults = computed(() => {
   if (!selectedRevision.value) return []
@@ -177,11 +224,14 @@ await loadHistory()
 
     <div :class="['gap-4 min-h-[600px]', layoutMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col']">
       <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between px-1">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-1">
           <span class="text-xs font-bold text-muted uppercase">Editor</span>
-          <span class="text-xs text-muted">{{ body.length }} characters</span>
+          <div class="flex items-center gap-3">
+            <u-tabs v-model="editorMode" :items="editorModeTabs" :content="false" size="sm" />
+            <span class="text-xs text-muted">{{ body.length }} characters</span>
+          </div>
         </div>
-        <div>
+        <div v-if="editorMode === 'markdown'">
           <MarkdownToolbar v-model="body" :textarea="textareaRef" />
           <textarea
             ref="textareaRef"
@@ -190,6 +240,31 @@ await loadHistory()
             placeholder="Markdownを入力してください..."
           />
         </div>
+        <ClientOnly v-else>
+          <UEditor
+            v-slot="{ editor }"
+            v-model="body"
+            content-type="markdown"
+            placeholder="本文を入力してください..."
+            class="wiki-rich-editor min-h-[400px] rounded-lg border border-default bg-white dark:bg-gray-900"
+            :image="{ allowBase64: false }"
+            :markdown="{ markedOptions: { gfm: true, breaks: true } }"
+            :extensions="wikiMarkdownExtensions"
+          >
+            <UEditorToolbar
+              :editor="editor"
+              :items="richEditorToolbarItems"
+              layout="fixed"
+              class="border-b border-default bg-gray-50/80 p-1 dark:bg-gray-800/50"
+            />
+            <UEditorDragHandle :editor="editor" />
+          </UEditor>
+          <template #fallback>
+            <div class="min-h-[400px] rounded-lg border border-default bg-muted/10 p-4 text-sm text-muted">
+              エディタを読み込んでいます...
+            </div>
+          </template>
+        </ClientOnly>
       </div>
 
       <div class="flex flex-col gap-2">

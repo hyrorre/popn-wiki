@@ -87,7 +87,12 @@ export default defineNuxtConfig({
         'zod',
         'remark-breaks',
         'rehype-external-links',
-        'remark-parse'
+        'remark-parse',
+        '@nuxt/ui > prosemirror-state',
+        '@nuxt/ui > prosemirror-transform',
+        '@nuxt/ui > prosemirror-model',
+        '@nuxt/ui > prosemirror-view',
+        '@nuxt/ui > prosemirror-gapcursor'
       ]
     },
     vue: {

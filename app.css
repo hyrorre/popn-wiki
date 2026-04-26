@@ -20,6 +20,120 @@ body,
   white-space: pre-wrap;
 }
 
+.wiki-rich-editor {
+  .ProseMirror {
+    min-height: 350px;
+    padding: 1rem;
+    outline: none;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before,
+  .ProseMirror p.is-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--ui-text-muted);
+  }
+
+  .ProseMirror h1 {
+    @apply my-5 text-3xl font-bold;
+  }
+
+  .ProseMirror h2 {
+    @apply my-4 text-2xl font-bold;
+  }
+
+  .ProseMirror h3 {
+    @apply my-3 text-xl font-bold;
+  }
+
+  .ProseMirror h4 {
+    @apply my-3 text-lg font-bold;
+  }
+
+  .ProseMirror p {
+    @apply my-3 leading-7;
+  }
+
+  .ProseMirror ul {
+    @apply my-4 list-disc ps-6;
+  }
+
+  .ProseMirror ol {
+    @apply my-4 list-decimal ps-6;
+  }
+
+  .ProseMirror li {
+    @apply my-1 ps-1.5;
+  }
+
+  .ProseMirror blockquote {
+    @apply my-4 border-s-4 border-default ps-4 text-muted;
+  }
+
+  .ProseMirror pre {
+    @apply my-4 overflow-x-auto rounded bg-muted p-4 text-sm;
+  }
+
+  .ProseMirror code {
+    @apply rounded bg-muted px-1 py-0.5 text-sm;
+  }
+
+  .ProseMirror pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .wiki-raw-block {
+    @apply my-4 flex flex-col gap-2 rounded border border-dashed border-warning/50 bg-warning/10 p-3 text-sm;
+  }
+
+  .wiki-raw-block__label {
+    @apply font-bold text-warning;
+  }
+
+  .wiki-raw-block__code {
+    @apply max-h-32 overflow-auto whitespace-pre-wrap rounded bg-white/70 p-2 font-mono text-xs text-muted dark:bg-gray-950/50;
+  }
+
+  .wiki-raw-block--comment {
+    @apply border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/60;
+  }
+
+  .wiki-definition-list {
+    @apply my-4 ms-6;
+  }
+
+  .wiki-definition-list dt {
+    @apply mt-3 font-bold;
+  }
+
+  .wiki-definition-list dd {
+    @apply my-2 ms-6 list-item list-disc ps-1.5 marker:text-(--ui-border-accented);
+  }
+
+  .andnew,
+  .andcommentid {
+    @apply text-xs text-muted;
+  }
+
+  .wiki-hidden-attribute {
+    @apply rounded border border-dashed border-gray-300 bg-gray-50 px-1 text-muted dark:border-gray-700 dark:bg-gray-900/60;
+  }
+
+  ul[data-type='taskList'] {
+    @apply my-4 list-none ps-0;
+  }
+
+  li[data-type='taskItem'] {
+    @apply flex gap-2 ps-0;
+  }
+
+  li[data-type='taskItem'] > label {
+    @apply mt-1 shrink-0;
+  }
+}
+
 .content {
   details {
     @apply my-5 overflow-hidden rounded-lg border border-default bg-default shadow-xs;
