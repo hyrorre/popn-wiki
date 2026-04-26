@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { sql } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+import remarkLegacyUrl from '../../utils/remark-legacy-url'
 
 export const D1_STATEMENT_CHUNK_SIZE = 80000
 export const BODY_AST_SOURCE_MAX_LENGTH = 80000
@@ -723,6 +724,26 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   // C言語スタイルコメント: /* ... */ -> <!-- ... -->
   text = text.replace(/\/\*([\s\S]*?)\*\//g, '<!--$1-->')
 
+  // 複数行にまたがる DokuWiki リンクは、リストやテーブルの行判定を崩すため先に1行へ畳む
+  {
+    const protectedBlocks: string[] = []
+    const protect = (value: string) => {
+      const idx = protectedBlocks.length
+      protectedBlocks.push(value)
+      return `__DOKU_MULTILINE_LINK_PROTECTED_${idx}__`
+    }
+
+    text = text.replace(/<!--[\s\S]*?-->/g, protect)
+    text = text.replace(/\[\[([\s\S]*?)\]\]/g, (match, inner: string) => {
+      if (!inner.includes('\n') && !inner.includes('\r')) return match
+      const innerLines = inner.split(/\r?\n/)
+      if (innerLines.length > 3) return match
+      if (innerLines.slice(1).some((line) => /^[ \t]*(?:[\^|#]|\* |- |={2,}|<!--)/.test(line))) return match
+      return `[[${inner.replace(/[ \t]*\r?\n[ \t]*/g, ' ')}]]`
+    })
+    text = text.replace(/__DOKU_MULTILINE_LINK_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
+  }
+
   // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
   // 強制改行 (\\) より先に処理し、セル内の \\ は <br> に変換する
   // DokuWiki テーブル内のコメント行は Markdown テーブルを分断するため、テーブル直前へ移動する
@@ -738,6 +759,27 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
     // 1行をセル配列に変換
     // 空白なしの空セル (|| や |^) は横結合マーカー ">"、DokuWiki の縦結合 (:::) は "~" にする
+    const hasUnclosedInlineBlock = (value: string, open: string, close: string) => {
+      let depth = 0
+
+      for (let i = 0; i < value.length; i++) {
+        const pair = value.slice(i, i + 2)
+
+        if (pair === open) {
+          depth++
+          i++
+          continue
+        }
+
+        if (pair === close && depth > 0) {
+          depth--
+          i++
+        }
+      }
+
+      return depth > 0
+    }
+
     const parseRow = (line: string) => {
       const cells: string[] = []
       let cell = ''
@@ -808,10 +850,16 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
         if (cell === '') return '>'
         if (cell.trim() === ':::') return '~'
         // セル内の \\ を <br> に変換（テーブル行を壊さないように）
-        return cell
+        const normalizedCell = cell
           .replace(/<!--([\s\S]*?)-->/g, (_m, comment) => `<!--${comment.replace(/\|/g, '&#124;')}-->`)
           .replace(/\\\\([ \t]*)/g, '<br>')
           .trim()
+
+        if (hasUnclosedInlineBlock(normalizedCell, '[[', ']]') || hasUnclosedInlineBlock(normalizedCell, '{{', '}}')) {
+          return normalizedCell.replace(/\|/g, '&#124;')
+        }
+
+        return normalizedCell
       })
     }
 
@@ -986,6 +1034,36 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       protectedBlocks.push(value)
       return `__DOKU_BOLD_PROTECTED_${idx}__`
     }
+    const addSpaceBeforeAttachedBold = (value: string) => {
+      return value
+        .split('\n')
+        .map((line) => {
+          let result = ''
+          let markerCount = 0
+
+          for (let i = 0; i < line.length; i++) {
+            if (line.slice(i, i + 2) === '**') {
+              const isOpening = markerCount % 2 === 0
+              const previousChar = result.at(-1) ?? ''
+              const nextChar = line[i + 2] ?? ''
+
+              if (isOpening && previousChar && !/[\s([{<「『【（]/.test(previousChar) && /\S/.test(nextChar)) {
+                result += ' '
+              }
+
+              result += '**'
+              markerCount++
+              i++
+              continue
+            }
+
+            result += line[i]
+          }
+
+          return result
+        })
+        .join('\n')
+    }
 
     text = text
       .replace(/```[\s\S]*?```/g, protect)
@@ -995,6 +1073,8 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     text = text.replace(/\*\*([ \t\u3000]*\S(?:[^*\n]*?\S)?)[ \t\u3000]*\*\*/g, (_m, content: string) => {
       return `**${content.trim()}**`
     })
+
+    text = addSpaceBeforeAttachedBold(text)
 
     text = text.replace(/\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g, (match, content: string) => {
       if (content.includes('[[')) return match
@@ -1437,7 +1517,15 @@ export async function createBodyAstForSeed(markdown: string, pagePath: string): 
   if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
 
   try {
-    const ast = await parseMarkdown(markdown)
+    const ast = await parseMarkdown(markdown, {
+      remark: {
+        plugins: {
+          legacyUrl: {
+            instance: remarkLegacyUrl
+          }
+        }
+      }
+    })
     const bodyAst = JSON.stringify(ast)
     if (bodyAst.length > BODY_AST_JSON_MAX_LENGTH) {
       console.log(

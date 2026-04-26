@@ -17,6 +17,9 @@ export default defineNuxtConfig({
       breaks: {
         src: 'remark-breaks'
       },
+      remarkLegacyUrl: {
+        src: '~/utils/remark-legacy-url'
+      },
       tableMerge: {
         src: '~/utils/remark-table-merge'
       },
@@ -28,7 +31,7 @@ export default defineNuxtConfig({
       }
     },
     rehypePlugins: {
-      legacyUrl: {
+      rehypeLegacyUrl: {
         src: '~/utils/rehype-legacy-url'
       },
       'rehype-external-links': {

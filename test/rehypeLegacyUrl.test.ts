@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import rehypeLegacyUrl, { isLegacyPercentEncodedUrl } from '../utils/rehype-legacy-url'
+import { isLegacyPercentEncodedUrl } from '../utils/legacy-url'
+import rehypeLegacyUrl from '../utils/rehype-legacy-url'
 
 describe('rehype legacy URL handling', () => {
   test('detects percent-encoded legacy URLs that MDC cannot decode as UTF-8', () => {

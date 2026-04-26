@@ -44,6 +44,32 @@ describe('DokuWiki table seed conversion', () => {
     expect(markdown).toContain('| 1<!-- &#124; --> | 2 | 3 |')
     expect(markdown).toContain('| 4<!--// &#124; --> | 5 | 6 |')
   })
+
+  test('keeps malformed DokuWiki links from breaking table columns', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['^段位^曲^BPM^Lv^', '|4th|[[シューゲイザー|<span style="color: #FF0000">EX</span>|95~190|41|'].join('\n')
+    )
+
+    expect(markdown).toContain('| 段位 | 曲 | BPM | Lv |')
+    expect(markdown).toContain('| 4th | [[シューゲイザー&#124;<span style="color: #FF0000">EX</span>&#124;95~190&#124;41&#124; |  |  |')
+  })
+
+  test('converts pipe-row blocks without an explicit DokuWiki header row', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['| A | B |', '| C | D |'].join('\n'))
+
+    expect(markdown).toBe(['| A | B |', '| --- | --- |', '| C | D |'].join('\n'))
+  })
+
+  test('collapses multiline DokuWiki links before table parsing', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['^Tool^Note^', '|[[https://ssdh233.me/popn-sudden/|新筐体用', 'SUDDEN+数値計算ツール]]|スマホ向け|'].join('\n')
+    )
+
+    expect(markdown).toContain('| [新筐体用 SUDDEN+数値計算ツール](https://ssdh233.me/popn-sudden/) | スマホ向け |')
+  })
 })
 
 describe('DokuWiki list seed conversion', () => {
@@ -106,8 +132,17 @@ describe('DokuWiki list seed conversion', () => {
     )
 
     expect(markdown).toContain(
-      ['<!--    * commented child', 'comment detail', '-->', '* [[https://example.com|parent', 'continued label]]', '  * child'].join('\n')
+      ['<!--    * commented child', 'comment detail', '-->', '* [parent continued label](https://example.com)', '  * child'].join('\n')
     )
+  })
+
+  test('converts multiline DokuWiki links inside list items', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * [[https://ssdh233.me/popn-sudden/|新筐体用', 'SUDDEN+数値計算ツール]] SUD計算機（スマホ向け）'].join('\n')
+    )
+
+    expect(markdown).toBe('* [新筐体用 SUDDEN+数値計算ツール](https://ssdh233.me/popn-sudden/) SUD計算機（スマホ向け）')
   })
 
   test('moves DokuWiki line comments out of list blocks', async () => {
@@ -179,15 +214,23 @@ describe('DokuWiki bold link seed conversion', () => {
 
     expect(markdown).toBe('* **Lv**50')
   })
+
+  test('adds a space before bold markers attached to preceding text', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['  * 新筐体**「ピカピカポップ君モデル」**。', 'perfect**(削除対策につき音なし)**'].join('\n'))
+
+    expect(markdown).toBe(['* 新筐体 **「ピカピカポップ君モデル」**。', 'perfect **(削除対策につき音なし)**'].join('\n'))
+  })
 })
 
 describe('DokuWiki legacy URL seed conversion', () => {
-  test('keeps EUC-JP percent-encoded external links unchanged', async () => {
-    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+  test('keeps EUC-JP percent-encoded external links working without MDC URI errors', async () => {
+    const { convertDokuwikiToMarkdown, createBodyAstForSeed } = await loadSeedTask()
     const url = 'http://www.wikihouse.com/popnwakaba/index.php?%A5%E9%A5%D4%A5%B9%A5%C8%A5%EA%A5%A2%BF%B7%B6%CA'
     const markdown = convertDokuwikiToMarkdown(`[[${url}|ラピストリア新曲]]`)
 
     expect(markdown).toBe(`[ラピストリア新曲](${url})`)
+    expect(await createBodyAstForSeed(markdown, 'test')).toBeTruthy()
   })
 
   test('leaves malformed legacy paths unchanged when URI decoding fails', async () => {
