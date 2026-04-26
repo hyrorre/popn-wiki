@@ -28,6 +28,7 @@ const isMinor = ref(false)
 
 const isViewModalOpen = ref(false)
 const isDiffModalOpen = ref(false)
+const isSaveConfirmOpen = ref(false)
 const isRestoreConfirmOpen = ref(false)
 const selectedRevision = ref<Page | null>(null)
 const diffTarget = ref<'current' | 'previous'>('current')
@@ -98,6 +99,8 @@ const diffResults = computed(() => {
   return Diff.diffLines(fromContent, toContent)
 })
 
+const saveDiffResults = computed(() => Diff.diffLines(props.initialBody || '', body.value || ''))
+
 const openViewModal = (item: Page) => {
   selectedRevision.value = item
   isViewModalOpen.value = true
@@ -123,6 +126,7 @@ watch(
     body.value = nextBody
     message.value = ''
     errorMessage.value = ''
+    isSaveConfirmOpen.value = false
   }
 )
 
@@ -139,6 +143,11 @@ const loadHistory = async () => {
   }
 }
 
+const openSaveConfirm = () => {
+  errorMessage.value = ''
+  isSaveConfirmOpen.value = true
+}
+
 const save = async () => {
   saving.value = true
   errorMessage.value = ''
@@ -153,6 +162,7 @@ const save = async () => {
         minor: isMinor.value ? 1 : 0
       }
     })
+    isSaveConfirmOpen.value = false
     emit('saved', saved)
   } catch (error: unknown) {
     const err = error as { statusCode?: number; data?: { latestRevision?: number } }
@@ -198,7 +208,7 @@ await loadHistory()
   <section class="flex flex-col gap-4">
     <div class="flex flex-wrap gap-3 items-center justify-between bg-muted/30 p-2 rounded-lg border border-default">
       <div class="flex gap-2 items-center flex-1 min-w-[300px]">
-        <u-button icon="i-lucide-check" :loading="saving" @click="save">
+        <u-button icon="i-lucide-check" :loading="saving" @click="openSaveConfirm">
           {{ saving ? '保存中...' : '保存' }}
         </u-button>
         <u-button variant="outline" color="neutral" :disabled="saving" @click="$emit('cancel')">キャンセル</u-button>
@@ -341,6 +351,69 @@ await loadHistory()
         </li>
       </ul>
     </section>
+
+    <!-- 保存前差分確認モーダル -->
+    <u-modal
+      v-model:open="isSaveConfirmOpen"
+      title="保存前の差分確認"
+      description="変更内容を確認してから保存します。"
+      :ui="{ content: 'sm:max-w-4xl' }"
+    >
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div class="rounded border border-default bg-muted/20 p-3">
+              <p class="text-xs font-bold text-muted uppercase">Path</p>
+              <p class="mt-1 break-all font-mono">{{ path }}</p>
+            </div>
+            <div class="rounded border border-default bg-muted/20 p-3">
+              <p class="text-xs font-bold text-muted uppercase">Base Revision</p>
+              <p class="mt-1 font-mono">r{{ baseRevision }}</p>
+            </div>
+            <div class="rounded border border-default bg-muted/20 p-3">
+              <p class="text-xs font-bold text-muted uppercase">Type</p>
+              <p class="mt-1">{{ isMinor ? '小変更' : '通常の変更' }}</p>
+            </div>
+          </div>
+
+          <div v-if="message" class="rounded border border-default bg-muted/20 p-3 text-sm">
+            <p class="text-xs font-bold text-muted uppercase">変更メッセージ</p>
+            <p class="mt-1 whitespace-pre-wrap">{{ message }}</p>
+          </div>
+
+          <div class="max-h-[60vh] overflow-auto rounded-lg bg-white font-mono text-sm dark:bg-gray-900">
+            <template v-if="saveDiffResults.some((part) => part.added || part.removed)">
+              <div
+                v-for="(part, index) in saveDiffResults"
+                :key="index"
+                :class="[
+                  'whitespace-pre-wrap px-2 py-0.5',
+                  part.added ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : '',
+                  part.removed ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : ''
+                ]"
+              >
+                <span v-if="part.added" class="inline-block w-4 opacity-50">+</span>
+                <span v-else-if="part.removed" class="inline-block w-4 opacity-50">-</span>
+                <span v-else class="inline-block w-4 opacity-30"> </span>
+                <span>{{ part.value }}</span>
+              </div>
+            </template>
+            <div v-else class="p-4 text-muted">本文の差分はありません。</div>
+          </div>
+        </div>
+      </template>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <u-button variant="ghost" color="neutral" :disabled="saving" @click="isSaveConfirmOpen = false">
+            キャンセル
+          </u-button>
+          <u-button icon="i-lucide-check" color="primary" :loading="saving" @click="save">
+            {{ saving ? '保存中...' : 'OK' }}
+          </u-button>
+        </div>
+      </template>
+    </u-modal>
 
     <!-- リビジョン内容確認モーダル -->
     <u-modal
