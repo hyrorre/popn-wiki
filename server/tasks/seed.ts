@@ -1454,6 +1454,9 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
   text = text.replaceAll('[](/threads_*_count_40_skipempty)', ':RecentComments')
 
+  text = text.replace(/https?:\/\/popn\.hyrorre\.com/gi, 'https://popn.wiki')
+  text = text.replace(/popn\.hyrorre\.com/gi, 'popn.wiki')
+
   return text
 }
 

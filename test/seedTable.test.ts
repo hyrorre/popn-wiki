@@ -280,6 +280,25 @@ describe('DokuWiki legacy URL seed conversion', () => {
     expect(await createBodyAstForSeed(markdown, 'test')).toBeTruthy()
   })
 
+  test('replaces retired popn.hyrorre.com links with popn.wiki', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '[[https://popn.hyrorre.com/%E3%81%9D%E3%81%AE%E4%BB%96/s%E4%B9%B1lv0%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8]]',
+        '[旧URL](http://popn.hyrorre.com/foo)',
+        'popn.hyrorre.com → popn.wiki'
+      ].join('\n')
+    )
+
+    expect(markdown).toBe(
+      [
+        '[https://popn.wiki/%E3%81%9D%E3%81%AE%E4%BB%96/s%E4%B9%B1lv0%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8](https://popn.wiki/%E3%81%9D%E3%81%AE%E4%BB%96/s%E4%B9%B1lv0%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8)',
+        '[旧URL](https://popn.wiki/foo)',
+        'popn.wiki → popn.wiki'
+      ].join('\n')
+    )
+  })
+
   test('leaves malformed legacy paths unchanged when URI decoding fails', async () => {
     const { decodeLegacyPath } = await loadSeedTask()
     const path = '%A5%E9%A5%D4'
