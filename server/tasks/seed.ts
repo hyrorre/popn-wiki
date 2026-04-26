@@ -703,11 +703,20 @@ function normalizeMalformedExternalUrl(value: string): string {
     .replace(/^_?(https?)\/{3}/i, (_m, scheme: string) => `${scheme.toLowerCase()}://`)
 }
 
+function normalizeInternalUrlSegmentPrefix(value: string): string {
+  if (!value.startsWith('/') || value.startsWith('//')) return value
+  return value.replace(/\/_+/g, '/')
+}
+
+function normalizeLinkUrl(value: string): string {
+  return normalizeInternalUrlSegmentPrefix(normalizeMalformedExternalUrl(value))
+}
+
 function normalizeMarkdownLinks(value: string): string {
   return value.replace(
     /\[([^\]\n]+)\]\(([^) \n]+)((?:\s+"[^"\n]*")?)\)(\{[^}\n]+\})?/g,
     (_m, label: string, url: string, title: string, attrs: string) => {
-      return `[${normalizeMalformedExternalUrl(label)}](${normalizeMalformedExternalUrl(url)}${title})${attrs || ''}`
+      return `[${normalizeMalformedExternalUrl(label)}](${normalizeLinkUrl(url)}${title})${attrs || ''}`
     }
   )
 }
@@ -1185,6 +1194,7 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
       // 先頭と末尾 host の_を削除
       url = url.replace(/^_/, '').replace(/_$/, '')
+      url = normalizeInternalUrlSegmentPrefix(url)
 
       // urlを小文字に変換
       url = url.toLowerCase()
@@ -1308,6 +1318,7 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
       // 先頭と末尾 host の_を削除
       url = url.replace(/^_/, '').replace(/_$/, '')
+      url = normalizeInternalUrlSegmentPrefix(url)
 
       // urlを小文字に変換
       url = url.toLowerCase()

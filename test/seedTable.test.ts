@@ -271,6 +271,27 @@ describe('DokuWiki legacy URL seed conversion', () => {
     )
   })
 
+  test('removes leading underscores from internal link URL segments', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '[[難易度表:_you_ex|you(EX)]]',
+        '[たまご](/_難易度表/たまごの物理科学的_ex)',
+        '[you](/難易度表/_you_ex)',
+        '[external](/_https///example.com/path)'
+      ].join('\n')
+    )
+
+    expect(markdown).toBe(
+      [
+        '[you(EX)](/難易度表/you_ex)',
+        '[たまご](/難易度表/たまごの物理科学的_ex)',
+        '[you](/難易度表/you_ex)',
+        '[external](https://example.com/path)'
+      ].join('\n')
+    )
+  })
+
   test('keeps EUC-JP percent-encoded external links working without MDC URI errors', async () => {
     const { convertDokuwikiToMarkdown, createBodyAstForSeed } = await loadSeedTask()
     const url = 'http://www.wikihouse.com/popnwakaba/index.php?%A5%E9%A5%D4%A5%B9%A5%C8%A5%EA%A5%A2%BF%B7%B6%CA'
