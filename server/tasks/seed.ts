@@ -1371,7 +1371,8 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     }
   }
 
-  // 脚注: ((テキスト)) -> [^1] (行末・次の行に定義を出力)
+  // 脚注: ((テキスト)) -> [^1]
+  // リストやテーブル内の脚注定義はブロックを分断しないよう、ブロック直後にまとめて出力する
   let footnoteInd = 1
   const footnotesMap = new Map<number, string>()
 
@@ -1382,17 +1383,51 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
     return `[^${id}]__FN_${id}__`
   })
 
-  // 行ごとに見ていき、マーカーがあればその行の直後に脚注を展開する
-  text = text.replace(/^.*(?:__FN_\d+__).*$/gm, (line) => {
-    const fnIds: number[] = []
-    const replacedLine = line.replace(/__FN_(\d+)__/g, (__m, idStr) => {
-      fnIds.push(Number(idStr))
-      return ''
-    })
+  if (footnotesMap.size > 0) {
+    const lines = text.split('\n')
+    const movedLines: string[] = []
+    let pendingFootnoteDefs: string[] = []
 
-    const defs = fnIds.map((id) => `\n[^${id}]: ${footnotesMap.get(id)}`).join('')
-    return replacedLine + defs
-  })
+    const blockKind = (line: string): 'list' | 'table' | null => {
+      if (/^[ \t]*\|/.test(line)) return 'table'
+      if (/^[ \t]*(?:[*-]|\d+\.)\s+\S/.test(line)) return 'list'
+      return null
+    }
+    const extractFootnoteDefs = (line: string) => {
+      const defs: string[] = []
+      const replacedLine = line.replace(/__FN_(\d+)__/g, (_m, idStr) => {
+        const id = Number(idStr)
+        defs.push(`[^${id}]: ${footnotesMap.get(id) ?? ''}`)
+        return ''
+      })
+      return { replacedLine, defs }
+    }
+    const flushFootnoteDefs = () => {
+      if (pendingFootnoteDefs.length === 0) return
+      movedLines.push(...pendingFootnoteDefs)
+      pendingFootnoteDefs = []
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? ''
+      const kind = blockKind(line)
+      const { replacedLine, defs } = extractFootnoteDefs(line)
+
+      movedLines.push(replacedLine)
+
+      if (kind) {
+        pendingFootnoteDefs.push(...defs)
+        if (blockKind(lines[i + 1] ?? '') !== kind) {
+          flushFootnoteDefs()
+        }
+      } else {
+        movedLines.push(...defs)
+      }
+    }
+
+    flushFootnoteDefs()
+    text = movedLines.join('\n')
+  }
 
   // NOCACHEを削除
   text = text.replaceAll('~~NOCACHE~~', '')

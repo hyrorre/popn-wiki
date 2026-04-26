@@ -287,3 +287,25 @@ describe('DokuWiki legacy URL seed conversion', () => {
     expect(decodeLegacyPath(path)).toBe(path)
   })
 })
+
+describe('DokuWiki footnote seed conversion', () => {
+  test('moves footnote definitions after list blocks', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * parent', '    * child ((child note))', '    * child2 ((child2 note))', '  * next'].join('\n')
+    )
+
+    expect(markdown).toBe(
+      ['* parent', '  * child [^1]', '  * child2 [^2]', '* next', '[^1]: child note', '[^2]: child2 note'].join('\n')
+    )
+  })
+
+  test('moves footnote definitions after table blocks', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(['^A^B^', '|1((one note))|2|', '|3|4((four note))|', 'after'].join('\n'))
+
+    expect(markdown).toBe(
+      ['| A | B |', '| --- | --- |', '| 1[^1] | 2 |', '| 3 | 4[^2] |', '[^1]: one note', '[^2]: four note', 'after'].join('\n')
+    )
+  })
+})
