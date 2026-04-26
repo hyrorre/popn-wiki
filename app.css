@@ -79,17 +79,20 @@ body,
   }
 
   ol {
-    margin-top: 1rem;
-    margin-left: 1.5rem;
-    list-style-type: decimal;
+    @apply list-decimal ps-6 my-5 marker:text-dimmed;
 
     ol {
       margin-top: 0;
+      list-style-type: lower-roman;
+
+      ol {
+        list-style: lower-alpha;
+      }
     }
   }
 
   ul {
-    @apply list-disc ps-6 my-5 marker:text-(--ui-border-accented);
+    @apply list-disc ps-6 my-5 marker:text-dimmed;
 
     ul {
       list-style-type: circle;
@@ -119,7 +122,21 @@ body,
     }
 
     dd {
-      @apply list-item list-disc ps-1.5 my-2 marker:text-(--ui-border-accented);
+      @apply list-item list-disc ps-1.5 my-2 marker:text-dimmed;
+
+      &:has(ul),
+      &:has(ol) {
+        @apply list-none;
+      }
+
+      ol {
+        margin-top: 0;
+        list-style-type: lower-roman;
+      }
+      ul {
+        margin-top: 0;
+        list-style-type: circle;
+      }
     }
   }
 
