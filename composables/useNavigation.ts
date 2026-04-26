@@ -8,7 +8,7 @@ export const useNavigation = (showButtons: boolean = true) => {
   const router = useRouter()
 
   const signOut = async () => {
-    await $fetch('/api/auth/logout', { method: 'POST' })
+    await $fetch('/api/auth/signout', { method: 'POST' })
     await clearSession()
     setSidebarOpen(false)
     router.push('/')
@@ -47,7 +47,7 @@ export const useNavigation = (showButtons: boolean = true) => {
       ? [
           {
             class: 'profile',
-            label: user.value.name ?? user.value.login ?? 'プロフィール',
+            label: user.value.name ??  'プロフィール',
             icon: 'i-lucide-user',
             children: [
               {

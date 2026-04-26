@@ -105,7 +105,7 @@ useHead({
     <main class="w-full pb-12 overflow-hidden">
       <div v-if="!user" class="py-12 text-center">
         <p class="text-muted text-lg">編集するにはログインが必要です。</p>
-        <u-button class="mt-4" to="/login">ログインページへ</u-button>
+        <u-button class="mt-4" to="/signin">ログインページへ</u-button>
       </div>
 
       <template v-else>

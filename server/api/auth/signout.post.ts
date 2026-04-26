@@ -1,4 +1,4 @@
 export default defineEventHandler(async (event) => {
   await clearUserSession(event)
-  return { message: 'Logged out' }
+  return { message: 'Signed out' }
 })
