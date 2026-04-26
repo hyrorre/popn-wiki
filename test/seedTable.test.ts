@@ -224,6 +224,53 @@ describe('DokuWiki bold link seed conversion', () => {
 })
 
 describe('DokuWiki legacy URL seed conversion', () => {
+  test('normalizes malformed external URL separators in DokuWiki links', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '* [[https///baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm|ハードPf(H)]]',
+        '* [[緑の風を唱えた！>http:::www.nicovideo.jp:watch:sm5397758]]'
+      ].join('\n')
+    )
+
+    expect(markdown).toBe(
+      [
+        '* [ハードPf(H)](https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)',
+        '* [緑の風を唱えた！](http://www.nicovideo.jp/watch/sm5397758)'
+      ].join('\n')
+    )
+  })
+
+  test('keeps external media URLs external when converting to links', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * {{https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm|ハードPf(H)}}', '{{https://www.php.net/images/php.gif?200x50}}'].join('\n')
+    )
+
+    expect(markdown).toBe(
+      ['* [ハードPf(H)](https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)', '[](https://www.php.net/images/php.gif?200x50)'].join('\n')
+    )
+  })
+
+  test('normalizes malformed external URL separators in existing Markdown links', async () => {
+    const { convertDokuwikiToMarkdown } = await loadSeedTask()
+    const markdown = convertDokuwikiToMarkdown(
+      [
+        '* [ハードPf(H)](/https///baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)',
+        '([https///pop-toriaezu.com/](https://pop-toriaezu.com/))',
+        '[Hyperでもeasy](/_https///www.youtube.com/watch_v_yqdghdjebj8)'
+      ].join('\n')
+    )
+
+    expect(markdown).toBe(
+      [
+        '* [ハードPf(H)](https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)',
+        '([https://pop-toriaezu.com/](https://pop-toriaezu.com/))',
+        '[Hyperでもeasy](https://www.youtube.com/watch_v_yqdghdjebj8)'
+      ].join('\n')
+    )
+  })
+
   test('keeps EUC-JP percent-encoded external links working without MDC URI errors', async () => {
     const { convertDokuwikiToMarkdown, createBodyAstForSeed } = await loadSeedTask()
     const url = 'http://www.wikihouse.com/popnwakaba/index.php?%A5%E9%A5%D4%A5%B9%A5%C8%A5%EA%A5%A2%BF%B7%B6%CA'

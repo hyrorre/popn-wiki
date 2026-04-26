@@ -691,15 +691,40 @@ export function decodeLegacyPath(pathValue: string): string {
   }
 }
 
+function normalizeMalformedExternalUrl(value: string): string {
+  return value
+    .replace(/^\/_?(https?):::(.+)$/i, (_m, scheme: string, rest: string) => {
+      return `${scheme.toLowerCase()}://${rest.replace(/:/g, '/')}`
+    })
+    .replace(/^_?(https?):::(.+)$/i, (_m, scheme: string, rest: string) => {
+      return `${scheme.toLowerCase()}://${rest.replace(/:/g, '/')}`
+    })
+    .replace(/^\/_?(https?)\/{3}/i, (_m, scheme: string) => `${scheme.toLowerCase()}://`)
+    .replace(/^_?(https?)\/{3}/i, (_m, scheme: string) => `${scheme.toLowerCase()}://`)
+}
+
+function normalizeMarkdownLinks(value: string): string {
+  return value.replace(
+    /\[([^\]\n]+)\]\(([^) \n]+)((?:\s+"[^"\n]*")?)\)(\{[^}\n]+\})?/g,
+    (_m, label: string, url: string, title: string, attrs: string) => {
+      return `[${normalizeMalformedExternalUrl(label)}](${normalizeMalformedExternalUrl(url)}${title})${attrs || ''}`
+    }
+  )
+}
+
 export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, string>): string {
   let text = input
+
+  // URL内で DokuWiki の // 解釈を避けるために %%//%% が挟まっていることがある
+  text = text.replace(/(https?:\/\/\S*)%%\/\/%%(?=\/)/g, '$1')
+  text = text.replace(/(https?:\/\/\S*)%%\/\/%%(?=\S)/g, '$1/')
 
   // 単一の [ または ] をエスケープ (DokuWiki のリンク [[...]] を除く)
   // seed済み本文を再投入した場合の Markdown リンクは、そのまま維持する
   const markdownLinkPlaceholders: string[] = []
   text = text.replace(/\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]*")?\)(?:\{[^}\n]+\})?/g, (link) => {
     const idx = markdownLinkPlaceholders.length
-    markdownLinkPlaceholders.push(link)
+    markdownLinkPlaceholders.push(normalizeMarkdownLinks(link))
     return `__DOKU_MARKDOWN_LINK_${idx}__`
   })
   text = text.replace(/(?<!\[)\[(?!\[)/g, '\\[')
@@ -1118,11 +1143,18 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       label = inner.slice(pipeIndex + 1).trim()
       isExplicitLabel = true
     } else {
-      target = inner
-      label = inner.trim()
+      const labelTargetMatch = inner.match(/^(.+?)>((?:https?:\/\/|https?:::).+)$/i)
+      if (labelTargetMatch) {
+        label = labelTargetMatch[1]?.trim() || ''
+        target = labelTargetMatch[2]?.trim() || ''
+        isExplicitLabel = true
+      } else {
+        target = inner
+        label = inner.trim()
+      }
     }
 
-    let url = target.trim()
+    let url = normalizeMalformedExternalUrl(target.trim())
     let isInternal = false
 
     // 内部リンク
@@ -1247,38 +1279,45 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
   // 画像: {{path|alt}} / {{path}} -> [alt](url)
   // 移行後は画像を直接埋め込まず、あえてリンクとして扱う
   text = text.replace(/\{\{([^|}]+?)(?:\|([^}]*))?\}\}/g, (_m, src, alt) => {
-    let url = src.trim().replace(/:/g, '/')
-    if (!/^[a-z]+:\/\/|^\//i.test(url)) {
-      url = '/' + url
-    }
+    const rawUrl = src.trim()
+    const isExternal = /^[a-z]+:\/\//i.test(rawUrl)
+    let url = isExternal ? rawUrl : rawUrl.replace(/:/g, '/')
 
     // urlに?linkonlyが含まれている場合は削除
     url = url.replace(/\?linkonly/g, '')
 
-    // specialCharacters (#以外)を_に変換
-    url = url.replace(
-      new RegExp(
-        `[${specialCharacters
-          .filter((c) => c !== '#' && c !== '/')
-          .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
-          .join('')}]`,
-        'g'
-      ),
-      '_'
-    )
+    if (!isExternal) {
+      if (!url.startsWith('/')) {
+        url = '/' + url
+      }
 
-    // 連続した_を1つにまとめる
-    url = url.replace(/_+/g, '_')
+      // specialCharacters (#以外)を_に変換
+      url = url.replace(
+        new RegExp(
+          `[${specialCharacters
+            .filter((c) => c !== '#' && c !== '/')
+            .map((c) => c.replace(/[\\^\]-]/g, '\\$&'))
+            .join('')}]`,
+          'g'
+        ),
+        '_'
+      )
 
-    // 先頭と末尾 host の_を削除
-    url = url.replace(/^_/, '').replace(/_$/, '')
+      // 連続した_を1つにまとめる
+      url = url.replace(/_+/g, '_')
 
-    // urlを小文字に変換
-    url = url.toLowerCase()
+      // 先頭と末尾 host の_を削除
+      url = url.replace(/^_/, '').replace(/_$/, '')
+
+      // urlを小文字に変換
+      url = url.toLowerCase()
+    }
 
     const altText = (alt || '').trim()
     return `[${altText}](${url})`
   })
+
+  text = normalizeMarkdownLinks(text)
 
   // 整形無効領域を復元（''等幅'' との組み合わせも考慮してインラインコードにする）
   text = text.replace(/__DOKU_NOWIKI_(\d+)__/g, (_m, idxStr) => {
