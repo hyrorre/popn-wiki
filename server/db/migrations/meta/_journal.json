@@ -50,6 +50,13 @@
       "when": 1776711367936,
       "tag": "0006_dizzy_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777326939232,
+      "tag": "0007_cloudy_randall_flagg",
+      "breakpoints": true
     }
   ]
 }

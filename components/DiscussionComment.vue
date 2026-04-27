@@ -25,6 +25,15 @@ const isDeleting = ref(false)
 const replyTextareaRef = ref<ComponentPublicInstance | null>(null)
 const editTextareaRef = ref<ComponentPublicInstance | null>(null)
 
+const commentBodyAst = computed(() => {
+  if (!props.comment.bodyAst) return null
+  try {
+    return typeof props.comment.bodyAst === 'string' ? JSON.parse(props.comment.bodyAst) : props.comment.bodyAst
+  } catch {
+    return null
+  }
+})
+
 const openReply = () => {
   isReplyingOpen.value = true
   replyBody.value = ''
@@ -127,7 +136,13 @@ const submitDelete = async () => {
     </div>
     <!-- 通常表示 -->
     <div v-else class="text-foreground leading-relaxed">
-      <MDC :value="comment.body" class="prose prose-sm dark:prose-invert max-w-none" />
+      <MDCRenderer
+        v-if="commentBodyAst"
+        :body="commentBodyAst.body"
+        :data="commentBodyAst.data"
+        class="prose prose-sm dark:prose-invert max-w-none"
+      />
+      <MDC v-else :value="comment.body" class="prose prose-sm dark:prose-invert max-w-none" />
     </div>
 
     <!-- アクションボタン群 -->

@@ -1,6 +1,7 @@
 import { commentsTable, usersTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { readZodBody } from '~/server/utils/validation'
@@ -22,11 +23,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date().toISOString()
+  const ast = await parseMarkdown(sanitizedBody)
 
   const updated = await db
     .update(commentsTable)
     .set({
       body: sanitizedBody,
+      bodyAst: JSON.stringify(ast),
       updatedAt: now
     })
     .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))

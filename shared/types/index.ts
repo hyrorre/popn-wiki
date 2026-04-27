@@ -38,6 +38,7 @@ export type Comment = {
   id: number
   path: string
   body: string
+  bodyAst?: string | null
   userId: string
   replyTo: number | null
   replyToName: string | null

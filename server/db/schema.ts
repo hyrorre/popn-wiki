@@ -46,6 +46,7 @@ export const commentsTable = sqliteTable(
     id: integer().primaryKey({ autoIncrement: true }),
     path: text().notNull(),
     body: text().notNull(),
+    bodyAst: text(),
     replyTo: integer(),
     userId: integer().notNull(),
     createdAt: text().notNull(),

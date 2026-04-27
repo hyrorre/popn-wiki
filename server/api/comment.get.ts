@@ -1,10 +1,16 @@
 import { commentsTable, usersTable } from '../db/schema'
 import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import type { H3Event } from 'h3'
-import { getCommentListCacheRawKey } from '~/server/utils/commentCache'
+import {
+  getCommentListCacheRawKey,
+  getCommentListCacheVersion,
+  invalidateCommentListCache
+} from '~/server/utils/commentCache'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
+const COMMENT_AST_BACKFILL_LIMIT = 2000
 
 type CommentListQuery = {
   path: string
@@ -12,18 +18,26 @@ type CommentListQuery = {
   limit: number
 }
 
+type CommentAstBackfillTarget = {
+  id: number
+  path: string
+  body: string
+  bodyAst: string | null
+}
+
 const cachedCommentListHandler = defineCachedEventHandler(
   async (event) => {
-    return readCommentList(getCommentListQuery(event))
+    return readCommentList(event, getCommentListQuery(event))
   },
   {
     group: 'comments',
     name: 'list',
     maxAge: COMMENT_LIST_MAX_AGE,
     swr: true,
-    getKey: (event) => {
+    getKey: async (event) => {
       const query = getCommentListQuery(event)
-      return getCommentListCacheRawKey(query.path, query.page, query.limit)
+      const version = await getCommentListCacheVersion(query.path)
+      return getCommentListCacheRawKey(query.path, query.page, query.limit, version)
     }
   }
 )
@@ -58,7 +72,7 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
   }
 }
 
-async function readCommentList(query: CommentListQuery) {
+async function readCommentList(event: H3Event, query: CommentListQuery) {
   const offset = (query.page - 1) * query.limit
 
   const countResult = await db
@@ -93,6 +107,7 @@ async function readCommentList(query: CommentListQuery) {
         id: commentsTable.id,
         path: commentsTable.path,
         body: commentsTable.body,
+        bodyAst: commentsTable.bodyAst,
         replyTo: commentsTable.replyTo,
         userId: commentsTable.userId,
         createdAt: commentsTable.createdAt,
@@ -107,6 +122,7 @@ async function readCommentList(query: CommentListQuery) {
             id: commentsTable.id,
             path: commentsTable.path,
             body: commentsTable.body,
+            bodyAst: commentsTable.bodyAst,
             replyTo: commentsTable.replyTo,
             userId: commentsTable.userId,
             createdAt: commentsTable.createdAt,
@@ -128,6 +144,7 @@ async function readCommentList(query: CommentListQuery) {
       id: tree.id,
       path: tree.path,
       body: tree.body,
+      bodyAst: tree.bodyAst,
       createdAt: tree.createdAt,
       updatedAt: tree.updatedAt,
       userId: tree.userId,
@@ -145,6 +162,8 @@ async function readCommentList(query: CommentListQuery) {
     .orderBy(desc(sql`tree.rootCreatedAt`), asc(tree.createdAt))
     .all()
 
+  scheduleCommentAstBackfill(event, comments)
+
   return {
     comments,
     total
@@ -154,4 +173,36 @@ async function readCommentList(query: CommentListQuery) {
 function parsePositiveInteger(value: unknown, fallback: number) {
   const parsed = Number.parseInt(String(value ?? fallback), 10)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function scheduleCommentAstBackfill(event: H3Event, comments: CommentAstBackfillTarget[]) {
+  const missingAstComments = comments
+    .filter((comment) => !comment.bodyAst && comment.body)
+    .slice(0, COMMENT_AST_BACKFILL_LIMIT)
+
+  if (missingAstComments.length === 0) {
+    return
+  }
+
+  event.waitUntil(backfillCommentBodyAst(missingAstComments))
+}
+
+async function backfillCommentBodyAst(comments: CommentAstBackfillTarget[]) {
+  const touchedPaths = new Set<string>()
+
+  await Promise.all(
+    comments.map(async (comment) => {
+      const ast = await parseMarkdown(comment.body)
+
+      await db
+        .update(commentsTable)
+        .set({ bodyAst: JSON.stringify(ast) })
+        .where(eq(commentsTable.id, comment.id))
+        .execute()
+
+      touchedPaths.add(comment.path)
+    })
+  )
+
+  await Promise.all([...touchedPaths].map((path) => invalidateCommentListCache(path)))
 }
