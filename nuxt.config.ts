@@ -10,8 +10,17 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     '@nuxtjs/mdc',
     '@nuxt/scripts',
-    'nuxt-resend'
+    'nuxt-resend',
+    '@nuxtjs/sitemap'
   ],
+  site: {
+    url: 'https://popn.wiki',
+    name: 'ポップンミュージック上級攻略Wiki'
+  },
+  sitemap: {
+    excludeAppSources: true,
+    sources: ['/api/sitemap']
+  },
   mdc: {
     remarkPlugins: {
       breaks: {
