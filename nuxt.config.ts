@@ -92,7 +92,12 @@ export default defineNuxtConfig({
         '@nuxt/ui > prosemirror-transform',
         '@nuxt/ui > prosemirror-model',
         '@nuxt/ui > prosemirror-view',
-        '@nuxt/ui > prosemirror-gapcursor'
+        '@nuxt/ui > prosemirror-gapcursor',
+        '@tiptap/core',
+        '@tiptap/extension-code-block',
+        '@tiptap/extension-hard-break',
+        '@tiptap/extension-list',
+        '@tiptap/extension-underline'
       ]
     },
     vue: {

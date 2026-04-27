@@ -35,6 +35,15 @@ const diffTarget = ref<'current' | 'previous'>('current')
 const viewMode = ref<'preview' | 'markdown'>('preview')
 const editorMode = ref<'rich' | 'markdown'>('rich')
 
+const normalizeRichMarkdown = (value: string) => value.replace(/ {2,}\n/g, '\n')
+
+const richBody = computed({
+  get: () => body.value,
+  set: (value: string) => {
+    body.value = normalizeRichMarkdown(value)
+  }
+})
+
 const editorModeTabs = [
   { label: 'リッチ編集', value: 'rich', icon: 'i-lucide-edit-3' },
   { label: 'Markdown', value: 'markdown', icon: 'i-lucide-code-2' }
@@ -152,6 +161,10 @@ const save = async () => {
   saving.value = true
   errorMessage.value = ''
   try {
+    if (editorMode.value === 'rich') {
+      body.value = normalizeRichMarkdown(body.value)
+    }
+
     const saved = await $fetch<Page>('/api/page', {
       method: 'PUT',
       body: {
@@ -253,11 +266,12 @@ await loadHistory()
         <ClientOnly v-else>
           <UEditor
             v-slot="{ editor }"
-            v-model="body"
+            v-model="richBody"
             content-type="markdown"
             placeholder="本文を入力してください..."
             class="wiki-rich-editor min-h-[400px] rounded-lg border border-default bg-white dark:bg-gray-900"
             :image="{ allowBase64: false }"
+            :starter-kit="{ codeBlock: false, hardBreak: false }"
             :markdown="{ markedOptions: { gfm: true, breaks: true } }"
             :extensions="wikiMarkdownExtensions"
           >

@@ -84,6 +84,10 @@ body,
     @apply bg-transparent p-0;
   }
 
+  .wiki-frontmatter {
+    @apply my-4 overflow-auto rounded border border-dashed border-primary/40 bg-primary/5 p-3 font-mono text-xs text-muted;
+  }
+
   .wiki-raw-block {
     @apply my-4 flex flex-col gap-2 rounded border border-dashed border-warning/50 bg-warning/10 p-3 text-sm;
   }
@@ -98,6 +102,10 @@ body,
 
   .wiki-raw-block--comment {
     @apply border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/60;
+  }
+
+  .wiki-html-inline {
+    @apply inline rounded border border-dashed border-gray-300 bg-gray-50 px-1 font-mono text-xs text-muted dark:border-gray-700 dark:bg-gray-900/60;
   }
 
   .wiki-definition-list {
