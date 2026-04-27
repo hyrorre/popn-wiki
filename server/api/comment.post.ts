@@ -2,6 +2,7 @@ import { commentsTable, usersTable } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
@@ -37,6 +38,8 @@ export default defineEventHandler(async (event) => {
 
   // プロフィール情報を取得して結合 (Drizzleのjoinを使うことも可能)
   const profile = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
+
+  await invalidateCommentListCache(path)
 
   return {
     ...inserted,

@@ -2,6 +2,7 @@ import { commentsTable, usersTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
 import { updateCommentSchema } from '~/shared/zod'
@@ -37,6 +38,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const profile = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
+
+  await invalidateCommentListCache(updated.path)
 
   return {
     ...updated,

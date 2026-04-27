@@ -1,23 +1,70 @@
 import { commentsTable, usersTable } from '../db/schema'
 import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import type { H3Event } from 'h3'
+import { getCommentListCacheRawKey } from '~/server/utils/commentCache'
+
+const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
+
+type CommentListQuery = {
+  path: string
+  page: number
+  limit: number
+}
+
+const cachedCommentListHandler = defineCachedEventHandler(
+  async (event) => {
+    return readCommentList(getCommentListQuery(event))
+  },
+  {
+    group: 'comments',
+    name: 'list',
+    maxAge: COMMENT_LIST_MAX_AGE,
+    swr: true,
+    getKey: (event) => {
+      const query = getCommentListQuery(event)
+      return getCommentListCacheRawKey(query.path, query.page, query.limit)
+    }
+  }
+)
 
 export default defineEventHandler(async (event) => {
+  event.context.commentListQuery = parseCommentListQuery(event)
+  return cachedCommentListHandler(event)
+})
+
+function getCommentListQuery(event: H3Event): CommentListQuery {
+  const query = event.context.commentListQuery as CommentListQuery | undefined
+
+  if (!query) {
+    throw createError({ statusCode: 500, message: 'Comment list query is missing.' })
+  }
+
+  return query
+}
+
+function parseCommentListQuery(event: H3Event): CommentListQuery {
   const query = getQuery(event)
-  const path = query.path as string
-  const page = Math.max(1, parseInt((query.page as string) || '1'))
-  const limit = Math.max(1, parseInt((query.limit as string) || '20'))
-  const offset = (page - 1) * limit
+  const path = query.path as string | undefined
 
   if (!path) {
     throw createError({ statusCode: 400, message: 'Path is required.' })
   }
 
-  // 1. 親コメント（ルート）の総数を取得
+  return {
+    path,
+    page: parsePositiveInteger(query.page, 1),
+    limit: parsePositiveInteger(query.limit, 20)
+  }
+}
+
+async function readCommentList(query: CommentListQuery) {
+  const offset = (query.page - 1) * query.limit
+
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
+    .where(and(eq(commentsTable.path, query.path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
     .get()
   const total = countResult?.count ?? 0
 
@@ -25,24 +72,21 @@ export default defineEventHandler(async (event) => {
     return { comments: [], total: 0 }
   }
 
-  // 2. 現在のページの親コメントIDを取得 (最新のスレッドを先に表示するため降順)
   const rootIdsResult = await db
     .select({ id: commentsTable.id })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
+    .where(and(eq(commentsTable.path, query.path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
     .orderBy(desc(commentsTable.createdAt))
-    .limit(limit)
+    .limit(query.limit)
     .offset(offset)
     .all()
 
-  const rootIds = rootIdsResult.map((r) => r.id)
+  const rootIds = rootIdsResult.map((result) => result.id)
 
   if (rootIds.length === 0) {
     return { comments: [], total }
   }
 
-  // 3. 再帰的クエリ (Recursive CTE) で親 ID に紐づくすべての子孫を取得
-  // スレッド内は昇順、スレッド間は降順にするため rootCreatedAt も保持する
   const tree = db.$with('tree').as(
     db
       .select({
@@ -75,11 +119,9 @@ export default defineEventHandler(async (event) => {
       )
   )
 
-  // 親コメントのプロフィール名を取得するためのエイリアス（返信先表示用）
   const parentComments = aliasedTable(commentsTable, 'parent_comments')
   const parentProfiles = aliasedTable(usersTable, 'parent_profiles')
 
-  // tree CTE から結果を取得し、プロフィールを JOIN
   const comments = await db
     .with(tree)
     .select({
@@ -107,4 +149,9 @@ export default defineEventHandler(async (event) => {
     comments,
     total
   }
-})
+}
+
+function parsePositiveInteger(value: unknown, fallback: number) {
+  const parsed = Number.parseInt(String(value ?? fallback), 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}

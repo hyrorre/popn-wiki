@@ -1,6 +1,7 @@
 import { commentsTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { invalidateCommentListCache } from '~/server/utils/commentCache'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -28,6 +29,8 @@ export default defineEventHandler(async (event) => {
   if (!updated) {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
+
+  await invalidateCommentListCache(updated.path)
 
   return { success: true }
 })
