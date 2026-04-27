@@ -9,7 +9,6 @@ export default defineNuxtConfig({
     '@nuxthub/core',
     'nuxt-auth-utils',
     '@nuxtjs/mdc',
-    '@nuxt/scripts',
     'nuxt-resend',
     '@nuxtjs/sitemap'
   ],
@@ -85,8 +84,6 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      googleTagManagerId: process.env.NUXT_PUBLIC_GTAG_ID,
-      googleAdsenseId: process.env.NUXT_PUBLIC_GOOGLE_ADSENSE_ID,
       imageBasePath: process.env.NUXT_PUBLIC_IMAGE_BASE_PATH || '/api/image'
     }
   },

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const config = useRuntimeConfig()
 const { app } = useAppConfig()
 
 useHead({
@@ -21,18 +20,6 @@ useHead({
     { name: 'twitter:creator', content: app.twitter }
   ]
 })
-
-if (config.public.googleTagManagerId) {
-  useScriptGoogleTagManager({
-    id: config.public.googleTagManagerId
-  })
-}
-
-if (config.public.googleAdsenseId) {
-  useScriptGoogleAdsense({
-    client: config.public.googleAdsenseId
-  })
-}
 </script>
 
 <template>
