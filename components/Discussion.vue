@@ -6,10 +6,23 @@ const props = defineProps<{
   path: string
 }>()
 
+type CommentLayout = 'thread' | 'flat'
+type ThreadedComment = Comment & { children: ThreadedComment[] }
+type FlatCommentThread = {
+  root: Comment
+  replies: Comment[]
+}
+
 const { user } = useUserSession()
 
 const page = ref(1)
 const itemsPerPage = 20
+const commentLayout = ref<CommentLayout>('thread')
+
+const commentLayoutOptions: { label: string; value: CommentLayout; icon: string }[] = [
+  { label: 'ツリー', value: 'thread', icon: 'i-lucide-list-tree' },
+  { label: 'フラット', value: 'flat', icon: 'i-lucide-align-justify' }
+]
 
 // APIリクエストでpathを指定してコメントを取得します
 const { data: commentData, refresh } = await useFetch<{ comments: Comment[]; total: number }>('/api/comment', {
@@ -60,11 +73,30 @@ const submitComment = async () => {
   }
 }
 
+const commentMap = computed(() => new Map(comments.value.map((comment) => [comment.id, comment])))
+
+const compareCommentsAsc = (a: Comment, b: Comment) => {
+  const createdAtDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  return createdAtDiff === 0 ? a.id - b.id : createdAtDiff
+}
+
+const resolveRootId = (comment: Comment) => {
+  let current = comment
+  const visitedIds = new Set<number>()
+
+  while (current.replyTo && commentMap.value.has(current.replyTo) && !visitedIds.has(current.id)) {
+    visitedIds.add(current.id)
+    current = commentMap.value.get(current.replyTo)!
+  }
+
+  return current.id
+}
+
 // Flatなコメント一覧を、親コメントと子コメント（返信）のツリー構造に変換
 const threadedComments = computed(() => {
   if (!comments.value) return []
-  const map = new Map<number, Comment & { children: Comment[] }>()
-  const roots: Comment[] = []
+  const map = new Map<number, ThreadedComment>()
+  const roots: ThreadedComment[] = []
 
   // マップに事前にセット
   comments.value.forEach((c) => {
@@ -82,6 +114,36 @@ const threadedComments = computed(() => {
   })
 
   return roots
+})
+
+const flatCommentThreads = computed<FlatCommentThread[]>(() => {
+  const threads = new Map<number, FlatCommentThread>()
+
+  comments.value.forEach((comment) => {
+    if (!comment.replyTo) {
+      threads.set(comment.id, { root: comment, replies: [] })
+    }
+  })
+
+  comments.value.forEach((comment) => {
+    if (!comment.replyTo) return
+
+    const rootId = resolveRootId(comment)
+    const root = commentMap.value.get(rootId)
+
+    if (!root) return
+
+    if (!threads.has(rootId)) {
+      threads.set(rootId, { root, replies: [] })
+    }
+
+    threads.get(rootId)?.replies.push(comment)
+  })
+
+  return [...threads.values()].map((thread) => ({
+    root: thread.root,
+    replies: [...thread.replies].sort(compareCommentsAsc)
+  }))
 })
 
 // ページ遷移時に上部にスクロール
@@ -103,15 +165,65 @@ watch(page, (newVal) => {
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 
-    <div class="flex flex-col gap-6 mb-8">
+    <div v-else class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-sm text-muted">
+        表示形式:
+        <span class="font-medium text-foreground">
+          {{ commentLayout === 'thread' ? '返信をネスト表示' : '返信をスレッドごとに古い順で表示' }}
+        </span>
+      </div>
+      <div class="inline-flex rounded-lg border border-default bg-white p-1 shadow-sm dark:bg-gray-900">
+        <u-button
+          v-for="option in commentLayoutOptions"
+          :key="option.value"
+          :icon="option.icon"
+          size="sm"
+          :color="commentLayout === option.value ? 'primary' : 'neutral'"
+          :variant="commentLayout === option.value ? 'solid' : 'ghost'"
+          @click="commentLayout = option.value"
+        >
+          {{ option.label }}
+        </u-button>
+      </div>
+    </div>
+
+    <div v-if="commentLayout === 'thread'" class="flex flex-col gap-6 mb-8">
       <!-- 親コメントループ & 再帰コンポーネントへ移譲 -->
       <DiscussionComment
         v-for="comment in threadedComments"
         :key="comment.id"
         :comment="comment"
         :path="path"
+        :show-reply-target="false"
         @refresh="refresh"
       />
+    </div>
+
+    <div v-else class="flex flex-col gap-6 mb-8">
+      <section v-for="thread in flatCommentThreads" :key="thread.root.id" class="flex flex-col gap-4">
+        <DiscussionComment
+          :comment="thread.root"
+          :path="path"
+          :show-children="false"
+          :show-reply-target="false"
+          @refresh="refresh"
+        />
+
+        <div
+          v-if="thread.replies.length"
+          class="ml-0 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:ml-4 sm:pl-5 flex flex-col gap-4"
+        >
+          <DiscussionComment
+            v-for="reply in thread.replies"
+            :key="reply.id"
+            :comment="reply"
+            :path="path"
+            :show-children="false"
+            :show-reply-target="reply.replyTo !== thread.root.id"
+            @refresh="refresh"
+          />
+        </div>
+      </section>
     </div>
 
     <!-- ページネーション & ジャンプ -->
