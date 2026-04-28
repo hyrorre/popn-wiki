@@ -32,7 +32,7 @@ const panelClass = computed(() => [
   <component :is="to ? linkComponent : 'article'" :to="to" class="p-4" :class="panelClass">
     <div class="flex items-start justify-between gap-3 text-sm text-muted">
       <span class="min-w-0 font-medium text-foreground flex items-center gap-2">
-        <u-avatar :size="avatarSize" :alt="authorAlt" />
+        <u-avatar :size="avatarSize" :alt="authorAlt.substring(0, 1)" />
         <span class="truncate">{{ authorName || '名無しさん' }}</span>
       </span>
       <span class="shrink-0 text-right">
