@@ -191,12 +191,13 @@ watch(page, (newVal) => {
           {{ commentLayout === 'thread' ? '返信をネスト表示' : '返信をスレッドごとに古い順で表示' }}
         </span>
       </div>
-      <div class="inline-flex rounded-lg border border-default bg-white p-1 shadow-sm dark:bg-gray-900">
+      <div class="grid w-full grid-cols-2 rounded-lg border border-default bg-white p-1 shadow-sm dark:bg-gray-900 sm:w-auto">
         <u-button
           v-for="option in commentLayoutOptions"
           :key="option.value"
           :icon="option.icon"
           size="sm"
+          class="min-w-0 justify-center"
           :color="commentLayout === option.value ? 'primary' : 'neutral'"
           :variant="commentLayout === option.value ? 'solid' : 'ghost'"
           @click="commentLayout = option.value"
