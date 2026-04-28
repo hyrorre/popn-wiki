@@ -7,7 +7,7 @@ const props = defineProps<{
 }>()
 
 type CommentLayout = 'thread' | 'flat'
-type ThreadedComment = Comment & { children: ThreadedComment[] }
+type ThreadedComment = Omit<Comment, 'children'> & { children: ThreadedComment[] }
 type FlatCommentThread = {
   root: Comment
   replies: Comment[]
@@ -18,6 +18,7 @@ const { user } = useUserSession()
 const page = ref(1)
 const itemsPerPage = 20
 const commentLayout = ref<CommentLayout>('thread')
+const collapsedThreadIds = ref(new Set<number>())
 
 const commentLayoutOptions: { label: string; value: CommentLayout; icon: string }[] = [
   { label: 'ツリー', value: 'thread', icon: 'i-lucide-list-tree' },
@@ -90,6 +91,24 @@ const resolveRootId = (comment: Comment) => {
   }
 
   return current.id
+}
+
+const countReplies = (comment: ThreadedComment): number => {
+  return comment.children.reduce((total, child) => total + 1 + countReplies(child), 0)
+}
+
+const isThreadCollapsed = (threadId: number) => collapsedThreadIds.value.has(threadId)
+
+const toggleThread = (threadId: number) => {
+  const nextCollapsedThreadIds = new Set(collapsedThreadIds.value)
+
+  if (nextCollapsedThreadIds.has(threadId)) {
+    nextCollapsedThreadIds.delete(threadId)
+  } else {
+    nextCollapsedThreadIds.add(threadId)
+  }
+
+  collapsedThreadIds.value = nextCollapsedThreadIds
 }
 
 // Flatなコメント一覧を、親コメントと子コメント（返信）のツリー構造に変換
@@ -189,14 +208,43 @@ watch(page, (newVal) => {
 
     <div v-if="commentLayout === 'thread'" class="flex flex-col gap-6 mb-8">
       <!-- 親コメントループ & 再帰コンポーネントへ移譲 -->
-      <DiscussionComment
-        v-for="comment in threadedComments"
-        :key="comment.id"
-        :comment="comment"
-        :path="path"
-        :show-reply-target="false"
-        @refresh="refresh"
-      />
+      <section v-for="comment in threadedComments" :key="comment.id" class="flex flex-col gap-4">
+        <DiscussionComment
+          :comment="comment"
+          :path="path"
+          :show-children="false"
+          :show-reply-target="false"
+          @refresh="refresh"
+        />
+
+        <div
+          v-if="comment.children.length"
+          class="flex flex-col gap-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:pl-6"
+        >
+          <div>
+            <u-button
+              :icon="isThreadCollapsed(comment.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              @click="toggleThread(comment.id)"
+            >
+              {{ isThreadCollapsed(comment.id) ? '返信を表示' : '返信を折りたたむ' }}（{{ countReplies(comment) }}件）
+            </u-button>
+          </div>
+
+          <template v-if="!isThreadCollapsed(comment.id)">
+            <DiscussionComment
+              v-for="child in comment.children"
+              :key="child.id"
+              :comment="child"
+              :path="path"
+              :show-reply-target="false"
+              @refresh="refresh"
+            />
+          </template>
+        </div>
+      </section>
     </div>
 
     <div v-else class="flex flex-col gap-6 mb-8">
@@ -211,17 +259,33 @@ watch(page, (newVal) => {
 
         <div
           v-if="thread.replies.length"
-          class="ml-0 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:ml-4 sm:pl-5 flex flex-col gap-4"
+          class="ml-0 flex flex-col gap-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:ml-4 sm:pl-5"
         >
-          <DiscussionComment
-            v-for="reply in thread.replies"
-            :key="reply.id"
-            :comment="reply"
-            :path="path"
-            :show-children="false"
-            :show-reply-target="reply.replyTo !== thread.root.id"
-            @refresh="refresh"
-          />
+          <div>
+            <u-button
+              :icon="isThreadCollapsed(thread.root.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              @click="toggleThread(thread.root.id)"
+            >
+              {{ isThreadCollapsed(thread.root.id) ? '返信を表示' : '返信を折りたたむ' }}（{{
+                thread.replies.length
+              }}件）
+            </u-button>
+          </div>
+
+          <template v-if="!isThreadCollapsed(thread.root.id)">
+            <DiscussionComment
+              v-for="reply in thread.replies"
+              :key="reply.id"
+              :comment="reply"
+              :path="path"
+              :show-children="false"
+              :show-reply-target="reply.replyTo !== thread.root.id"
+              @refresh="refresh"
+            />
+          </template>
         </div>
       </section>
     </div>
