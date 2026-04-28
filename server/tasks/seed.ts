@@ -9,6 +9,7 @@ import remarkLegacyUrl from '../../utils/remark-legacy-url'
 export const D1_STATEMENT_CHUNK_SIZE = 80000
 export const BODY_AST_SOURCE_MAX_LENGTH = 80000
 export const BODY_AST_JSON_MAX_LENGTH = 80000
+export const DEFAULT_PAGE_SEED_TIMESTAMP = '2018-01-01T09:00:00.000Z'
 
 const specialCharacters = [
   '\u{1a}',
@@ -1499,6 +1500,86 @@ export interface DokuWikiCommentsFile {
   subscribers: unknown
 }
 
+export interface DokuWikiPageMeta {
+  current?: {
+    date?: {
+      created?: number
+      modified?: number
+    }
+  }
+  persistent?: {
+    date?: {
+      created?: number
+      modified?: number
+    }
+  }
+}
+
+export interface PageSeedTimestamps {
+  createdAt: string
+  updatedAt: string
+}
+
+function toIsoFromUnixSeconds(value: unknown): string | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null
+
+  const date = new Date(value * 1000)
+  if (Number.isNaN(date.getTime())) return null
+
+  return date.toISOString()
+}
+
+export function pagePathFromMetaRelativePath(relativePath: string): string {
+  const normalizedPath = relativePath.replace(/\\/g, '/')
+  return normalizedPath === 'start' ? '/' : decodeLegacyPath(normalizedPath)
+}
+
+export function extractPageSeedTimestamps(meta: DokuWikiPageMeta): PageSeedTimestamps | null {
+  const createdAt =
+    toIsoFromUnixSeconds(meta.persistent?.date?.created) ?? toIsoFromUnixSeconds(meta.current?.date?.created)
+  if (!createdAt) return null
+
+  const updatedAt =
+    toIsoFromUnixSeconds(meta.persistent?.date?.modified) ??
+    toIsoFromUnixSeconds(meta.current?.date?.modified) ??
+    createdAt
+
+  return { createdAt, updatedAt }
+}
+
+export function resolvePageSeedTimestamps(timestamps: PageSeedTimestamps | undefined): PageSeedTimestamps {
+  return timestamps ?? { createdAt: DEFAULT_PAGE_SEED_TIMESTAMP, updatedAt: DEFAULT_PAGE_SEED_TIMESTAMP }
+}
+
+/**
+ * .local/meta 配下の .meta ファイルからページの作成・更新日時を収集する
+ */
+export function collectPageSeedTimestamps(metaDir: string): Map<string, PageSeedTimestamps> {
+  const metaFiles = getFilesRecursively(metaDir).filter((f) => f.endsWith('.meta'))
+  const pageTimestamps = new Map<string, PageSeedTimestamps>()
+
+  for (const file of metaFiles) {
+    const relativePath = path
+      .relative(metaDir, file)
+      .replace(/\.meta$/, '')
+      .replace(/\\/g, '/')
+    const pagePath = pagePathFromMetaRelativePath(relativePath)
+
+    try {
+      const raw = fs.readFileSync(file, 'utf8')
+      const parsed = unserialize(raw) as DokuWikiPageMeta
+      const timestamps = extractPageSeedTimestamps(parsed)
+      if (!timestamps) continue
+
+      pageTimestamps.set(pagePath.toLowerCase(), timestamps)
+    } catch (e: unknown) {
+      console.warn(`[Warn] Failed to parse page metadata ${file}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  return pageTimestamps
+}
+
 /**
  * .local/meta 配下の .comments ファイルを再帰的に取得して
  * パースし、全コメントを収集する
@@ -1638,11 +1719,11 @@ export default defineTask({
     const defaultUserId = 0
     let allComments: { pagePath: string; comment: DokuWikiComment }[] = []
     const oldUserIdToNewId = new Map<string, number>()
+    const metaDir = path.resolve(process.cwd(), '.local/meta')
 
     if (!onlyPages) {
       // ===== ユーザー情報とコメントの収集 =====
       console.log('Seeding users...')
-      const metaDir = path.resolve(process.cwd(), '.local/meta')
       let commentUsers = new Map<string, { id: string; name: string }>()
 
       if (fs.existsSync(metaDir)) {
@@ -1709,9 +1790,19 @@ export default defineTask({
     const titleMap = buildTitleMap(pagesDir)
     console.log(`Built title map with ${titleMap.size} entries.`)
 
+    const pageTimestamps = fs.existsSync(metaDir)
+      ? collectPageSeedTimestamps(metaDir)
+      : new Map<string, PageSeedTimestamps>()
+    if (pageTimestamps.size > 0) {
+      console.log(`Loaded page metadata for ${pageTimestamps.size} pages.`)
+    } else {
+      console.warn('No page metadata found:', metaDir)
+    }
+
     const files = getFilesRecursively(pagesDir)
     const pageEntries: Record<string, string | number | boolean | null>[] = []
     let bodyAstCount = 0
+    let pageTimestampCount = 0
 
     for (const file of files.filter((file) => file.endsWith('.txt'))) {
       const relativePath = path
@@ -1720,10 +1811,12 @@ export default defineTask({
         .replace(/\\/g, '/')
       const bodyContent = fs.readFileSync(file, 'utf8')
       const markdown = convertDokuwikiToMarkdown(bodyContent, titleMap)
-      const now = new Date().toISOString()
 
       const pagePath = relativePath === 'start' ? '/' : decodeLegacyPath(relativePath)
       const dbPath = pagePath.toLowerCase()
+      const timestamps = pageTimestamps.get(dbPath)
+      if (timestamps) pageTimestampCount++
+      const { createdAt, updatedAt } = resolvePageSeedTimestamps(timestamps)
       const title =
         titleMap.get(dbPath) ||
         (relativePath === 'start' ? 'Home' : decodeLegacyPath(relativePath.split('/').pop() || ''))
@@ -1738,8 +1831,8 @@ export default defineTask({
         bodyAst,
         message: null,
         minor: 0,
-        created_at: now,
-        updated_at: now,
+        created_at: createdAt,
+        updated_at: updatedAt,
         created_by: defaultUserId,
         updated_by: defaultUserId
       })
@@ -1748,6 +1841,7 @@ export default defineTask({
     console.log(
       `Prepared ${bodyAstCount}/${pageEntries.length} page ASTs under ${BODY_AST_SOURCE_MAX_LENGTH} source chars and ${BODY_AST_JSON_MAX_LENGTH} AST chars.`
     )
+    console.log(`Applied DokuWiki timestamps to ${pageTimestampCount}/${pageEntries.length} pages.`)
 
     if (pageEntries.length > 0) {
       // ページテーブルのデータをすべて削除
