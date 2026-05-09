@@ -2,6 +2,14 @@
 @plugin '@egoist/tailwindcss-icons';
 @import '@nuxt/ui';
 
+:root {
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark {
+  --ui-primary: var(--ui-color-primary-500);
+}
+
 * {
   text-autospace: normal;
 }
