@@ -6,8 +6,11 @@ const { app } = useAppConfig()
 const route = useRoute()
 const token = route.query.token as string
 
-useHead({
-  title: '新しいパスワードの設定'
+useSeoMeta({
+  title: '新しいパスワードの設定',
+  ogTitle: '新しいパスワードの設定',
+  ogUrl: `${app.url}/reset`,
+  robots: 'noindex',
 })
 
 const fields = ref<AuthFormField[]>([

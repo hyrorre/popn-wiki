@@ -8,8 +8,11 @@ const verified = route.query.verified
 const reset = route.query.reset
 const verify_failed = computed(() => route.query.error === 'verify_failed')
 
-useHead({
-  title: 'サインイン'
+useSeoMeta({
+  title: 'サインイン',
+  ogTitle: 'サインイン',
+  ogUrl: `${app.url}/signin`,
+  robots: 'noindex',
 })
 
 const fields = ref<AuthFormField[]>([

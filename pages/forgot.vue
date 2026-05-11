@@ -4,8 +4,12 @@ import { emailOnlySchema, type EmailOnlyInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 
-useHead({
-  title: 'パスワード再設定'
+useSeoMeta({
+  title: 'パスワード再設定',
+  ogTitle: 'パスワード再設定',
+  ogDescription: '登録済みのメールアドレスにパスワード再設定用のリンクを送信します。',
+  ogUrl: `${app.url}/forgot`,
+  robots: 'noindex',
 })
 
 const fields = ref<AuthFormField[]>([

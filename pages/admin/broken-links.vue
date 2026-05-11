@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { user } = useUserSession()
 const { setCanEdit, setRevision } = usePageActions()
+const { app } = useAppConfig()
 
 watchEffect(() => {
   setCanEdit(false)
@@ -8,8 +9,12 @@ watchEffect(() => {
 })
 
 useSeoMeta({
-  title: 'リンク切れチェッカー - Popn Wiki',
-  description: 'Wiki内のリンク切れURLや画像を一覧表示し、一括でチェックできる管理者向けツールです。'
+  title: 'リンク切れチェッカー',
+  description: 'Wiki内のリンク切れURLや画像を一覧表示し、一括でチェックできる管理者向けツールです。',
+  ogTitle: 'リンク切れチェッカー',
+  ogDescription: 'Wiki内のリンク切れURLや画像を一覧表示し、一括でチェックできる管理者向けツールです。',
+  ogUrl: `${app.url}/admin/broken-links`,
+  robots: 'noindex',
 })
 </script>
 

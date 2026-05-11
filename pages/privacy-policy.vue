@@ -1,9 +1,12 @@
 <script setup lang="ts">
 const { app } = useAppConfig()
 
-useHead({
+useSeoMeta({
   title: 'プライバシーポリシー',
-  meta: [{ name: 'description', content: `${app.title}のプライバシーポリシーです。` }]
+  description: `${app.title}のプライバシーポリシーです。`,
+  ogTitle: 'プライバシーポリシー',
+  ogDescription: `${app.title}のプライバシーポリシーです。`,
+  ogUrl: `${app.url}/privacy-policy`,
 })
 </script>
 

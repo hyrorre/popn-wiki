@@ -2,6 +2,7 @@
 const route = useRoute()
 const { user } = useUserSession()
 const { isSidebarOpen, setRevision, setCanEdit } = usePageActions()
+const { app } = useAppConfig()
 
 const conflictMessage = ref('')
 const deleting = ref(false)
@@ -48,6 +49,13 @@ watchEffect(() => {
   } else {
     setRevision(null)
   }
+})
+
+useSeoMeta({
+  title: `${path} を編集`,
+  ogTitle: `${path} を編集`,
+  ogUrl: `${app.url}/edit/${path}`,
+  robots: 'noindex',
 })
 
 const onSaved = async () => {

@@ -1,6 +1,11 @@
 <script setup lang="ts">
-useHead({
-  title: 'MY PROFILE'
+const { app } = useAppConfig()
+
+useSeoMeta({
+  title: 'マイプロフィール',
+  ogTitle: 'マイプロフィール',
+  ogUrl: `${app.url}/profile`,
+  robots: 'noindex',
 })
 </script>
 

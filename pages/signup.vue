@@ -4,8 +4,11 @@ import { signupSchema, type SignupInput } from '~/shared/zod'
 
 const { app } = useAppConfig()
 
-useHead({
-  title: '新規登録'
+useSeoMeta({
+  title: '新規登録',
+  ogTitle: '新規登録',
+  ogUrl: `${app.url}/signup`,
+  robots: 'noindex',
 })
 
 const fields = ref<AuthFormField[]>([

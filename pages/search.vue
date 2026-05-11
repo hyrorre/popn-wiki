@@ -158,9 +158,17 @@ const resultLabel = computed(() => {
   return `「${activeData.value.query}」の${target}検索結果 ${activeData.value.total}件`
 })
 
+const { app } = useAppConfig()
+
 useHead(() => ({
   title: query.value ? `検索: ${query.value}` : '検索'
 }))
+
+useSeoMeta({
+  ogTitle: () => query.value ? `検索: ${query.value}` : '検索',
+  ogUrl: () => query.value ? `${app.url}/search?q=${encodeURIComponent(query.value)}` : `${app.url}/search`,
+  robots: 'noindex',
+})
 
 function pageHref(path: string) {
   return path === '/' ? '/' : `/${path}`
