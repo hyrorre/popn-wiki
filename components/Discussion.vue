@@ -184,14 +184,16 @@ watch(page, (newVal) => {
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 
-    <div v-else class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div v-else-if="false" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="text-sm text-muted">
         表示形式:
         <span class="font-medium text-foreground">
           {{ commentLayout === 'thread' ? '返信をネスト表示' : '返信をスレッドごとに古い順で表示' }}
         </span>
       </div>
-      <div class="grid w-full grid-cols-2 rounded-lg border border-default bg-white p-1 shadow-sm dark:bg-gray-900 sm:w-auto">
+      <div
+        class="grid w-full grid-cols-2 rounded-lg border border-default bg-white p-1 shadow-sm dark:bg-gray-900 sm:w-auto"
+      >
         <u-button
           v-for="option in commentLayoutOptions"
           :key="option.value"
@@ -222,7 +224,7 @@ watch(page, (newVal) => {
           v-if="comment.children.length"
           class="flex flex-col gap-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:pl-6"
         >
-          <div>
+          <div v-if="false">
             <u-button
               :icon="isThreadCollapsed(comment.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
               size="xs"
