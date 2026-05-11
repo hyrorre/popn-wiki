@@ -19,5 +19,5 @@ function buildStorageKey(name: string, rawKey: string) {
 }
 
 function escapeKey(key: string) {
-  return String(key).replace(/\W/g, '')
+  return encodeURIComponent(String(key))
 }
