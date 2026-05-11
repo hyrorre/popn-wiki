@@ -1,6 +1,8 @@
 # Serverless Wiki
 
-Sample : https://popn-wiki.hyrorre.workers.dev/
+Serverless wiki engine
+
+Sample : [https://popn.wiki/](https://popn.wiki/)
 
 ## Features
 
@@ -56,10 +58,10 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 ## TODO
 
-- [ ] fix(core): malformed url
-- [ ] feat(core): cache strategy (swr/isr)
+- [ ] feat(core): backup images
+- [ ] feat(core): cache strategy (swr/isr/cdn)
 - [ ] feat(test): test codes (bun test)
-- [ ] feat(core): monaco-editor (vscode like)
 - [ ] feat(core): toc component
 - [ ] feat(ui): breadcrumb ui
 - [ ] feat(core): user role (admin/editor/commenter/viewer)
+- [ ] feat(core): monaco-editor (vscode like) / WYSIWYG editor
