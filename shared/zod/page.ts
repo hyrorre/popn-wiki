@@ -1,5 +1,5 @@
 import * as z from 'zod'
-import { nonNegativeIntSchema, pageBodySchema, pageMessageSchema, wikiPathSchema } from './common'
+import { nonNegativeIntSchema, pageBodySchema, pageMessageSchema, positiveIntSchema, wikiPathSchema } from './common'
 
 export const updatePageSchema = z.object({
   path: wikiPathSchema,
@@ -13,3 +13,10 @@ export const updatePageSchema = z.object({
 })
 
 export type UpdatePageInput = z.output<typeof updatePageSchema>
+
+export const restorePageSchema = z.object({
+  path: wikiPathSchema,
+  targetRevision: positiveIntSchema
+})
+
+export type RestorePageInput = z.output<typeof restorePageSchema>

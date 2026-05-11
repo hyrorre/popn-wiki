@@ -4,11 +4,8 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '../../utils/markdown'
 import { invalidateLatestPageCache } from '../../utils/pageCache'
-
-type RestorePageRequest = {
-  path?: string
-  targetRevision?: number
-}
+import { readZodBody } from '~/server/utils/validation'
+import { restorePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -16,13 +13,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody<RestorePageRequest>(event)
-  const path = payload.path?.trim()
-  const targetRevision = payload.targetRevision ?? -1
-
-  if (!path || !Number.isInteger(targetRevision) || targetRevision < 1) {
-    throw createError({ statusCode: 400, message: 'Invalid payload.' })
-  }
+  const { path, targetRevision } = await readZodBody(event, restorePageSchema)
 
   const targetPage = await db
     .select()
