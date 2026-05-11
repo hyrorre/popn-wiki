@@ -37,4 +37,29 @@ describe('Markdown sanitizer', () => {
 
     expect(sanitizeDangerousMarkdownHtml(markdown)).toBe(markdown)
   })
+
+  test('removes object and embed blocks', () => {
+    expect(sanitizeDangerousMarkdownHtml('<object data="x.swf"></object>')).toBe('')
+    expect(sanitizeDangerousMarkdownHtml('<embed src="x.swf" />')).toBe('')
+  })
+
+  test('strips on* event handler attributes from allowed tags', () => {
+    expect(sanitizeDangerousMarkdownHtml('<svg onload="xss()">')).toBe('<svg>')
+    expect(sanitizeDangerousMarkdownHtml('<img src="x.png" onerror="xss()">')).toBe('<img src="x.png">')
+    expect(sanitizeDangerousMarkdownHtml('<div onmouseover=\'xss()\'>')).toBe('<div>')
+  })
+
+  test('strips javascript: URLs from href and src attributes', () => {
+    expect(sanitizeDangerousMarkdownHtml('<a href="javascript:void(0)">link</a>')).toBe('<a>link</a>')
+    expect(sanitizeDangerousMarkdownHtml('<img src="javascript:xss()">')).toBe('<img>')
+  })
+
+  test('keeps safe href and src attributes intact', () => {
+    expect(sanitizeDangerousMarkdownHtml('<a href="https://example.com">link</a>')).toBe(
+      '<a href="https://example.com">link</a>'
+    )
+    expect(sanitizeDangerousMarkdownHtml('<img src="/image.png" alt="photo">')).toBe(
+      '<img src="/image.png" alt="photo">'
+    )
+  })
 })

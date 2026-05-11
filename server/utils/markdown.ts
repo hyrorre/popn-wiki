@@ -28,6 +28,8 @@ export const mdcParseOptions: MDCParseOptions = {
   }
 }
 
+const BLOCKED_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'form', 'base', 'link', 'meta', 'style'])
+
 type BlockedTag = {
   start: number
   end: number
@@ -37,6 +39,10 @@ type BlockedTag = {
 }
 
 export function sanitizeDangerousMarkdownHtml(markdown: string) {
+  return stripDangerousAttributes(removeBlockedTags(markdown))
+}
+
+function removeBlockedTags(markdown: string) {
   let result = ''
   let cursor = 0
 
@@ -60,6 +66,41 @@ export function sanitizeDangerousMarkdownHtml(markdown: string) {
   }
 
   return result
+}
+
+function stripDangerousAttributes(markdown: string) {
+  let result = ''
+  let cursor = 0
+
+  while (cursor < markdown.length) {
+    const tagStart = markdown.indexOf('<', cursor)
+    if (tagStart === -1) {
+      result += markdown.slice(cursor)
+      break
+    }
+
+    result += markdown.slice(cursor, tagStart)
+
+    const tagEnd = findTagEnd(markdown, tagStart)
+    if (tagEnd === -1) {
+      result += markdown.slice(tagStart)
+      break
+    }
+
+    result += sanitizeTagAttributes(markdown.slice(tagStart, tagEnd + 1))
+    cursor = tagEnd + 1
+  }
+
+  return result
+}
+
+function sanitizeTagAttributes(tag: string): string {
+  return tag
+    .replace(/\s+on[a-z]\w*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>"'/]+)/gi, '')
+    .replace(
+      /\s+(?:href|src|action|formaction|xlink:href)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>"'/]*)/gi,
+      ''
+    )
 }
 
 function findNextBlockedTag(markdown: string, from: number) {
@@ -111,7 +152,7 @@ function readBlockedTag(markdown: string, start: number): BlockedTag | null {
   }
 
   const name = markdown.slice(nameStart, cursor).toLowerCase()
-  if (name !== 'script' && name !== 'iframe') {
+  if (!BLOCKED_TAGS.has(name)) {
     return null
   }
 
