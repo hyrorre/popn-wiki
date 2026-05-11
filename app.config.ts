@@ -17,7 +17,7 @@ export default defineAppConfig({
     description: 'ポップンミュージック中級・上級・超上級曲の難易度表・攻略情報まとめ',
     type: 'website',
     url: 'https://popn.wiki',
-    image: 'https://popn.wiki/apple-touch-icon',
+    image: 'https://popn.wiki/apple-touch-icon.png',
     twitter: '@hyrorre',
     card: 'summary'
   },
