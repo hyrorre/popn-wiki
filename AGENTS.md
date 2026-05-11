@@ -13,10 +13,10 @@
 
 ## Runtime
 
-`.tool-versions` の指定:
+`mise.toml` の指定:
 
-- Node.js 24.14.1
-- Bun 1.3.12
+- Node.js 24.15.0
+- Bun 1.3.13
 
 ## Common Commands
 
