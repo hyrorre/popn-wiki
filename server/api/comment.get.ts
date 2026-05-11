@@ -45,7 +45,11 @@ const cachedCommentListHandler = defineCachedEventHandler(
 
 export default defineEventHandler(async (event) => {
   event.context.commentListQuery = parseCommentListQuery(event)
-  return cachedCommentListHandler(event)
+  const result = await cachedCommentListHandler(event)
+  if (!event.node.res.headersSent) {
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+  }
+  return result
 })
 
 function getCommentListQuery(event: H3Event): CommentListQuery {
