@@ -4,6 +4,7 @@
 
 :root {
   --ui-primary: var(--ui-color-primary-600);
+  --font-weight-normal: 500;
 }
 
 .dark {
@@ -29,6 +30,20 @@ body,
 }
 
 .content {
+  font-weight: var(--font-weight-normal);
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    a {
+      text-decoration: none;
+      pointer-events: none;
+    }
+  }
+
   details {
     @apply my-5 overflow-hidden rounded-lg border border-default bg-default shadow-xs;
 
@@ -173,4 +188,8 @@ body,
   .andcommentid {
     @apply text-xs text-muted;
   }
+}
+
+aside .content h2:first-child {
+  margin-top: 0;
 }
