@@ -44,7 +44,7 @@ export type ResetPasswordInput = z.output<typeof resetPasswordSchema>
 
 export function getAccountPasswordValidationMessage(password: string, account: { name: string; email: string }) {
   if (includesComparableValue(password, account.name)) {
-    return 'パスワードに名前を含めることはできません'
+    return 'パスワードにユーザー名を含めることはできません'
   }
 
   const localPart = account.email.split('@')[0] ?? ''

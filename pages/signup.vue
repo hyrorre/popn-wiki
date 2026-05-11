@@ -12,7 +12,7 @@ const fields = ref<AuthFormField[]>([
   {
     name: 'name',
     type: 'text',
-    label: '名前'
+    label: 'ユーザー名'
   },
   {
     name: 'email',
@@ -77,7 +77,7 @@ const submit = async (payload: FormSubmitEvent<SignupInput>) => {
               variant="soft"
               icon="i-lucide-shield-check"
               title="パスワードは15文字以上、または記号を含む8文字以上で入力してください。"
-              description="推測されやすい文字列、名前、メールアドレスの一部は使用できません。"
+              description="推測されやすい文字列、ユーザー名、メールアドレスの一部は使用できません。"
               class="mb-4 text-left"
             />
             <u-alert v-if="error_message" color="error" icon="i-lucide-info" :title="error_message" />
