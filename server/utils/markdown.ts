@@ -1,3 +1,33 @@
+import type { MDCParseOptions } from '@nuxtjs/mdc'
+import remarkBreaks from 'remark-breaks'
+import remarkLegacyUrl from '~/utils/remark-legacy-url'
+import remarkTableMerge from '~/utils/remark-table-merge'
+import remarkTableColor from '~/utils/remark-table-color'
+import remarkDefinitionList from '~/utils/remark-definition-list'
+import rehypeLegacyUrl from '~/utils/rehype-legacy-url'
+import rehypeExternalLinks from 'rehype-external-links'
+
+export const mdcParseOptions: MDCParseOptions = {
+  remark: {
+    plugins: {
+      breaks: { instance: remarkBreaks },
+      remarkLegacyUrl: { instance: remarkLegacyUrl },
+      tableMerge: { instance: remarkTableMerge },
+      tableColor: { instance: remarkTableColor },
+      definitionList: { instance: remarkDefinitionList }
+    }
+  },
+  rehype: {
+    plugins: {
+      rehypeLegacyUrl: { instance: rehypeLegacyUrl },
+      rehypeExternalLinks: {
+        instance: rehypeExternalLinks,
+        options: { target: '_blank', rel: ['noopener', 'noreferrer'] }
+      }
+    }
+  }
+}
+
 type BlockedTag = {
   start: number
   end: number

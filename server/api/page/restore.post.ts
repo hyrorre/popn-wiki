@@ -2,6 +2,7 @@ import { pagesTable } from '../../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
+import { mdcParseOptions } from '../../utils/markdown'
 import { invalidateLatestPageCache } from '../../utils/pageCache'
 
 type RestorePageRequest = {
@@ -46,7 +47,7 @@ export default defineEventHandler(async (event) => {
 
   // 復元対象のページ本文を再解析（あるいは元データに AST があればそれを使っても良いが
   // スキーマ変更前のデータには AST がないので再解析するのが安全）
-  const ast = await parseMarkdown(targetPage.body)
+  const ast = await parseMarkdown(targetPage.body, mdcParseOptions)
 
   const inserted = await db
     .insert(pagesTable)

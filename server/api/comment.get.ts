@@ -8,6 +8,7 @@ import {
   getCommentListCacheVersion,
   invalidateCommentListCache
 } from '~/server/utils/commentCache'
+import { mdcParseOptions } from '~/server/utils/markdown'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 const COMMENT_AST_BACKFILL_LIMIT = 2000
@@ -192,7 +193,7 @@ async function backfillCommentBodyAst(comments: CommentAstBackfillTarget[]) {
 
   await Promise.all(
     comments.map(async (comment) => {
-      const ast = await parseMarkdown(comment.body)
+      const ast = await parseMarkdown(comment.body, mdcParseOptions)
 
       await db
         .update(commentsTable)

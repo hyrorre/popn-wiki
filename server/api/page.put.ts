@@ -5,7 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { readZodBody } from '~/server/utils/validation'
-import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
+import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
   const now = new Date().toISOString()
 
   // Markdown を解析
-  const ast = await parseMarkdown(sanitizedBody)
+  const ast = await parseMarkdown(sanitizedBody, mdcParseOptions)
 
   const title = extractTitleFromMarkdown(sanitizedBody) || (path === '/' ? 'Home' : path.split('/').pop() || path)
 

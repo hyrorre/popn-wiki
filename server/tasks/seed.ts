@@ -4,7 +4,7 @@ import { db } from '@nuxthub/db'
 import { sql } from 'drizzle-orm'
 import { unserialize } from 'php-serialize'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
-import remarkLegacyUrl from '../../utils/remark-legacy-url'
+import { mdcParseOptions } from '../utils/markdown'
 
 export const D1_STATEMENT_CHUNK_SIZE = 80000
 export const BODY_AST_SOURCE_MAX_LENGTH = 80000
@@ -1686,15 +1686,7 @@ export async function createBodyAstForSeed(markdown: string, pagePath: string): 
   if (markdown.length > BODY_AST_SOURCE_MAX_LENGTH) return null
 
   try {
-    const ast = await parseMarkdown(markdown, {
-      remark: {
-        plugins: {
-          legacyUrl: {
-            instance: remarkLegacyUrl
-          }
-        }
-      }
-    })
+    const ast = await parseMarkdown(markdown, mdcParseOptions)
     const bodyAst = JSON.stringify(ast)
     if (bodyAst.length > BODY_AST_JSON_MAX_LENGTH) {
       console.log(

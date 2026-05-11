@@ -5,7 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { readZodBody } from '~/server/utils/validation'
-import { sanitizeDangerousMarkdownHtml } from '~/server/utils/markdown'
+import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date().toISOString()
-  const ast = await parseMarkdown(sanitizedBody)
+  const ast = await parseMarkdown(sanitizedBody, mdcParseOptions)
 
   const inserted = await db
     .insert(commentsTable)
