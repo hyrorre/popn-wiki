@@ -9,10 +9,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody(event)
-  const id = payload.id
+  const query = getQuery(event)
+  const id = query.id !== undefined ? Number(query.id) : undefined
 
-  if (!id) {
+  if (!id || !Number.isInteger(id) || id <= 0) {
     throw createError({ statusCode: 400, message: 'ID is required.' })
   }
   const now = new Date().toISOString()

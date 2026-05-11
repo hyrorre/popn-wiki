@@ -84,7 +84,7 @@ const deletePage = async () => {
   try {
     await $fetch('/api/page', {
       method: 'DELETE',
-      body: { path }
+      query: { path }
     })
     await navigateTo(`/${path}`)
   } catch {

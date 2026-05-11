@@ -111,7 +111,7 @@ const submitDelete = async () => {
   try {
     await $fetch('/api/comment', {
       method: 'DELETE',
-      body: {
+      query: {
         id: props.comment.id
       }
     })

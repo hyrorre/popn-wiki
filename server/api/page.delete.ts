@@ -3,18 +3,14 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 
-type DeletePageRequest = {
-  path?: string
-}
-
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const payload = await readBody<DeletePageRequest>(event)
-  const path = payload.path?.trim()
+  const query = getQuery(event)
+  const path = typeof query.path === 'string' ? query.path.trim() : ''
 
   if (!path) {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
