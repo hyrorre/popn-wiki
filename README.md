@@ -59,6 +59,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 ## TODO
 
 - [ ] feat(core): backup images
+- [ ] feat(core): pagination of RecentEdits/RecentComments
 - [ ] feat(core): cache strategy (swr/isr/cdn)
 - [ ] feat(test): test codes (bun test)
 - [ ] feat(core): toc component
