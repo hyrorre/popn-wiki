@@ -22,7 +22,7 @@ export default defineAppConfig({
     card: 'summary'
   },
   format: {
-    locale: 'ja-JP',
+    locale: 'sv-SE',
     dateTimeFormatOptions
   }
 })
