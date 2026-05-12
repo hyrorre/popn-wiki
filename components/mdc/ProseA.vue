@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const linkClass = [
-  'text-primary border-b border-transparent hover:border-primary font-medium focus-visible:outline-primary',
+  'text-primary border-b border-transparent hover:border-primary focus-visible:outline-primary',
   'focus-visible:has-[>code]:outline-0 [&>code]:border-dashed hover:[&>code]:border-primary hover:[&>code]:text-primary',
   'focus-visible:[&>code]:border-primary focus-visible:[&>code]:text-primary transition-colors [&>code]:transition-colors'
 ]
