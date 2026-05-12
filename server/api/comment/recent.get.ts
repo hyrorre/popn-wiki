@@ -5,6 +5,8 @@ import { db } from '@nuxthub/db'
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limit = parseLimit(query.limit)
+  const page = parsePositiveInteger(query.page, 1)
+  const offset = (page - 1) * limit
 
   const newerComment = aliasedTable(commentsTable, 'newer_comment')
   const newerPage = aliasedTable(pagesTable, 'newer_page')
@@ -28,47 +30,55 @@ export default defineEventHandler(async (event) => {
     )
     .as('latest_pages')
 
-  return await db
-    .select({
-      path: commentsTable.path,
-      title: latestPages.title,
-      created_at: commentsTable.createdAt,
-      commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
-    })
-    .from(commentsTable)
-    .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
-    .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
-    .where(
-      and(
-        isNull(commentsTable.deletedAt),
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(newerComment)
-            .where(
-              and(
-                eq(newerComment.path, commentsTable.path),
-                or(
-                  gt(newerComment.createdAt, commentsTable.createdAt),
-                  and(eq(newerComment.createdAt, commentsTable.createdAt), gt(newerComment.id, commentsTable.id))
-                ),
-                isNull(newerComment.deletedAt)
-              )
-            )
+  const whereClause = and(
+    isNull(commentsTable.deletedAt),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(newerComment)
+        .where(
+          and(
+            eq(newerComment.path, commentsTable.path),
+            or(
+              gt(newerComment.createdAt, commentsTable.createdAt),
+              and(eq(newerComment.createdAt, commentsTable.createdAt), gt(newerComment.id, commentsTable.id))
+            ),
+            isNull(newerComment.deletedAt)
+          )
         )
-      )
     )
-    .orderBy(desc(commentsTable.createdAt))
-    .limit(limit)
-    .all()
+  )
+
+  const [countResult, data] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(commentsTable).where(whereClause).get(),
+    db
+      .select({
+        path: commentsTable.path,
+        title: latestPages.title,
+        created_at: commentsTable.createdAt,
+        commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
+      })
+      .from(commentsTable)
+      .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
+      .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
+      .where(whereClause)
+      .orderBy(desc(commentsTable.createdAt))
+      .limit(limit)
+      .offset(offset)
+      .all()
+  ])
+
+  return { data, total: countResult?.count ?? 0 }
 })
 
 function parseLimit(value: unknown) {
-  const limit = Number(value)
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 10
+  return Math.min(Math.max(Math.trunc(n), 1), 50)
+}
 
-  if (!Number.isFinite(limit)) {
-    return 10
-  }
-
-  return Math.min(Math.max(Math.trunc(limit), 1), 50)
+function parsePositiveInteger(value: unknown, fallback: number) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < 1) return fallback
+  return Math.trunc(n)
 }
