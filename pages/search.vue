@@ -145,6 +145,21 @@ const totalPages = computed(() => {
   return Math.ceil(activeData.value.total / activeData.value.limit)
 })
 
+const jumpPage = ref(page.value)
+
+const handleJump = () => {
+  const p = parseInt(jumpPage.value.toString())
+  if (!isNaN(p) && p >= 1 && p <= totalPages.value) {
+    page.value = p
+  } else {
+    jumpPage.value = page.value
+  }
+}
+
+watch(page, (newVal) => {
+  jumpPage.value = newVal
+})
+
 const resultLabel = computed(() => {
   if (!canSearch.value) {
     return '2文字以上で検索してください。'
@@ -290,15 +305,20 @@ function escapeRegExp(value: string) {
         </div>
       </NuxtLink>
 
-      <div class="flex justify-center pt-4">
-        <u-pagination
-          v-if="totalPages > 1"
-          v-model:page="page"
-          :total="pageData.total"
-          :items-per-page="pageData.limit"
-          size="md"
-          color="primary"
-        />
+      <div
+        v-if="totalPages > 1"
+        class="flex flex-col md:flex-row items-center justify-center gap-5 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
+      >
+        <div class="text-sm font-medium text-muted">
+          全 <span class="text-foreground">{{ pageData.total }}</span> 件 /
+          全 <span class="text-foreground">{{ totalPages }}</span> ページ
+        </div>
+        <u-pagination v-model:page="page" :total="pageData.total" :items-per-page="pageData.limit" size="md" color="primary" />
+        <div class="flex items-center gap-2">
+          <u-input v-model="jumpPage" type="number" size="sm" class="w-16" :min="1" :max="totalPages" @keyup.enter="handleJump" />
+          <span class="text-xs text-muted font-medium">ページへ</span>
+          <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
+        </div>
       </div>
     </div>
 
@@ -336,15 +356,20 @@ function escapeRegExp(value: string) {
         </div>
       </NuxtLink>
 
-      <div class="flex justify-center pt-4">
-        <u-pagination
-          v-if="totalPages > 1"
-          v-model:page="page"
-          :total="commentData.total"
-          :items-per-page="commentData.limit"
-          size="md"
-          color="primary"
-        />
+      <div
+        v-if="totalPages > 1"
+        class="flex flex-col md:flex-row items-center justify-center gap-5 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
+      >
+        <div class="text-sm font-medium text-muted">
+          全 <span class="text-foreground">{{ commentData.total }}</span> 件 /
+          全 <span class="text-foreground">{{ totalPages }}</span> ページ
+        </div>
+        <u-pagination v-model:page="page" :total="commentData.total" :items-per-page="commentData.limit" size="md" color="primary" />
+        <div class="flex items-center gap-2">
+          <u-input v-model="jumpPage" type="number" size="sm" class="w-16" :min="1" :max="totalPages" @keyup.enter="handleJump" />
+          <span class="text-xs text-muted font-medium">ページへ</span>
+          <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
+        </div>
       </div>
     </div>
   </u-container>
