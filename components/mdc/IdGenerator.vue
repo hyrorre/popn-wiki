@@ -1,13 +1,72 @@
 <script setup lang="ts">
 const alp = [
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
-  'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-  'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'H',
+  'I',
+  'J',
+  'K',
+  'L',
+  'M',
+  'N',
+  'O',
+  'P',
+  'Q',
+  'R',
+  'S',
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '0',
+  'a',
+  'b',
+  'c',
+  'd',
+  'e',
+  'f',
+  'g',
+  'h',
+  'i',
+  'j',
+  'k',
+  'l',
+  'm',
+  'n',
+  'o',
+  'p',
+  'q',
+  'r',
+  's',
+  't',
+  'u',
+  'v',
+  'w',
+  'x',
+  'y',
+  'z'
 ]
 
 const { user } = useUserSession()
+const route = useRoute()
+const router = useRouter()
 
 const name = ref('')
 const result = ref<{ id: string; success: boolean } | null>(null)
@@ -17,14 +76,23 @@ watch(name, () => {
   result.value = null
 })
 
-onMounted(() => {
-  const query = window.location.search.slice(1)
-  if (query) {
-    name.value = decodeURI(query)
-  } else if (user.value?.name) {
-    name.value = user.value.name
-  }
+const queryName = computed(() => {
+  const keys = Object.keys(route.query)
+  return keys.length > 0 ? keys[0] : null
 })
+
+watch(
+  queryName,
+  (val, oldVal) => {
+    name.value = val ?? user.value?.name ?? ''
+    if (oldVal !== undefined) {
+      nextTick(() => {
+        document.getElementById('id-generator')?.scrollIntoView()
+      })
+    }
+  },
+  { immediate: true }
+)
 
 function checkSuccess(id: string): boolean {
   let intFlag = false
@@ -76,17 +144,13 @@ async function copyResult() {
 }
 
 function reset() {
-  history.replaceState(null, '', window.location.pathname)
-  name.value = user.value?.name ?? ''
-  result.value = null
+  router.replace(route.path)
 }
 </script>
 
 <template>
-  <div class="border rounded p-4 my-3">
-    <p class="mb-3 text-sm">
-      このツールは「5の倍数のIDがお題に挑戦」用のID出力ツールです。結果は日替わりです。
-    </p>
+  <div id="id-generator" class="border rounded p-4 my-3">
+    <p class="mb-3 text-sm">このツールは「5の倍数のIDがお題に挑戦」用のID出力ツールです。結果は日替わりです。</p>
 
     <div class="flex gap-2 mb-4">
       <input
@@ -112,9 +176,13 @@ function reset() {
 
     <div v-if="result">
       <p class="mb-2">
-        {{ name }}さんのIDは、<strong class="font-mono text-base tracking-widest">{{ result.id }}</strong>です。
+        {{ name }}さんのIDは、<strong class="font-mono text-base tracking-widest">{{ result.id }}</strong
+        >です。
       </p>
-      <p class="mb-3 font-bold" :class="result.success ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'">
+      <p
+        class="mb-3 font-bold"
+        :class="result.success ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'"
+      >
         {{ message }}
       </p>
 
