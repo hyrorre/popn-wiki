@@ -23,6 +23,75 @@ function getText(node: Node | Parent): string {
   return ''
 }
 
+function findFirstText(node: Node | Parent): Text | null {
+  if (node.type === 'text') return node as Text
+  if ('children' in node) {
+    for (const child of (node as Parent).children) {
+      const found = findFirstText(child as Node)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function findLastText(node: Node | Parent): Text | null {
+  if (node.type === 'text') return node as Text
+  if ('children' in node) {
+    const children = (node as Parent).children
+    for (let i = children.length - 1; i >= 0; i--) {
+      const found = findLastText(children[i] as Node)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+// セルの先頭・末尾コロン記法を読み取り揃えを返し、マーカーをASTから除去する。
+//   `:text`   → left
+//   `text:`   → right  （`@` 始まりのセルは remark-table-color に委ねるため無視）
+//   `:text:`  → center
+//   記法なし  → null（呼び出し側がデフォルト値を決める）
+//
+// エスケープ: `::` で1個のリテラルコロンを表す（`\:` は remark パース時に消費される）
+//   `::text`  → `:text` として出力、揃え指定なし
+//   `text::`  → `text:` として出力、揃え指定なし
+//
+// 単純セル（Text1つ）で prefix/suffix が同一ノードの場合、prefix 処理後に
+// suffix チェックが修正済みの value を参照するため `::` 単体も正しく `:` になる。
+function extractAlignment(node: CustomTableCell): 'left' | 'right' | 'center' | null {
+  const fullText = getText(node)
+  const startsWithAt = fullText.startsWith('@')
+
+  // `::` はエスケープ、単独 `:` のみ揃え記法とみなす
+  const hasPrefix = fullText.startsWith(':') && !fullText.startsWith('::')
+  const hasSuffix = !startsWithAt && fullText.endsWith(':') && !fullText.endsWith('::')
+  const hasPrefixEscape = !hasPrefix && fullText.startsWith('::')
+  const hasSuffixEscape = !hasSuffix && !startsWithAt && fullText.endsWith('::')
+
+  if (hasPrefix) {
+    const first = findFirstText(node)
+    if (first?.value.startsWith(':')) first.value = first.value.slice(1)
+  } else if (hasPrefixEscape) {
+    const first = findFirstText(node)
+    // 修正後の value を suffix チェックが参照するため slice(1) のみで十分
+    if (first?.value.startsWith('::')) first.value = first.value.slice(1)
+  }
+
+  if (hasSuffix) {
+    const last = findLastText(node)
+    if (last?.value.endsWith(':')) last.value = last.value.slice(0, -1)
+  } else if (hasSuffixEscape) {
+    const last = findLastText(node)
+    // prefix 処理後の value を参照するため `::` が残っている場合のみ strip
+    if (last?.value.endsWith('::')) last.value = last.value.slice(0, -1)
+  }
+
+  if (hasPrefix && hasSuffix) return 'center'
+  if (hasPrefix) return 'left'
+  if (hasSuffix) return 'right'
+  return null
+}
+
 export default function remarkTableMerge() {
   return (tree: Root) => {
     visit(tree, 'table', (tableNode: Table) => {
@@ -108,13 +177,25 @@ export default function remarkTableMerge() {
             // 中身のテキストも消しておく
             node.children = []
           } else {
+            const alignment = extractAlignment(node)
+            const styles: string[] = []
+
             if (info.colSpan > 1) {
               node.data.hProperties.colspan = info.colSpan
-              node.data.hProperties.style = 'text-align: center;'
+              // colspan のデフォルトは center（記法なしの既存挙動を維持）
+              styles.push(`text-align: ${alignment ?? 'center'}`)
+            } else if (alignment) {
+              // 非結合セルは記法があるときのみ揃えを付与
+              styles.push(`text-align: ${alignment}`)
             }
+
             if (info.rowSpan > 1) {
               node.data.hProperties.rowspan = info.rowSpan
-              node.data.hProperties.style = 'vertical-align: middle;'
+              styles.push('vertical-align: middle')
+            }
+
+            if (styles.length > 0) {
+              node.data.hProperties.style = styles.join('; ') + ';'
             }
           }
         }
