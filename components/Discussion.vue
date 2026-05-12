@@ -170,7 +170,7 @@ watch(page, (newVal) => {
   jumpPage.value = newVal
   const element = document.getElementById('discussion')
   if (element) {
-    element.scrollIntoView({ behavior: 'smooth' })
+    element.scrollIntoView()
   }
 })
 </script>

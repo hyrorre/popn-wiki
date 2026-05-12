@@ -77,11 +77,6 @@ export default defineNuxtConfig({
       // }
     }
   },
-  router: {
-    options: {
-      scrollBehaviorType: 'smooth'
-    }
-  },
   runtimeConfig: {
     public: {
       imageBasePath: process.env.NUXT_PUBLIC_IMAGE_BASE_PATH || '/api/image'

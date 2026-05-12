@@ -15,10 +15,6 @@
   text-autospace: normal;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 html,
 body,
 #__nuxt {

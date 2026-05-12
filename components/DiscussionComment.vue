@@ -58,7 +58,7 @@ const jumpToReplyTarget = () => {
   if (!props.comment.replyTo) return
 
   const target = document.getElementById(`comment-${props.comment.replyTo}`)
-  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target?.scrollIntoView({ block: 'center' })
 }
 
 const submitReply = async () => {
