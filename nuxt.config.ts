@@ -78,6 +78,10 @@ export default defineNuxtConfig({
     }
   },
   runtimeConfig: {
+    session: {
+      password: process.env.NUXT_SESSION_PASSWORD || '',
+      maxAge: 60 * 60 * 24 * 180
+    },
     public: {
       imageBasePath: process.env.NUXT_PUBLIC_IMAGE_BASE_PATH || '/api/image'
     }
