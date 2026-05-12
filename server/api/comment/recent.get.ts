@@ -1,5 +1,5 @@
 import { commentsTable, usersTable, pagesTable } from '../../db/schema'
-import { eq, desc, isNull, and, or, gt, aliasedTable, notExists, sql } from 'drizzle-orm'
+import { eq, desc, isNull, and, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 
 export default defineEventHandler(async (event) => {
@@ -8,49 +8,35 @@ export default defineEventHandler(async (event) => {
   const page = parsePositiveInteger(query.page, 1)
   const offset = (page - 1) * limit
 
-  const newerComment = aliasedTable(commentsTable, 'newer_comment')
-  const newerPage = aliasedTable(pagesTable, 'newer_page')
+  // path ごとの最新コメントID（NOT EXISTS 相関サブクエリを GROUP BY + MAX に変更）
+  const latestCommentPerPath = db
+    .select({
+      path: commentsTable.path,
+      maxId: sql<number>`max(${commentsTable.id})`.as('max_id')
+    })
+    .from(commentsTable)
+    .where(isNull(commentsTable.deletedAt))
+    .groupBy(commentsTable.path)
+    .as('latest_comment_per_path')
+
+  // path ごとの最新ページリビジョン（SQLite の bare column 挙動で MAX(revision) 行の title が取れる）
   const latestPages = db
     .select({
       path: pagesTable.path,
       title: pagesTable.title,
-      revision: pagesTable.revision
+      _rev: sql<number>`max(${pagesTable.revision})`
     })
     .from(pagesTable)
-    .where(
-      and(
-        sql`${pagesTable.body} != ''`,
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(newerPage)
-            .where(and(eq(newerPage.path, pagesTable.path), gt(newerPage.revision, pagesTable.revision)))
-        )
-      )
-    )
+    .where(sql`${pagesTable.body} != ''`)
+    .groupBy(pagesTable.path)
     .as('latest_pages')
 
-  const whereClause = and(
-    isNull(commentsTable.deletedAt),
-    notExists(
-      db
-        .select({ one: sql`1` })
-        .from(newerComment)
-        .where(
-          and(
-            eq(newerComment.path, commentsTable.path),
-            or(
-              gt(newerComment.createdAt, commentsTable.createdAt),
-              and(eq(newerComment.createdAt, commentsTable.createdAt), gt(newerComment.id, commentsTable.id))
-            ),
-            isNull(newerComment.deletedAt)
-          )
-        )
-    )
-  )
-
   const [countResult, data] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(commentsTable).where(whereClause).get(),
+    db
+      .select({ count: sql<number>`count(distinct ${commentsTable.path})` })
+      .from(commentsTable)
+      .where(isNull(commentsTable.deletedAt))
+      .get(),
     db
       .select({
         path: commentsTable.path,
@@ -59,9 +45,12 @@ export default defineEventHandler(async (event) => {
         commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
       })
       .from(commentsTable)
+      .innerJoin(
+        latestCommentPerPath,
+        and(eq(commentsTable.path, latestCommentPerPath.path), eq(commentsTable.id, latestCommentPerPath.maxId))
+      )
       .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
       .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
-      .where(whereClause)
       .orderBy(desc(commentsTable.createdAt))
       .limit(limit)
       .offset(offset)
