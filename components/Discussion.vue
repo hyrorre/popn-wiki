@@ -349,7 +349,7 @@ watch(page, (newVal) => {
         <u-button icon="i-lucide-send" color="primary" :loading="isSubmitting" @click="submitComment"> 送信 </u-button>
       </div>
     </div>
-    <div v-else class="text-sm text-muted bg-gray-50 border border-default p-4 rounded-md text-center">
+    <div v-else class="text-sm text-muted bg-gray-50 dark:bg-gray-800/50 border border-default p-4 rounded-md text-center">
       コメントを投稿するにはログインしてください。
     </div>
   </div>
