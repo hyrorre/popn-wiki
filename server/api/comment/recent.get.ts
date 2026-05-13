@@ -44,33 +44,30 @@ export default defineEventHandler(async (event) => {
     .groupBy(pagesTable.path)
     .as('latest_pages')
 
-  const [countResult, data] = await Promise.all([
-    db
-      .select({ count: sql<number>`count(distinct ${commentsTable.path})` })
-      .from(commentsTable)
-      .where(isNull(commentsTable.deletedAt))
-      .get(),
-    db
-      .select({
-        path: commentsTable.path,
-        title: latestPages.title,
-        created_at: commentsTable.createdAt,
-        commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
-      })
-      .from(commentsTable)
-      .innerJoin(
-        latestCommentPerPath,
-        and(eq(commentsTable.path, latestCommentPerPath.path), eq(commentsTable.id, latestCommentPerPath.maxId))
-      )
-      .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
-      .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
-      .orderBy(desc(commentsTable.createdAt))
-      .limit(limit)
-      .offset(offset)
-      .all()
-  ])
+  // count(*) OVER () でページ総数を data クエリと同時取得（別途 count クエリ不要）
+  const rows = await db
+    .select({
+      total: sql<number>`count(*) OVER ()`,
+      path: commentsTable.path,
+      title: latestPages.title,
+      created_at: commentsTable.createdAt,
+      commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
+    })
+    .from(commentsTable)
+    .innerJoin(
+      latestCommentPerPath,
+      and(eq(commentsTable.path, latestCommentPerPath.path), eq(commentsTable.id, latestCommentPerPath.maxId))
+    )
+    .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
+    .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
+    .orderBy(desc(commentsTable.createdAt))
+    .limit(limit)
+    .offset(offset)
+    .all()
 
-  const result = { data, total: countResult?.count ?? 0 }
+  const total = rows[0]?.total ?? 0
+  const data = rows.map(({ total: _, ...rest }) => rest)
+  const result = { data, total }
   event.waitUntil(useStorage('cache').setItem(cacheKey, result, { ttl: RECENT_COMMENTS_TTL }))
   return result
 })
