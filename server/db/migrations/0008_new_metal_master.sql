@@ -1,0 +1,2 @@
+CREATE INDEX `comments_path_id_idx` ON `comments` (`path`,`id`) WHERE "comments"."deleted_at" IS NULL;--> statement-breakpoint
+CREATE INDEX `pages_latest_path_idx` ON `pages` (`path`,`revision`,`title`) WHERE "pages"."body" != '';

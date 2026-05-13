@@ -35,7 +35,10 @@ export const pagesTable = sqliteTable(
         .where(sql`${table.body} != ''`),
       index('pages_recent_major_idx')
         .on(table.updatedAt, table.path, table.revision)
-        .where(sql`${table.body} != '' AND (${table.minor} IS NULL OR ${table.minor} = 0)`)
+        .where(sql`${table.body} != '' AND (${table.minor} IS NULL OR ${table.minor} = 0)`),
+      index('pages_latest_path_idx')
+        .on(table.path, table.revision, table.title)
+        .where(sql`${table.body} != ''`)
     ]
   }
 )
@@ -60,6 +63,9 @@ export const commentsTable = sqliteTable(
         .where(sql`${table.deletedAt} IS NULL`),
       index('comments_path_recent_idx')
         .on(table.path, table.createdAt, table.id)
+        .where(sql`${table.deletedAt} IS NULL`),
+      index('comments_path_id_idx')
+        .on(table.path, table.id)
         .where(sql`${table.deletedAt} IS NULL`)
     ]
   }
