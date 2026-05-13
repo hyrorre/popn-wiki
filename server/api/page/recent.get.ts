@@ -65,8 +65,32 @@ export default defineEventHandler(async (event) => {
         )
       )
 
+  const countSubquery = includeMinor
+    ? db
+        .select({ path: pagesTable.path })
+        .from(pagesTable)
+        .groupBy(pagesTable.path)
+        .having(
+          and(
+            sql`max(case when ${pagesTable.body} != '' then ${pagesTable.revision} end) is not null`,
+            sql`max(case when ${pagesTable.body} != '' then ${pagesTable.revision} end) = max(${pagesTable.revision})`
+          )
+        )
+        .as('active_pages')
+    : db
+        .select({ path: pagesTable.path })
+        .from(pagesTable)
+        .groupBy(pagesTable.path)
+        .having(
+          and(
+            sql`max(case when ${pagesTable.body} != '' and (${pagesTable.minor} is null or ${pagesTable.minor} = 0) then ${pagesTable.revision} end) is not null`,
+            sql`coalesce(max(case when ${pagesTable.body} = '' then ${pagesTable.revision} end), -1) < max(case when ${pagesTable.body} != '' and (${pagesTable.minor} is null or ${pagesTable.minor} = 0) then ${pagesTable.revision} end)`
+          )
+        )
+        .as('active_pages')
+
   const [countResult, data] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(pagesTable).where(whereClause).get(),
+    db.select({ count: sql<number>`count(*)` }).from(countSubquery).get(),
     db
       .select({
         path: pagesTable.path,
