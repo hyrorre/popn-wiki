@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "@nuxt/scripts": "^1.0.1",
     "@nuxt/ui": "4.6.1",
     "@nuxthub/core": "0.10.7",
     "@nuxtjs/mdc": "0.21.1",

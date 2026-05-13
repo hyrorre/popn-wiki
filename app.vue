@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const config = useRuntimeConfig()
 const { app } = useAppConfig()
 
 useHead({
@@ -28,6 +29,18 @@ useHead({
     { rel: 'manifest', href: '/site.webmanifest' }
   ]
 })
+
+if (config.public.googleTagManagerId) {
+  useScriptGoogleTagManager({
+    id: config.public.googleTagManagerId
+  })
+}
+
+if (config.public.googleAdsenseId) {
+  useScriptGoogleAdsense({
+    client: config.public.googleAdsenseId
+  })
+}
 </script>
 
 <template>
