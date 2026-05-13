@@ -6,9 +6,8 @@ const { app } = useAppConfig()
 
 const path = (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
 
-// includeDeleted=true で取得し、フロントで状態を判定
 const { data: page, error: fetchError } = await useFetch('/api/page', {
-  query: { path, includeDeleted: 'true' }
+  query: { path }
 })
 
 // ページの状態
