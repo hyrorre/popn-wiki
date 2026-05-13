@@ -48,6 +48,7 @@ export default defineEventHandler(async (event) => {
   const result = await cachedCommentListHandler(event)
   if (!event.node.res.headersSent) {
     setResponseHeader(event, 'Cache-Control', 'no-store')
+    setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=300')
   }
   return result
 })

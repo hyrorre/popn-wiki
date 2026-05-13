@@ -58,7 +58,14 @@ export default defineEventHandler(async (event) => {
     return query.revision !== undefined ? readRevisionPage(event, query) : readLatestPage(event, query)
   }
 
-  return query.revision !== undefined ? cachedRevisionPageHandler(event) : cachedLatestPageHandler(event)
+  if (query.revision !== undefined) {
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+    setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=2592000')
+    return cachedRevisionPageHandler(event)
+  }
+  setResponseHeader(event, 'Cache-Control', 'no-store')
+  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=86400')
+  return cachedLatestPageHandler(event)
 })
 
 async function resolvePageRequestContext(event: H3Event): Promise<PageRequestContext> {

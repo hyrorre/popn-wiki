@@ -78,6 +78,8 @@ export default defineNuxtConfig({
     }
   },
   runtimeConfig: {
+    cloudflareZoneId: process.env.CLOUDFLARE_ZONE_ID || '',
+    cloudflareCachePurgeToken: process.env.CLOUDFLARE_CACHE_PURGE_TOKEN || '',
     session: {
       password: process.env.NUXT_SESSION_PASSWORD || '',
       maxAge: 60 * 60 * 24 * 180
