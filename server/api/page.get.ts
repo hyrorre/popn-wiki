@@ -4,70 +4,50 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
-import { getLatestPageCacheRawKey, getRevisionPageCacheRawKey } from '~/server/utils/pageCache'
+import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
 
-const LATEST_PAGE_MAX_AGE = 60 * 60 * 24
-const REVISION_PAGE_MAX_AGE = 60 * 60 * 24 * 30
+const LATEST_PAGE_TTL = 60 * 60 * 24
+const REVISION_PAGE_TTL = 60 * 60 * 24 * 30
 
 type PageQuery = {
   path: string
   revision?: number
 }
 
-const cachedLatestPageHandler = defineCachedEventHandler(
-  async (event) => {
-    return readLatestPage(event, getPageQuery(event))
-  },
-  {
-    group: 'pages',
-    name: 'latest',
-    maxAge: LATEST_PAGE_MAX_AGE,
-    swr: true,
-    getKey: (event) => getLatestPageCacheRawKey(getPageQuery(event).path)
-  }
-)
+type CachedPage = typeof pagesTable.$inferSelect
 
-const cachedRevisionPageHandler = defineCachedEventHandler(
-  async (event) => {
-    return readRevisionPage(event, getPageQuery(event))
-  },
-  {
-    group: 'pages',
-    name: 'revision',
-    maxAge: REVISION_PAGE_MAX_AGE,
-    swr: true,
-    getKey: (event) => {
-      const query = getPageQuery(event)
-      return getRevisionPageCacheRawKey(query.path, query.revision!)
-    }
-  }
-)
-
-export default defineEventHandler((event) => {
-  const query = parseAndSetPageQuery(event)
+export default defineEventHandler(async (event) => {
+  const query = parsePageQuery(event)
 
   if (query.revision !== undefined) {
     setResponseHeader(event, 'Cache-Control', 'no-store')
     setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=2592000')
-    return cachedRevisionPageHandler(event)
+    return withRevisionCache(event, query)
   }
+
   setResponseHeader(event, 'Cache-Control', 'no-store')
   setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=86400')
-  return cachedLatestPageHandler(event)
+  return withLatestCache(event, query)
 })
 
-function parseAndSetPageQuery(event: H3Event): PageQuery {
-  const query = parsePageQuery(event)
-  event.context.pageRequest = query
-  return query
+async function withLatestCache(event: H3Event, query: PageQuery) {
+  const key = getLatestPageCacheKey(query.path)
+  const cached = await useStorage('cache').getItem<CachedPage>(key)
+  if (cached) return cached
+
+  const data = await readLatestPage(event, query)
+  event.waitUntil(useStorage('cache').setItem(key, data, { ttl: LATEST_PAGE_TTL }))
+  return data
 }
 
-function getPageQuery(event: H3Event): PageQuery {
-  const context = event.context.pageRequest as PageQuery | undefined
-  if (!context) {
-    throw createError({ statusCode: 500, message: 'Page request context is missing.' })
-  }
-  return context
+async function withRevisionCache(event: H3Event, query: PageQuery) {
+  const key = getRevisionPageCacheKey(query.path, query.revision!)
+  const cached = await useStorage('cache').getItem<CachedPage>(key)
+  if (cached) return cached
+
+  const data = await readRevisionPage(event, query)
+  event.waitUntil(useStorage('cache').setItem(key, data, { ttl: REVISION_PAGE_TTL }))
+  return data
 }
 
 function parsePageQuery(event: H3Event): PageQuery {

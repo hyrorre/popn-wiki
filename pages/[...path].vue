@@ -4,7 +4,7 @@ const { user } = useUserSession()
 const { isSidebarOpen, setRevision, setCanEdit } = usePageActions()
 const { app } = useAppConfig()
 
-const path = (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
+const path = computed(() => (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/')
 
 const { data: page, error: fetchError } = await useFetch('/api/page', {
   query: { path }
@@ -37,9 +37,9 @@ const hasDiscussion = computed(() => {
   return mdcAst.value?.data?.discussion === true
 })
 
-const pageTitle = computed(() => mdcAst.value?.data?.title || (page.value ? path : 'Page Not Found'))
+const pageTitle = computed(() => mdcAst.value?.data?.title || (page.value ? path.value : 'Page Not Found'))
 const pageDescription = computed(() => mdcAst.value?.data?.description || app.description)
-const canonicalUrl = computed(() => `${app.url}${path === '/' ? '' : `/${path}`}`)
+const canonicalUrl = computed(() => `${app.url}${path.value === '/' ? '' : `/${path.value}`}`)
 
 useHead(() => ({
   title: pageTitle.value,
