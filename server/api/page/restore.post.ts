@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '../../utils/markdown'
 import { invalidateLatestPageCache } from '../../utils/pageCache'
+import { invalidateRecentPagesCache } from '../../utils/recentPagesCache'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
 
@@ -58,6 +59,7 @@ export default defineEventHandler(async (event) => {
     .get()
 
   await invalidateLatestPageCache(path)
+  await invalidateRecentPagesCache()
 
   return inserted
 })

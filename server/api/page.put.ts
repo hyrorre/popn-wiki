@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
 import { invalidateLatestPageCache } from '../utils/pageCache'
+import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { purgeCdnByUrls } from '../utils/cfCachePurge'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
     .get()
 
   await invalidateLatestPageCache(path)
+  await invalidateRecentPagesCache()
   await purgeCdnByUrls([`https://popn.wiki/api/page?path=${encodeURIComponent(path)}`])
 
   return inserted

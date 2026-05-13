@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
+import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { purgeCdnByUrls } from '~/server/utils/cfCachePurge'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
@@ -44,6 +45,7 @@ export default defineEventHandler(async (event) => {
   const profile = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
 
   await invalidateCommentListCache(path)
+  await invalidateRecentCommentsCache()
   await purgeCdnByUrls([`https://popn.wiki/api/comment?path=${encodeURIComponent(path)}&page=1&limit=20`])
 
   return {

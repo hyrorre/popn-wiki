@@ -1,12 +1,25 @@
 import { commentsTable, usersTable, pagesTable } from '../../db/schema'
 import { eq, desc, isNull, and, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import {
+  getRecentCommentsCacheKey,
+  getRecentCommentsCacheVersion,
+  RECENT_COMMENTS_TTL
+} from '~/server/utils/recentCommentsCache'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limit = parseLimit(query.limit)
   const page = parsePositiveInteger(query.page, 1)
   const offset = (page - 1) * limit
+
+  setResponseHeader(event, 'Cache-Control', 'no-store')
+  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=60')
+
+  const version = await getRecentCommentsCacheVersion()
+  const cacheKey = getRecentCommentsCacheKey({ limit, page }, version)
+  const cached = await useStorage('cache').getItem(cacheKey)
+  if (cached) return cached
 
   // path ごとの最新コメントID（NOT EXISTS 相関サブクエリを GROUP BY + MAX に変更）
   const latestCommentPerPath = db
@@ -57,7 +70,9 @@ export default defineEventHandler(async (event) => {
       .all()
   ])
 
-  return { data, total: countResult?.count ?? 0 }
+  const result = { data, total: countResult?.count ?? 0 }
+  event.waitUntil(useStorage('cache').setItem(cacheKey, result, { ttl: RECENT_COMMENTS_TTL }))
+  return result
 })
 
 function parseLimit(value: unknown) {

@@ -2,6 +2,7 @@ import { commentsTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
+import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { purgeCdnByUrls } from '~/server/utils/cfCachePurge'
 
 export default defineEventHandler(async (event) => {
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
   }
 
   await invalidateCommentListCache(updated.path)
+  await invalidateRecentCommentsCache()
   await purgeCdnByUrls([`https://popn.wiki/api/comment?path=${encodeURIComponent(updated.path)}&page=1&limit=20`])
 
   return { success: true }

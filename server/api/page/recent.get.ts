@@ -1,6 +1,7 @@
 import { pagesTable } from '../../db/schema'
 import { eq, desc, and, or, isNull, aliasedTable, gt, notExists, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { getRecentPagesCacheKey, getRecentPagesCacheVersion, RECENT_PAGES_TTL } from '~/server/utils/recentPagesCache'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -8,6 +9,14 @@ export default defineEventHandler(async (event) => {
   const page = parsePositiveInteger(query.page, 1)
   const offset = (page - 1) * limit
   const includeMinor = query.includeMinor === 'true'
+
+  setResponseHeader(event, 'Cache-Control', 'no-store')
+  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=60')
+
+  const version = await getRecentPagesCacheVersion()
+  const cacheKey = getRecentPagesCacheKey({ limit, page, includeMinor }, version)
+  const cached = await useStorage('cache').getItem(cacheKey)
+  if (cached) return cached
 
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
   const newerVisibleRevision = aliasedTable(pagesTable, 'newer_visible_revision')
@@ -75,7 +84,9 @@ export default defineEventHandler(async (event) => {
       .all()
   ])
 
-  return { data, total: countResult?.count ?? 0 }
+  const result = { data, total: countResult?.count ?? 0 }
+  event.waitUntil(useStorage('cache').setItem(cacheKey, result, { ttl: RECENT_PAGES_TTL }))
+  return result
 })
 
 function parseLimit(value: unknown) {
