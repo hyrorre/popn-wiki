@@ -133,7 +133,7 @@ const message = computed(() =>
 
 const copyText = computed(() => {
   if (!result.value) return ''
-  return `${name.value}さんのIDは、${result.value.id}です。${message.value}\n[IDを確認](${window.location.pathname}?${name.value})`
+  return `${name.value}さんのIDは、${result.value.id}です。${message.value}\n[IDを確認](${window.location.pathname}?${encodeURIComponent(name.value)})`
 })
 
 async function copyResult() {
