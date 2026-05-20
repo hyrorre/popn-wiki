@@ -1,5 +1,4 @@
 const COMMENT_CACHE_GROUP = 'comments'
-const COMMENT_LIST_CACHE_NAME = 'list'
 const COMMENT_LIST_VERSION_NAME = 'version'
 
 export function getCommentListCacheRawKey(path: string, page: number, limit: number, version: string) {
