@@ -37,6 +37,10 @@ const hasDiscussion = computed(() => {
   return mdcAst.value?.data?.discussion === true
 })
 
+const discussionTitle = computed(() => {
+  return mdcAst.value?.data?.['discussion-title'] || mdcAst.value?.data?.discussionTitle
+})
+
 const pageTitle = computed(() => mdcAst.value?.data?.title || (page.value ? path.value : 'Page Not Found'))
 const pageDescription = computed(() => mdcAst.value?.data?.description || app.description)
 const canonicalUrl = computed(() => `${app.url}${path.value === '/' ? '' : `/${path.value}`}`)

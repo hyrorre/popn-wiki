@@ -179,7 +179,7 @@ watch(page, (newVal) => {
   <div id="discussion" class="discussion-container">
     <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
       <u-icon name="i-lucide-messages-square" class="w-6 h-6" />
-      コメント
+      {{ props.discussionTitle || 'コメント' }}
     </h3>
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
