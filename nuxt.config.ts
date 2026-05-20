@@ -37,6 +37,9 @@ export default defineNuxtConfig({
       },
       definitionList: {
         src: '~/utils/remark-definition-list'
+      },
+      inlineColor: {
+        src: '~/utils/remark-inline-color'
       }
     },
     rehypePlugins: {
