@@ -90,7 +90,10 @@ export default defineEventHandler(async (event) => {
         .as('active_pages')
 
   const [countResult, data] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(countSubquery).get(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(countSubquery)
+      .get(),
     db
       .select({
         path: pagesTable.path,

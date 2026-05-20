@@ -53,6 +53,7 @@ Page cache lives in NuxtHub KV (`server/utils/pageCache.ts`) and must be invalid
 `pages/[...path].vue` is the catch-all wiki page renderer. It fetches the page API including soft-deleted pages (`includeDeleted=true`) and renders the pre-parsed AST via MDC. Discussion (comments) is shown only when frontmatter `discussion: true` is present in the page's MDC AST data.
 
 Composables:
+
 - `usePageActions` — shared reactive state for sidebar open/close, current revision, edit permission
 - `useNavigation` — sidebar nav links
 
@@ -61,6 +62,7 @@ Options API is disabled in Vite config to reduce bundle size — use Composition
 ### Markdown pipeline
 
 Custom remark/rehype plugins live in `utils/`:
+
 - `remark-legacy-url` / `rehype-legacy-url` — handles old percent-encoded URLs from the legacy PHP wiki
 - `remark-table-merge` — cell merging syntax in tables
 - `remark-table-color` — colored cell syntax in tables
@@ -74,15 +76,15 @@ MDC components (`components/mdc/`) are available inside wiki page content.
 
 ## Key files
 
-| File | Purpose |
-|------|---------|
-| `nuxt.config.ts` | Modules, MDC plugins, NuxtHub/Cloudflare config |
-| `app.config.ts` | Site metadata, Japanese locale (`ja`/`ja-JP`), date format |
-| `server/db/schema.ts` | DB schema (single source of truth) |
-| `shared/zod/` | Validation schemas shared between client and server |
+| File                    | Purpose                                                      |
+| ----------------------- | ------------------------------------------------------------ |
+| `nuxt.config.ts`        | Modules, MDC plugins, NuxtHub/Cloudflare config              |
+| `app.config.ts`         | Site metadata, Japanese locale (`ja`/`ja-JP`), date format   |
+| `server/db/schema.ts`   | DB schema (single source of truth)                           |
+| `shared/zod/`           | Validation schemas shared between client and server          |
 | `shared/types/index.ts` | Shared TypeScript types (`Page`, `Comment`, `Profile`, etc.) |
-| `wrangler.jsonc` | Cloudflare bindings (D1, R2, KV) |
-| `.env.example` | Required environment variables (never read/commit `.env`) |
+| `wrangler.jsonc`        | Cloudflare bindings (D1, R2, KV)                             |
+| `.env.example`          | Required environment variables (never read/commit `.env`)    |
 
 ## Environment
 

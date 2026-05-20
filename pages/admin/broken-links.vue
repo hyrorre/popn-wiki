@@ -14,7 +14,7 @@ useSeoMeta({
   ogTitle: 'リンク切れチェッカー',
   ogDescription: 'Wiki内のリンク切れURLや画像を一覧表示し、一括でチェックできる管理者向けツールです。',
   ogUrl: `${app.url}/admin/broken-links`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 </script>
 

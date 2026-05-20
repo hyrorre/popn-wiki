@@ -16,7 +16,7 @@ useSeoMeta({
   title: '返信一覧',
   ogTitle: '返信一覧',
   ogUrl: `${app.url}/reply`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 </script>
 

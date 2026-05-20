@@ -10,7 +10,7 @@ useSeoMeta({
   title: '新しいパスワードの設定',
   ogTitle: '新しいパスワードの設定',
   ogUrl: `${app.url}/reset`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 
 const fields = ref<AuthFormField[]>([

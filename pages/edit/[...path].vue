@@ -54,7 +54,7 @@ useSeoMeta({
   title: `${path} を編集`,
   ogTitle: `${path} を編集`,
   ogUrl: `${app.url}/edit/${path}`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 
 const onSaved = async () => {

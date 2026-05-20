@@ -66,14 +66,22 @@ watch(page, (newVal) => {
       class="flex flex-col md:flex-row items-center justify-center gap-5 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
     >
       <div class="text-sm font-medium text-muted">
-        全 <span class="text-foreground">{{ total }}</span> 件 /
-        全 <span class="text-foreground">{{ maxPage }}</span> ページ
+        全 <span class="text-foreground">{{ total }}</span> 件 / 全
+        <span class="text-foreground">{{ maxPage }}</span> ページ
       </div>
 
       <u-pagination v-model:page="page" :total="total" :items-per-page="Number(limit)" size="md" color="primary" />
 
       <div class="flex items-center gap-2">
-        <u-input v-model="jumpPage" type="number" size="sm" class="w-16" :min="1" :max="maxPage" @keyup.enter="handleJump" />
+        <u-input
+          v-model="jumpPage"
+          type="number"
+          size="sm"
+          class="w-16"
+          :min="1"
+          :max="maxPage"
+          @keyup.enter="handleJump"
+        />
         <span class="text-xs text-muted font-medium">ページへ</span>
         <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
       </div>

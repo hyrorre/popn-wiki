@@ -6,7 +6,7 @@ useSeoMeta({
   description: `${app.title}のプライバシーポリシーです。`,
   ogTitle: 'プライバシーポリシー',
   ogDescription: `${app.title}のプライバシーポリシーです。`,
-  ogUrl: `${app.url}/privacy-policy`,
+  ogUrl: `${app.url}/privacy-policy`
 })
 </script>
 

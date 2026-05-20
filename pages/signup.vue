@@ -8,7 +8,7 @@ useSeoMeta({
   title: '新規登録',
   ogTitle: '新規登録',
   ogUrl: `${app.url}/signup`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 
 const fields = ref<AuthFormField[]>([

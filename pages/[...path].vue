@@ -4,7 +4,9 @@ const { user } = useUserSession()
 const { isSidebarOpen, setRevision, setCanEdit } = usePageActions()
 const { app } = useAppConfig()
 
-const path = computed(() => (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/')
+const path = computed(
+  () => (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
+)
 
 const { data: page, error: fetchError } = await useFetch('/api/page', {
   query: { path }
@@ -56,7 +58,7 @@ useSeoMeta({
   ogUrl: () => canonicalUrl.value,
   ogType: 'article',
   twitterTitle: () => pageTitle.value,
-  twitterDescription: () => pageDescription.value,
+  twitterDescription: () => pageDescription.value
 })
 </script>
 
@@ -101,7 +103,7 @@ useSeoMeta({
 
         <!-- ディスカッション機能 -->
         <div v-if="hasDiscussion" class="mt-12 pt-8 border-t border-default">
-          <Discussion :path="path" />
+          <Discussion :path="path" :discussion-title="discussionTitle" />
         </div>
       </template>
     </main>

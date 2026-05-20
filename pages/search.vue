@@ -180,9 +180,9 @@ useHead(() => ({
 }))
 
 useSeoMeta({
-  ogTitle: () => query.value ? `検索: ${query.value}` : '検索',
-  ogUrl: () => query.value ? `${app.url}/search?q=${encodeURIComponent(query.value)}` : `${app.url}/search`,
-  robots: 'noindex',
+  ogTitle: () => (query.value ? `検索: ${query.value}` : '検索'),
+  ogUrl: () => (query.value ? `${app.url}/search?q=${encodeURIComponent(query.value)}` : `${app.url}/search`),
+  robots: 'noindex'
 })
 
 function pageHref(path: string) {
@@ -310,12 +310,26 @@ function escapeRegExp(value: string) {
         class="flex flex-col md:flex-row items-center justify-center gap-5 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
       >
         <div class="text-sm font-medium text-muted">
-          全 <span class="text-foreground">{{ pageData.total }}</span> 件 /
-          全 <span class="text-foreground">{{ totalPages }}</span> ページ
+          全 <span class="text-foreground">{{ pageData.total }}</span> 件 / 全
+          <span class="text-foreground">{{ totalPages }}</span> ページ
         </div>
-        <u-pagination v-model:page="page" :total="pageData.total" :items-per-page="pageData.limit" size="md" color="primary" />
+        <u-pagination
+          v-model:page="page"
+          :total="pageData.total"
+          :items-per-page="pageData.limit"
+          size="md"
+          color="primary"
+        />
         <div class="flex items-center gap-2">
-          <u-input v-model="jumpPage" type="number" size="sm" class="w-16" :min="1" :max="totalPages" @keyup.enter="handleJump" />
+          <u-input
+            v-model="jumpPage"
+            type="number"
+            size="sm"
+            class="w-16"
+            :min="1"
+            :max="totalPages"
+            @keyup.enter="handleJump"
+          />
           <span class="text-xs text-muted font-medium">ページへ</span>
           <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
         </div>
@@ -361,12 +375,26 @@ function escapeRegExp(value: string) {
         class="flex flex-col md:flex-row items-center justify-center gap-5 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-default"
       >
         <div class="text-sm font-medium text-muted">
-          全 <span class="text-foreground">{{ commentData.total }}</span> 件 /
-          全 <span class="text-foreground">{{ totalPages }}</span> ページ
+          全 <span class="text-foreground">{{ commentData.total }}</span> 件 / 全
+          <span class="text-foreground">{{ totalPages }}</span> ページ
         </div>
-        <u-pagination v-model:page="page" :total="commentData.total" :items-per-page="commentData.limit" size="md" color="primary" />
+        <u-pagination
+          v-model:page="page"
+          :total="commentData.total"
+          :items-per-page="commentData.limit"
+          size="md"
+          color="primary"
+        />
         <div class="flex items-center gap-2">
-          <u-input v-model="jumpPage" type="number" size="sm" class="w-16" :min="1" :max="totalPages" @keyup.enter="handleJump" />
+          <u-input
+            v-model="jumpPage"
+            type="number"
+            size="sm"
+            class="w-16"
+            :min="1"
+            :max="totalPages"
+            @keyup.enter="handleJump"
+          />
           <span class="text-xs text-muted font-medium">ページへ</span>
           <u-button size="xs" color="neutral" variant="ghost" icon="i-lucide-search" @click="handleJump" />
         </div>

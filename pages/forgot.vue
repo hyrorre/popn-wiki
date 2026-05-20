@@ -9,7 +9,7 @@ useSeoMeta({
   ogTitle: 'パスワード再設定',
   ogDescription: '登録済みのメールアドレスにパスワード再設定用のリンクを送信します。',
   ogUrl: `${app.url}/forgot`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 
 const fields = ref<AuthFormField[]>([

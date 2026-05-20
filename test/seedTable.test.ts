@@ -27,10 +27,7 @@ describe('DokuWiki table seed conversion', () => {
   test('does not split cells at link or media label separators', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(
-      [
-        '^Title^Image^Note^',
-        '|[[https://example.com/page|Example]]|{{cover.png|Cover art}}|done|'
-      ].join('\n')
+      ['^Title^Image^Note^', '|[[https://example.com/page|Example]]|{{cover.png|Cover art}}|done|'].join('\n')
     )
 
     expect(markdown).toContain('| Title | Image | Note |')
@@ -52,7 +49,9 @@ describe('DokuWiki table seed conversion', () => {
     )
 
     expect(markdown).toContain('| 段位 | 曲 | BPM | Lv |')
-    expect(markdown).toContain('| 4th | [[シューゲイザー&#124;<span style="color: #FF0000">EX</span>&#124;95~190&#124;41&#124; |  |  |')
+    expect(markdown).toContain(
+      '| 4th | [[シューゲイザー&#124;<span style="color: #FF0000">EX</span>&#124;95~190&#124;41&#124; |  |  |'
+    )
   })
 
   test('converts pipe-row blocks without an explicit DokuWiki header row', async () => {
@@ -106,16 +105,12 @@ describe('DokuWiki list seed conversion', () => {
   test('moves multiline comments out of list blocks', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(
-      [
-        '  * parent',
-        '<!--    * commented child',
-        'comment detail',
-        '-->',
-        '    * child'
-      ].join('\n')
+      ['  * parent', '<!--    * commented child', 'comment detail', '-->', '    * child'].join('\n')
     )
 
-    expect(markdown).toContain(['<!--    * commented child', 'comment detail', '-->', '* parent', '  * child'].join('\n'))
+    expect(markdown).toContain(
+      ['<!--    * commented child', 'comment detail', '-->', '* parent', '  * child'].join('\n')
+    )
   })
 
   test('moves multiline comments after a continued list item', async () => {
@@ -132,7 +127,13 @@ describe('DokuWiki list seed conversion', () => {
     )
 
     expect(markdown).toContain(
-      ['<!--    * commented child', 'comment detail', '-->', '* [parent continued label](https://example.com)', '  * child'].join('\n')
+      [
+        '<!--    * commented child',
+        'comment detail',
+        '-->',
+        '* [parent continued label](https://example.com)',
+        '  * child'
+      ].join('\n')
     )
   })
 
@@ -155,11 +156,7 @@ describe('DokuWiki list seed conversion', () => {
   test('moves comments before forced line breaks split list items', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(
-      [
-        '  * parent line 1\\\\ parent line 2',
-        '<!-- comment -->',
-        '    * child'
-      ].join('\n')
+      ['  * parent line 1\\\\ parent line 2', '<!-- comment -->', '    * child'].join('\n')
     )
 
     expect(markdown).toContain(['<!-- comment -->', '* parent line 1', 'parent line 2', '  * child'].join('\n'))
@@ -187,7 +184,9 @@ describe('DokuWiki bold link seed conversion', () => {
 
   test('trims spaces inside bold markers', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
-    const markdown = convertDokuwikiToMarkdown(['  * ** ハイパーJパーティーロック(EX) **', '  * ** 太字** と **太字 **'].join('\n'))
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * ** ハイパーJパーティーロック(EX) **', '  * ** 太字** と **太字 **'].join('\n')
+    )
 
     expect(markdown).toBe(['* **ハイパーJパーティーロック(EX)**', '* **太字** と **太字**'].join('\n'))
   })
@@ -205,7 +204,9 @@ describe('DokuWiki bold link seed conversion', () => {
       ['  * **事前準備:**キャラ', '  * **完全無条件解禁。**未解禁', '  * **「乱ノック」**です'].join('\n')
     )
 
-    expect(markdown).toBe(['* **事前準備:** キャラ', '* **完全無条件解禁。** 未解禁', '* **「乱ノック」** です'].join('\n'))
+    expect(markdown).toBe(
+      ['* **事前準備:** キャラ', '* **完全無条件解禁。** 未解禁', '* **「乱ノック」** です'].join('\n')
+    )
   })
 
   test('does not add a space after ordinary bold text', async () => {
@@ -217,9 +218,13 @@ describe('DokuWiki bold link seed conversion', () => {
 
   test('adds a space before bold markers attached to preceding text', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
-    const markdown = convertDokuwikiToMarkdown(['  * 新筐体**「ピカピカポップ君モデル」**。', 'perfect**(削除対策につき音なし)**'].join('\n'))
+    const markdown = convertDokuwikiToMarkdown(
+      ['  * 新筐体**「ピカピカポップ君モデル」**。', 'perfect**(削除対策につき音なし)**'].join('\n')
+    )
 
-    expect(markdown).toBe(['* 新筐体 **「ピカピカポップ君モデル」**。', 'perfect **(削除対策につき音なし)**'].join('\n'))
+    expect(markdown).toBe(
+      ['* 新筐体 **「ピカピカポップ君モデル」**。', 'perfect **(削除対策につき音なし)**'].join('\n')
+    )
   })
 })
 
@@ -244,11 +249,17 @@ describe('DokuWiki legacy URL seed conversion', () => {
   test('keeps external media URLs external when converting to links', async () => {
     const { convertDokuwikiToMarkdown } = await loadSeedTask()
     const markdown = convertDokuwikiToMarkdown(
-      ['  * {{https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm|ハードPf(H)}}', '{{https://www.php.net/images/php.gif?200x50}}'].join('\n')
+      [
+        '  * {{https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm|ハードPf(H)}}',
+        '{{https://www.php.net/images/php.gif?200x50}}'
+      ].join('\n')
     )
 
     expect(markdown).toBe(
-      ['* [ハードPf(H)](https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)', '[](https://www.php.net/images/php.gif?200x50)'].join('\n')
+      [
+        '* [ハードPf(H)](https://baanin.sakura.ne.jp/p13fumen/hardpf/hardpf-h.htm)',
+        '[](https://www.php.net/images/php.gif?200x50)'
+      ].join('\n')
     )
   })
 
@@ -345,7 +356,15 @@ describe('DokuWiki footnote seed conversion', () => {
     const markdown = convertDokuwikiToMarkdown(['^A^B^', '|1((one note))|2|', '|3|4((four note))|', 'after'].join('\n'))
 
     expect(markdown).toBe(
-      ['| A | B |', '| --- | --- |', '| 1[^1] | 2 |', '| 3 | 4[^2] |', '[^1]: one note', '[^2]: four note', 'after'].join('\n')
+      [
+        '| A | B |',
+        '| --- | --- |',
+        '| 1[^1] | 2 |',
+        '| 3 | 4[^2] |',
+        '[^1]: one note',
+        '[^2]: four note',
+        'after'
+      ].join('\n')
     )
   })
 })

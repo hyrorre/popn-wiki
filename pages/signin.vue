@@ -12,7 +12,7 @@ useSeoMeta({
   title: 'サインイン',
   ogTitle: 'サインイン',
   ogUrl: `${app.url}/signin`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 
 const fields = ref<AuthFormField[]>([

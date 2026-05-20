@@ -58,8 +58,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 ## TODO
 
-- [ ] feat(wiki): add big/small text buttons to markdown-toolbar
-- [ ] feat(wiki): change color broken-link
+- [x] feat(wiki): add big/small text buttons to markdown-toolbar
+- [x] ~~feat(wiki): change color broken-link~~
 - [ ] feat(core): backup images
 - [ ] feat(test): test codes (bun test)
 - [ ] feat(core): toc component

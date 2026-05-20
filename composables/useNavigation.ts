@@ -47,7 +47,7 @@ export const useNavigation = (showButtons: boolean = true) => {
       ? [
           {
             class: 'profile',
-            label: user.value.name ??  'プロフィール',
+            label: user.value.name ?? 'プロフィール',
             icon: 'i-lucide-user',
             children: [
               {

@@ -46,7 +46,7 @@ describe('Markdown sanitizer', () => {
   test('strips on* event handler attributes from allowed tags', () => {
     expect(sanitizeDangerousMarkdownHtml('<svg onload="xss()">')).toBe('<svg>')
     expect(sanitizeDangerousMarkdownHtml('<img src="x.png" onerror="xss()">')).toBe('<img src="x.png">')
-    expect(sanitizeDangerousMarkdownHtml('<div onmouseover=\'xss()\'>')).toBe('<div>')
+    expect(sanitizeDangerousMarkdownHtml("<div onmouseover='xss()'>")).toBe('<div>')
   })
 
   test('strips javascript: URLs from href and src attributes', () => {

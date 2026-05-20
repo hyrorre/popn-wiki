@@ -5,7 +5,7 @@ useSeoMeta({
   title: 'マイプロフィール',
   ogTitle: 'マイプロフィール',
   ogUrl: `${app.url}/profile`,
-  robots: 'noindex',
+  robots: 'noindex'
 })
 </script>
 

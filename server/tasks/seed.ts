@@ -776,7 +776,10 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       if (innerLines.slice(1).some((line) => /^[ \t]*(?:[\^|#]|\* |- |={2,}|<!--)/.test(line))) return match
       return `[[${inner.replace(/[ \t]*\r?\n[ \t]*/g, ' ')}]]`
     })
-    text = text.replace(/__DOKU_MULTILINE_LINK_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
+    text = text.replace(
+      /__DOKU_MULTILINE_LINK_PROTECTED_(\d+)__/g,
+      (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? ''
+    )
   }
 
   // テーブル: Dokuwiki の ^ や | で始まる行を Markdown テーブルへ変換
@@ -1040,10 +1043,13 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
   // リストマーカー: DokuWiki のリスト判定用インデントを1段分削り、Markdown のマーカー後スペースを補う
   // 例: "  * item" -> "* item", "    *item" -> "  * item"
-  text = text.replace(/^((?: {2,}|\t[ \t]*))([*-])(\s*)(.+)$/gm, (_m, indent: string, marker: string, space: string, rest: string) => {
-    const normalizedIndent = indent.startsWith('  ') ? indent.slice(2) : indent
-    return `${normalizedIndent}${marker}${space || ' '}${rest}`
-  })
+  text = text.replace(
+    /^((?: {2,}|\t[ \t]*))([*-])(\s*)(.+)$/gm,
+    (_m, indent: string, marker: string, space: string, rest: string) => {
+      const normalizedIndent = indent.startsWith('  ') ? indent.slice(2) : indent
+      return `${normalizedIndent}${marker}${space || ' '}${rest}`
+    }
+  )
 
   // コードブロック: <code>...</code> -> ```...```
   text = text.replace(/<code(?: [^>]*)?>([\s\S]*?)<\/code>/gi, (_m, code) => {
@@ -1111,10 +1117,13 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
 
     text = addSpaceBeforeAttachedBold(text)
 
-    text = text.replace(/\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g, (match, content: string) => {
-      if (content.includes('[[')) return match
-      return `**${content}** `
-    })
+    text = text.replace(
+      /\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g,
+      (match, content: string) => {
+        if (content.includes('[[')) return match
+        return `**${content}** `
+      }
+    )
 
     text = text.replace(/__DOKU_BOLD_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
   }
@@ -1282,7 +1291,10 @@ export function convertDokuwikiToMarkdown(input: string, titleMap?: Map<string, 
       .replace(/<!--[\s\S]*?-->/g, protect)
       .replace(/\[[^\]\n]+\]\([^) \n]+(?:\s+"[^"\n]*")?\)(?:\{[^}\n]+\})?/g, protect)
 
-    text = text.replace(/\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g, '**$1** ')
+    text = text.replace(
+      /\*\*([^*\n]*[。、，,.!?！？:：)）\]］」』】>])\*\*(?=[^\s。、，,.!?！？:：(）\]］」』】<])/g,
+      '**$1** '
+    )
 
     text = text.replace(/__DOKU_BOLD_SPACE_PROTECTED_(\d+)__/g, (_m, idxStr) => protectedBlocks[Number(idxStr)] ?? '')
   }
