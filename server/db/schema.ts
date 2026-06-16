@@ -9,7 +9,8 @@ export const usersTable = sqliteTable('users', {
   avatar: text(),
   createdAt: text().notNull(),
   updatedAt: text().notNull(),
-  confirmed: integer().notNull().default(0)
+  confirmed: integer().notNull().default(0),
+  role: text().notNull().default('user')
 })
 
 export const pagesTable = sqliteTable(

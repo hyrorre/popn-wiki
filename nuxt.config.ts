@@ -72,6 +72,7 @@ export default defineNuxtConfig({
     kv: true,
     db: {
       dialect: 'sqlite',
+      driver: 'd1',
       casing: 'snake_case'
       // driver: 'd1-http',
       // connection: {

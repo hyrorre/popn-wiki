@@ -49,7 +49,8 @@ export default defineOAuthGoogleEventHandler({
         id: existingUser.id,
         name: existingUser.name,
         email: existingUser.email,
-        avatar: existingUser.avatar
+        avatar: existingUser.avatar,
+        role: existingUser.role as 'user' | 'admin'
       }
     })
 

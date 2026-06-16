@@ -1,9 +1,9 @@
 import { commentsTable } from '../db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -17,6 +17,28 @@ export default defineEventHandler(async (event) => {
   if (!id || !Number.isInteger(id) || id <= 0) {
     throw createError({ statusCode: 400, message: 'ID is required.' })
   }
+
+  const isAdmin = user.role === 'admin'
+
+  const target = await db
+    .select({
+      id: commentsTable.id,
+      path: commentsTable.path,
+      userId: commentsTable.userId,
+      deletedAt: commentsTable.deletedAt
+    })
+    .from(commentsTable)
+    .where(and(eq(commentsTable.id, id), isNull(commentsTable.deletedAt)))
+    .get()
+
+  if (!target) {
+    throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
+  }
+
+  if (!isAdmin && target.userId !== user.id) {
+    throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
+  }
+
   const now = new Date().toISOString()
 
   const updated = await db
@@ -24,7 +46,7 @@ export default defineEventHandler(async (event) => {
     .set({
       deletedAt: now
     })
-    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
+    .where(eq(commentsTable.id, id))
     .returning()
     .get()
 
@@ -34,7 +56,7 @@ export default defineEventHandler(async (event) => {
 
   await invalidateCommentListCache(updated.path)
   await invalidateRecentCommentsCache()
-  await purgeCdnByUrls([`https://popn.wiki/api/comment?path=${encodeURIComponent(updated.path)}&page=1&limit=20`])
+  await purgeCdnByUrls(getCommentMutationPurgeUrls(updated.path))
 
   return { success: true }
 })

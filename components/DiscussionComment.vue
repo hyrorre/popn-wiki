@@ -105,8 +105,17 @@ const submitEdit = async () => {
   }
 }
 
+const isAdminDelete = computed(() => user.value?.role === 'admin' && props.comment.userId !== user.value?.id)
+
+const canDelete = computed(
+  () => user.value && (props.comment.userId === user.value.id || user.value.role === 'admin')
+)
+
 const submitDelete = async () => {
-  if (!confirm('このコメントを削除しますか？\n（返信がある場合、それらも非表示になります）')) return
+  const message = isAdminDelete.value
+    ? '（管理者として）このコメントを削除しますか？\n（返信がある場合、それらも非表示になります）'
+    : 'このコメントを削除しますか？\n（返信がある場合、それらも非表示になります）'
+  if (!confirm(message)) return
   isDeleting.value = true
   try {
     await $fetch('/api/comment', {
@@ -187,7 +196,7 @@ const submitDelete = async () => {
           <u-icon name="i-lucide-square-pen" class="w-4 h-4" /> 編集
         </button>
         <button
-          v-if="comment.userId === user.id"
+          v-if="canDelete"
           class="text-muted hover:text-error transition-colors flex items-center gap-1"
           :disabled="isDeleting"
           @click="submitDelete"

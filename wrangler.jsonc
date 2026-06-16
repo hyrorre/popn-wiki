@@ -7,7 +7,7 @@
       "database_name": "popn-wiki-db",
       "database_id": "783f9203-1334-4c69-b704-b69347ab34d3",
       "migrations_table": "_hub_migrations",
-      "migrations_dir": "db/migrations/sqlite/"
+      "migrations_dir": "db/migrations/"
     }
   ],
   "r2_buckets": [
