@@ -4,8 +4,8 @@ export const CDN_CACHE_TTL = {
   pageLatest: 60 * 60 * 24,
   pageRevision: 60 * 60 * 24 * 30,
   image: 60 * 60 * 24 * 30,
-  commentList: 60 * 5,
-  recentList: 60,
+  commentList: 60 * 15,
+  recentList: 60 * 10,
   sitemap: 60 * 60 * 24
 } as const
 

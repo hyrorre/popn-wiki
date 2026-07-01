@@ -3,7 +3,7 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
-import { purgeCdnByUrls } from '../utils/cfCachePurge'
+import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
-  await purgeCdnByUrls([`https://popn.wiki/api/page?path=${encodeURIComponent(path)}`])
+  await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 
   return inserted
 })

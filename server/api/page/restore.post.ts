@@ -5,6 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '../../utils/markdown'
 import { invalidateLatestPageCache } from '../../utils/pageCache'
 import { invalidateRecentPagesCache } from '../../utils/recentPagesCache'
+import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../../utils/cfCachePurge'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
 
@@ -60,6 +61,7 @@ export default defineEventHandler(async (event) => {
 
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
+  await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 
   return inserted
 })
