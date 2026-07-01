@@ -1,6 +1,6 @@
 import { db } from '@nuxthub/db'
 import { blob } from '@nuxthub/blob'
-import { desc } from 'drizzle-orm'
+import { aliasedTable, and, asc, eq, gt, inArray, notExists, sql } from 'drizzle-orm'
 import { visit } from 'unist-util-visit'
 import { pagesTable } from '../../db/schema'
 
@@ -27,19 +27,13 @@ interface MDCNode {
   value?: string
 }
 
-type LatestPage = {
-  path: string
-  revision: number
-  body: string
-  bodyAst: string | null
-}
-
 const SKIPPED_PROTOCOLS = ['mailto:', 'tel:', 'javascript:', 'data:']
 const IMAGE_ROUTE_PREFIX = '/api/image/'
 const REDIRECTED_WIKI_PATHS = new Map([['start', '/']])
 const REDIRECTED_IMAGE_ROUTE_PREFIXES = ['/score/start/', '/_media/score/start/']
 const APP_ROUTE_PREFIXES = ['/api/', '/admin/', '/edit/']
 const APP_ROUTES = new Set(['/signin', '/signup', '/profile', '/reply', '/forgot', '/reset', '/verify'])
+const PAGE_CONTENT_BATCH_SIZE = 25
 
 const stripUrlFragmentAndQuery = (url: string) => url.split('#')[0]?.split('?')[0]?.trim() || ''
 
@@ -146,6 +140,42 @@ const isEscaped = (body: string, index: number) => {
   return slashCount % 2 === 1
 }
 
+const latestVisiblePageCondition = () => {
+  const newerRevision = aliasedTable(pagesTable, 'newer_revision')
+
+  return and(
+    sql`${pagesTable.body} != ''`,
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(newerRevision)
+        .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
+    )
+  )
+}
+
+const readLatestVisiblePagePaths = () => {
+  return db
+    .select({ path: pagesTable.path })
+    .from(pagesTable)
+    .where(latestVisiblePageCondition())
+    .orderBy(asc(pagesTable.path))
+    .all()
+}
+
+const readLatestVisiblePagesByPath = (paths: string[]) => {
+  return db
+    .select({
+      path: pagesTable.path,
+      body: pagesTable.body,
+      bodyAst: pagesTable.bodyAst
+    })
+    .from(pagesTable)
+    .where(and(latestVisiblePageCondition(), inArray(pagesTable.path, paths)))
+    .orderBy(asc(pagesTable.path))
+    .all()
+}
+
 export default defineEventHandler(async (event): Promise<BrokenLinksResponse> => {
   const { user } = await getUserSession(event)
   if (!user) {
@@ -165,26 +195,8 @@ export default defineEventHandler(async (event): Promise<BrokenLinksResponse> =>
     warnings.push('画像一覧の取得に失敗したため、画像リンクのチェックをスキップしました。')
   }
 
-  const allRows = await db
-    .select({
-      path: pagesTable.path,
-      revision: pagesTable.revision,
-      body: pagesTable.body,
-      bodyAst: pagesTable.bodyAst
-    })
-    .from(pagesTable)
-    .orderBy(desc(pagesTable.revision))
-    .all()
-
-  const latestPagesMap = new Map<string, LatestPage>()
-  for (const row of allRows) {
-    if (!latestPagesMap.has(row.path)) {
-      latestPagesMap.set(row.path, row)
-    }
-  }
-
-  const latestPages = [...latestPagesMap.values()].filter((page) => page.body !== '')
-  const existingPaths = new Set(latestPages.map((page) => page.path))
+  const latestPagePathRows = await readLatestVisiblePagePaths()
+  const existingPaths = new Set(latestPagePathRows.map((page) => page.path))
   const brokenLinks: LinkInfo[] = []
   const seenBrokenLinks = new Set<string>()
 
@@ -195,117 +207,122 @@ export default defineEventHandler(async (event): Promise<BrokenLinksResponse> =>
     brokenLinks.push(link)
   }
 
-  console.log(`[BrokenLinkChecker] Found ${latestPages.length} active pages to check.`)
+  console.log(`[BrokenLinkChecker] Found ${latestPagePathRows.length} active pages to check.`)
 
-  for (const page of latestPages) {
-    try {
-      console.log(`[BrokenLinkChecker] Analyzing: ${page.path}`)
-      let ast
+  for (let offset = 0; offset < latestPagePathRows.length; offset += PAGE_CONTENT_BATCH_SIZE) {
+    const pathBatch = latestPagePathRows.slice(offset, offset + PAGE_CONTENT_BATCH_SIZE).map((page) => page.path)
+    const pageBatch = await readLatestVisiblePagesByPath(pathBatch)
 
-      if (page.bodyAst) {
-        try {
-          ast = JSON.parse(page.bodyAst)
-        } catch {
-          console.warn(`[BrokenLinkChecker] Failed to parse bodyAst for ${page.path}`)
+    for (const page of pageBatch) {
+      try {
+        console.log(`[BrokenLinkChecker] Analyzing: ${page.path}`)
+        let ast
+
+        if (page.bodyAst) {
+          try {
+            ast = JSON.parse(page.bodyAst)
+          } catch {
+            console.warn(`[BrokenLinkChecker] Failed to parse bodyAst for ${page.path}`)
+          }
         }
-      }
 
-      const processUrl = (url: string, type: 'image' | 'link', text: string) => {
-        if (shouldSkipUrl(url) || isExternalUrl(url)) return
+        const processUrl = (url: string, type: 'image' | 'link', text: string) => {
+          if (shouldSkipUrl(url) || isExternalUrl(url)) return
 
-        if (type === 'image') {
-          if (!canCheckImages) return
-          const imagePath = normalizeImagePath(url)
-          if (imagePath && !imagePaths.has(imagePath)) {
-            console.log(`[BrokenLinkChecker] Found broken image: ${url} on ${page.path}`)
+          if (type === 'image') {
+            if (!canCheckImages) return
+            const imagePath = normalizeImagePath(url)
+            if (imagePath && !imagePaths.has(imagePath)) {
+              console.log(`[BrokenLinkChecker] Found broken image: ${url} on ${page.path}`)
+              addBrokenLink({
+                sourcePath: page.path,
+                targetUrl: url,
+                text: text.substring(0, 100),
+                type: 'image',
+                error: 'Image not found'
+              })
+            }
+            return
+          }
+
+          const redirectedImagePath = normalizeRedirectedImagePath(stripUrlFragmentAndQuery(url))
+          if (redirectedImagePath) {
+            if (canCheckImages && !imagePaths.has(redirectedImagePath)) {
+              console.log(`[BrokenLinkChecker] Found broken redirected image: ${url} on ${page.path}`)
+              addBrokenLink({
+                sourcePath: page.path,
+                targetUrl: url,
+                text: text.substring(0, 100),
+                type: 'image',
+                error: 'Image not found'
+              })
+            }
+            return
+          }
+
+          const targetPath = normalizeWikiPath(url, page.path)
+          if (targetPath && !existingPaths.has(targetPath)) {
+            console.log(`[BrokenLinkChecker] Found broken link: ${url} on ${page.path}`)
             addBrokenLink({
               sourcePath: page.path,
               targetUrl: url,
               text: text.substring(0, 100),
-              type: 'image',
-              error: 'Image not found'
+              type: 'internal',
+              error: 'Page not found'
             })
           }
-          return
         }
 
-        const redirectedImagePath = normalizeRedirectedImagePath(stripUrlFragmentAndQuery(url))
-        if (redirectedImagePath) {
-          if (canCheckImages && !imagePaths.has(redirectedImagePath)) {
-            console.log(`[BrokenLinkChecker] Found broken redirected image: ${url} on ${page.path}`)
-            addBrokenLink({
-              sourcePath: page.path,
-              targetUrl: url,
-              text: text.substring(0, 100),
-              type: 'image',
-              error: 'Image not found'
-            })
-          }
-          return
-        }
+        if (ast) {
+          visit(ast, (node: unknown) => {
+            const n = node as MDCNode
+            if (n.type !== 'element' && n.type !== 'link' && n.type !== 'image') return
 
-        const targetPath = normalizeWikiPath(url, page.path)
-        if (targetPath && !existingPaths.has(targetPath)) {
-          console.log(`[BrokenLinkChecker] Found broken link: ${url} on ${page.path}`)
-          addBrokenLink({
-            sourcePath: page.path,
-            targetUrl: url,
-            text: text.substring(0, 100),
-            type: 'internal',
-            error: 'Page not found'
+            if (n.tag === 'img' || n.type === 'image') {
+              const url = (n.props?.src as string) || n.value || ''
+              const text = (n.props?.alt as string | undefined) || url
+              processUrl(url, 'image', text)
+            } else if (n.tag === 'a' || n.type === 'link') {
+              const url = (n.props?.href as string) || n.value || ''
+              processUrl(url, 'link', collectText(n) || url)
+            }
           })
-        }
-      }
+        } else if (page.body) {
+          const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
+          const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g
+          const htmlAnchorRegex = /<a\b[^>]*\bhref=(["'])(.*?)\1[^>]*>(.*?)<\/a>/gis
+          const htmlImageRegex = /<img\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>/gis
 
-      if (ast) {
-        visit(ast, (node: unknown) => {
-          const n = node as MDCNode
-          if (n.type !== 'element' && n.type !== 'link' && n.type !== 'image') return
-
-          if (n.tag === 'img' || n.type === 'image') {
-            const url = (n.props?.src as string) || n.value || ''
-            const text = (n.props?.alt as string | undefined) || url
-            processUrl(url, 'image', text)
-          } else if (n.tag === 'a' || n.type === 'link') {
-            const url = (n.props?.href as string) || n.value || ''
-            processUrl(url, 'link', collectText(n) || url)
+          let match: RegExpExecArray | null
+          while ((match = imgRegex.exec(page.body)) !== null) {
+            if (isEscaped(page.body, match.index + 1)) continue
+            processUrl(match[2] as string, 'image', match[1] || '')
           }
-        })
-      } else if (page.body) {
-        const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
-        const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g
-        const htmlAnchorRegex = /<a\b[^>]*\bhref=(["'])(.*?)\1[^>]*>(.*?)<\/a>/gis
-        const htmlImageRegex = /<img\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>/gis
+          while ((match = linkRegex.exec(page.body)) !== null) {
+            if (isEscaped(page.body, match.index)) continue
+            processUrl(match[2] as string, 'link', match[1] || '')
+          }
+          while ((match = htmlImageRegex.exec(page.body)) !== null) {
+            processUrl(match[2] as string, 'image', match[2] || '')
+          }
+          while ((match = htmlAnchorRegex.exec(page.body)) !== null) {
+            processUrl(match[2] as string, 'link', (match[3] || '').replace(/<[^>]+>/g, '').trim())
+          }
+        } else {
+          console.log(`[BrokenLinkChecker] No AST or body for: ${page.path}`)
+        }
 
-        let match: RegExpExecArray | null
-        while ((match = imgRegex.exec(page.body)) !== null) {
-          if (isEscaped(page.body, match.index + 1)) continue
-          processUrl(match[2] as string, 'image', match[1] || '')
-        }
-        while ((match = linkRegex.exec(page.body)) !== null) {
-          if (isEscaped(page.body, match.index)) continue
-          processUrl(match[2] as string, 'link', match[1] || '')
-        }
-        while ((match = htmlImageRegex.exec(page.body)) !== null) {
-          processUrl(match[2] as string, 'image', match[2] || '')
-        }
-        while ((match = htmlAnchorRegex.exec(page.body)) !== null) {
-          processUrl(match[2] as string, 'link', (match[3] || '').replace(/<[^>]+>/g, '').trim())
-        }
-      } else {
-        console.log(`[BrokenLinkChecker] No AST or body for: ${page.path}`)
+        console.log(`[BrokenLinkChecker] Finished: ${page.path}`)
+      } catch (e) {
+        console.error(`[BrokenLinkChecker] Fatal error analyzing ${page.path}:`, e)
       }
-
-      console.log(`[BrokenLinkChecker] Finished: ${page.path}`)
-    } catch (e) {
-      console.error(`[BrokenLinkChecker] Fatal error analyzing ${page.path}:`, e)
     }
   }
 
   console.log(`[BrokenLinkChecker] Scan finished. Found ${brokenLinks.length} broken items.`)
 
   return {
-    totalChecked: latestPages.length,
+    totalChecked: latestPagePathRows.length,
     brokenLinks,
     warnings
   }
