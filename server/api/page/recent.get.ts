@@ -2,6 +2,7 @@ import { pagesTable } from '../../db/schema'
 import { eq, desc, and, or, isNull, aliasedTable, gt, notExists, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { getRecentPagesCacheKey, getRecentPagesCacheVersion, RECENT_PAGES_TTL } from '~/server/utils/recentPagesCache'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -10,8 +11,7 @@ export default defineEventHandler(async (event) => {
   const offset = (page - 1) * limit
   const includeMinor = query.includeMinor === 'true'
 
-  setResponseHeader(event, 'Cache-Control', 'no-store')
-  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=60')
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
 
   const version = await getRecentPagesCacheVersion()
   const cacheKey = getRecentPagesCacheKey({ limit, page, includeMinor }, version)

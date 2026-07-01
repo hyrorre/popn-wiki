@@ -1,7 +1,6 @@
 import { blob } from '@nuxthub/blob'
 import { getRouterParam } from 'h3'
-
-const IMAGE_CACHE_CONTROL = 'public, max-age=2592000, immutable'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 export default defineEventHandler(async (event) => {
   // `[...pathname]` は `string[]` で受け取られることがあるため `/` 連結してパス文字列に戻す。
@@ -12,8 +11,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Missing pathname.' })
   }
 
-  setResponseHeader(event, 'Cache-Control', IMAGE_CACHE_CONTROL)
-  setResponseHeader(event, 'CDN-Cache-Control', IMAGE_CACHE_CONTROL)
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.image, { browser: 'same', immutable: true })
 
   return blob.serve(event, pathname)
 })

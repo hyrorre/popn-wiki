@@ -6,6 +6,7 @@ import {
   getRecentCommentsCacheVersion,
   RECENT_COMMENTS_TTL
 } from '~/server/utils/recentCommentsCache'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -13,8 +14,7 @@ export default defineEventHandler(async (event) => {
   const page = parsePositiveInteger(query.page, 1)
   const offset = (page - 1) * limit
 
-  setResponseHeader(event, 'Cache-Control', 'no-store')
-  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=60')
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
 
   const version = await getRecentCommentsCacheVersion()
   const cacheKey = getRecentCommentsCacheKey({ limit, page }, version)

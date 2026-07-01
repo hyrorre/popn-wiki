@@ -2,8 +2,11 @@ import { db } from '@nuxthub/db'
 import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
 import type { SitemapUrlInput } from '@nuxtjs/sitemap'
 import { pagesTable } from '../db/schema'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
-export default defineSitemapEventHandler(async (): Promise<SitemapUrlInput[]> => {
+export default defineSitemapEventHandler(async (event): Promise<SitemapUrlInput[]> => {
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.sitemap)
+
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
 
   const pages = await db

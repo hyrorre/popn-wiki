@@ -5,9 +5,10 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
-const LATEST_PAGE_TTL = 60 * 60 * 24
-const REVISION_PAGE_TTL = 60 * 60 * 24 * 30
+const LATEST_PAGE_TTL = CDN_CACHE_TTL.pageLatest
+const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
 
 type PageQuery = {
   path: string
@@ -20,13 +21,11 @@ export default defineEventHandler(async (event) => {
   const query = parsePageQuery(event)
 
   if (query.revision !== undefined) {
-    setResponseHeader(event, 'Cache-Control', 'no-store')
-    setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=2592000')
+    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageRevision)
     return withRevisionCache(event, query)
   }
 
-  setResponseHeader(event, 'Cache-Control', 'no-store')
-  setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=86400')
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageLatest)
   return withLatestCache(event, query)
 })
 

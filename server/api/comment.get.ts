@@ -9,6 +9,7 @@ import {
   invalidateCommentListCache
 } from '~/server/utils/commentCache'
 import { mdcParseOptions } from '~/server/utils/markdown'
+import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 const COMMENT_AST_BACKFILL_LIMIT = 2000
@@ -47,8 +48,7 @@ export default defineEventHandler(async (event) => {
   event.context.commentListQuery = parseCommentListQuery(event)
   const result = await cachedCommentListHandler(event)
   if (!event.node.res.headersSent) {
-    setResponseHeader(event, 'Cache-Control', 'no-store')
-    setResponseHeader(event, 'CDN-Cache-Control', 'public, max-age=300')
+    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.commentList)
   }
   return result
 })
