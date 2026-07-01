@@ -1,30 +1,16 @@
 import { commentsTable, usersTable } from '../db/schema'
 import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import type { H3Event } from 'h3'
-import {
-  getCommentListCacheRawKey,
-  getCommentListCacheVersion,
-  invalidateCommentListCache
-} from '~/server/utils/commentCache'
-import { mdcParseOptions } from '~/server/utils/markdown'
+import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
-const COMMENT_AST_BACKFILL_LIMIT = 2000
 
 type CommentListQuery = {
   path: string
   page: number
   limit: number
-}
-
-type CommentAstBackfillTarget = {
-  id: number
-  path: string
-  body: string
-  bodyAst: string | null
 }
 
 const cachedCommentListHandler = defineCachedEventHandler(
@@ -168,8 +154,6 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
     .orderBy(desc(sql`tree.rootCreatedAt`), asc(tree.createdAt))
     .all()
 
-  scheduleCommentAstBackfill(event, comments)
-
   return {
     comments,
     total
@@ -179,36 +163,4 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
 function parsePositiveInteger(value: unknown, fallback: number) {
   const parsed = Number.parseInt(String(value ?? fallback), 10)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
-}
-
-function scheduleCommentAstBackfill(event: H3Event, comments: CommentAstBackfillTarget[]) {
-  const missingAstComments = comments
-    .filter((comment) => !comment.bodyAst && comment.body)
-    .slice(0, COMMENT_AST_BACKFILL_LIMIT)
-
-  if (missingAstComments.length === 0) {
-    return
-  }
-
-  event.waitUntil(backfillCommentBodyAst(missingAstComments))
-}
-
-async function backfillCommentBodyAst(comments: CommentAstBackfillTarget[]) {
-  const touchedPaths = new Set<string>()
-
-  await Promise.all(
-    comments.map(async (comment) => {
-      const ast = await parseMarkdown(comment.body, mdcParseOptions)
-
-      await db
-        .update(commentsTable)
-        .set({ bodyAst: JSON.stringify(ast) })
-        .where(eq(commentsTable.id, comment.id))
-        .execute()
-
-      touchedPaths.add(comment.path)
-    })
-  )
-
-  await Promise.all([...touchedPaths].map((path) => invalidateCommentListCache(path)))
 }
