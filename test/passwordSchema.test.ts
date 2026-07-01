@@ -65,7 +65,7 @@ describe('Password schemas', () => {
         name: 'Alice',
         email: 'alice@example.com'
       })
-    ).toBe('パスワードに名前を含めることはできません')
+    ).toBe('パスワードにユーザー名を含めることはできません')
     expect(
       getAccountPasswordValidationMessage('wikiuser safe passphrase', {
         name: 'Wiki User',

@@ -55,9 +55,9 @@ export const strongPasswordSchema = z
 export const userNameSchema = z
   .string()
   .trim()
-  .min(1, '名前を入力してください')
-  .max(80, '名前は80文字以内で入力してください')
-  .refine((value) => !hasControlCharacter(value), '名前に制御文字は使用できません')
+  .min(1, 'ユーザー名を入力してください')
+  .max(80, 'ユーザー名は80文字以内で入力してください')
+  .refine((value) => !hasControlCharacter(value), 'ユーザー名に制御文字は使用できません')
 
 export const avatarSchema = z
   .string()
