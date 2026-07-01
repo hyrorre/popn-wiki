@@ -14,6 +14,7 @@ type BackfillCommentAstResult = {
 
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
+const BACKFILL_COMMENT_AST_TASK = 'backfill-comment-ast'
 
 export default defineEventHandler(async (event): Promise<BackfillCommentAstResult> => {
   const { user } = await getUserSession(event)
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event): Promise<BackfillCommentAstResul
   }
 
   const body = await readBody<BackfillCommentAstBody>(event)
-  const { result } = await runTask<BackfillCommentAstResult>('comments:backfill-ast', {
+  const { result } = await runTask<BackfillCommentAstResult>(BACKFILL_COMMENT_AST_TASK, {
     payload: parsePayload(body)
   })
 

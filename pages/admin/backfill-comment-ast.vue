@@ -65,7 +65,7 @@ async function runBackfill() {
     <div v-if="isAdmin" class="mx-auto flex max-w-3xl flex-col gap-6">
       <div class="flex flex-col gap-1">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">コメントAST Backfill</h1>
-        <p class="text-sm text-muted">comments:backfill-ast</p>
+        <p class="text-sm text-muted">backfill-comment-ast</p>
       </div>
 
       <UCard>

@@ -15,7 +15,7 @@ type BackfillPayload = {
 
 export default defineTask({
   meta: {
-    name: 'comments:backfill-ast',
+    name: 'backfill-comment-ast',
     description: 'Backfill missing comment Markdown ASTs in small batches'
   },
   async run({ payload }) {
