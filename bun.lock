@@ -31,7 +31,6 @@
         "@types/seedrandom": "^3.0.8",
         "drizzle-kit": "^0.31.10",
         "eslint": "10.3.0",
-        "php-serialize": "^5.1.3",
         "prettier": "3.8.3",
         "vue-tsc": "^3.2.9",
         "wrangler": "^4.90.1",
@@ -1971,8 +1970,6 @@
     "peberminta": ["peberminta@0.9.0", "", {}, "sha512-XIxfHpEuSJbITd1H3EeQwpcZbTLHc+VVr8ANI9t5sit565tsI4/xK3KWTUFE2e6QiangUkh3B0jihzmGnNrRsQ=="],
 
     "perfect-debounce": ["perfect-debounce@2.1.0", "", {}, "sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g=="],
-
-    "php-serialize": ["php-serialize@5.1.3", "", {}, "sha512-p7zXX8xjGgddgP6byN+KmGKM0x6uoMZBRZteBa9LonqgrDV3LyMxUeGVX7RTFYwWaUAnTEsUWJfHI3N7eKvJgw=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
