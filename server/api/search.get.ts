@@ -1,6 +1,7 @@
 import { db } from '@nuxthub/db'
 import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
 import { pagesTable } from '../db/schema'
+import { isMissingPageSearchIndex } from '../utils/pageSearchIndex'
 import { searchQuerySchema } from '~/shared/zod'
 
 type SearchMatchType = 'title' | 'path' | 'body'
@@ -25,6 +26,17 @@ type SearchResultItem = {
   score: number
 }
 
+type SearchResult = {
+  total: number
+  items: SearchResultItem[]
+}
+
+type FtsPageSearchRow = LatestPage & {
+  rank: number
+}
+
+const MIN_FTS_TERM_LENGTH = 3
+
 export default defineEventHandler(async (event) => {
   const parsed = searchQuerySchema.safeParse(getQuery(event))
 
@@ -38,10 +50,75 @@ export default defineEventHandler(async (event) => {
 
   const { q, page, limit } = parsed.data
   const terms = splitTerms(q)
+  const result = await readSearchResult(terms, page, limit)
+
+  return {
+    query: q,
+    page,
+    limit,
+    total: result.total,
+    items: result.items
+  }
+})
+
+async function readSearchResult(terms: string[], page: number, limit: number): Promise<SearchResult> {
+  if (canUsePageFts(terms)) {
+    try {
+      return await readPageFtsSearchResult(terms, page, limit)
+    } catch (error) {
+      if (!isMissingPageSearchIndex(error)) {
+        throw error
+      }
+
+      console.warn('[Search] page_search_fts table is missing. Falling back to legacy page search.')
+    }
+  }
+
+  return readLegacySearchResult(terms, page, limit)
+}
+
+async function readPageFtsSearchResult(terms: string[], page: number, limit: number): Promise<SearchResult> {
+  const ftsQuery = buildFtsQuery(terms)
+  const offset = (page - 1) * limit
+  const countResult = await db.get<{ total: number }>(sql`
+    SELECT count(*) AS total
+    FROM page_search_fts
+    WHERE page_search_fts MATCH ${ftsQuery}
+  `)
+  const total = Number(countResult?.total ?? 0)
+
+  if (total === 0) {
+    return { total: 0, items: [] }
+  }
+
+  const rows = await db.all<FtsPageSearchRow>(sql`
+    SELECT
+      path,
+      title,
+      CAST(revision AS INTEGER) AS revision,
+      body,
+      updated_at AS updatedAt,
+      bm25(page_search_fts, 6.0, 8.0, 1.0, 0.0, 0.0) AS rank
+    FROM page_search_fts
+    WHERE page_search_fts MATCH ${ftsQuery}
+    ORDER BY rank, updated_at DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `)
+
+  return {
+    total,
+    items: rows
+      .map((entry) => buildSearchResult(entry, terms, false))
+      .filter((entry): entry is SearchResultItem => entry !== null)
+  }
+}
+
+async function readLegacySearchResult(terms: string[], page: number, limit: number): Promise<SearchResult> {
   const latestPages = await readLatestVisiblePages(terms)
 
   if (latestPages.length === 0) {
-    return { query: q, page, limit, total: 0, items: [] }
+    return { total: 0, items: [] }
   }
 
   const items = latestPages
@@ -58,13 +135,10 @@ export default defineEventHandler(async (event) => {
   const start = (page - 1) * limit
 
   return {
-    query: q,
-    page,
-    limit,
     total: items.length,
     items: items.slice(start, start + limit)
   }
-})
+}
 
 async function readLatestVisiblePages(terms: string[]) {
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
@@ -116,7 +190,7 @@ function normalizeText(value: string) {
   return value.toLocaleLowerCase('ja-JP')
 }
 
-function buildSearchResult(page: LatestPage, terms: string[]): SearchResultItem | null {
+function buildSearchResult(page: LatestPage, terms: string[], requireExactMatch = true): SearchResultItem | null {
   const title = page.title || (page.path === '/' ? 'Home' : page.path.split('/').pop() || page.path)
   const normalizedTitle = normalizeText(title)
   const normalizedPath = normalizeText(page.path)
@@ -126,7 +200,7 @@ function buildSearchResult(page: LatestPage, terms: string[]): SearchResultItem 
     return normalizedTitle.includes(term) || normalizedPath.includes(term) || normalizedBody.includes(term)
   })
 
-  if (!allTermsMatched) {
+  if (requireExactMatch && !allTermsMatched) {
     return null
   }
 
@@ -139,6 +213,7 @@ function buildSearchResult(page: LatestPage, terms: string[]): SearchResultItem 
     ...(pathMatched ? (['path'] as const) : []),
     ...(bodyMatched ? (['body'] as const) : [])
   ]
+  const resolvedMatchTypes: SearchMatchType[] = matchTypes.length > 0 ? matchTypes : ['body']
 
   const snippetType: SnippetType = titleMatched ? 'title' : pathMatched ? 'path' : 'body'
 
@@ -149,7 +224,7 @@ function buildSearchResult(page: LatestPage, terms: string[]): SearchResultItem 
     title,
     revision: page.revision,
     updatedAt: page.updatedAt,
-    matchTypes,
+    matchTypes: resolvedMatchTypes,
     snippet: createSnippet(snippetSource, terms),
     snippetType,
     score: calculateScore({
@@ -212,4 +287,16 @@ function calculateScore({ title, path, body, terms }: { title: string; path: str
   }
 
   return score
+}
+
+function canUsePageFts(terms: string[]) {
+  return terms.every((term) => Array.from(term).length >= MIN_FTS_TERM_LENGTH)
+}
+
+function buildFtsQuery(terms: string[]) {
+  return terms.map(quoteFtsPhrase).join(' AND ')
+}
+
+function quoteFtsPhrase(value: string) {
+  return `"${value.replace(/"/g, '""')}"`
 }

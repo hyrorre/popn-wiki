@@ -6,6 +6,7 @@ import { extractTitleFromMarkdown } from '../utils/page'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
+import { replacePageSearchIndex } from '../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { updatePageSchema } from '~/shared/zod'
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
     .returning()
     .get()
 
+  await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))

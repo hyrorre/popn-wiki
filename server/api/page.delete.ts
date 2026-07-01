@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
+import { removePageSearchIndex } from '../utils/pageSearchIndex'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event) => {
     .returning()
     .get()
 
+  await removePageSearchIndex(path)
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))
