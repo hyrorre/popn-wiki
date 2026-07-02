@@ -5,7 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
-import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 
 const LATEST_PAGE_TTL = CDN_CACHE_TTL.pageLatest
 const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
@@ -13,6 +13,7 @@ const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
 type PageQuery = {
   path: string
   revision?: number
+  fresh: boolean
 }
 
 type CachedPage = typeof pagesTable.$inferSelect
@@ -23,6 +24,11 @@ export default defineEventHandler(async (event) => {
   if (query.revision !== undefined) {
     setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageRevision)
     return withRevisionCache(event, query)
+  }
+
+  if (query.fresh) {
+    setNoStoreCacheHeaders(event)
+    return readLatestPage(event, query)
   }
 
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageLatest)
@@ -50,14 +56,16 @@ async function withRevisionCache(event: H3Event, query: PageQuery) {
 }
 
 function parsePageQuery(event: H3Event): PageQuery {
-  const query = getQuery(event) as { path?: string; revision?: string }
+  const query = getQuery(event) as { path?: string; revision?: string; fresh?: string }
 
   if (!query.path) {
     throw createError({ statusCode: 400, message: 'Path is required.' })
   }
 
+  const base = { path: query.path, fresh: query.fresh === '1' || query.fresh === 'true' }
+
   if (query.revision === undefined) {
-    return { path: query.path }
+    return base
   }
 
   const revision = Number.parseInt(query.revision, 10)
@@ -65,7 +73,7 @@ function parsePageQuery(event: H3Event): PageQuery {
     throw createError({ statusCode: 400, message: 'Invalid revision.' })
   }
 
-  return { path: query.path, revision }
+  return { ...base, revision }
 }
 
 async function readRevisionPage(event: H3Event, query: PageQuery) {

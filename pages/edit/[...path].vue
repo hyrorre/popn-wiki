@@ -34,7 +34,7 @@ const {
   error: fetchError,
   refresh
 } = await useFetch('/api/page', {
-  query: { path }
+  query: { path, fresh: '1' }
 })
 
 // ページの状態

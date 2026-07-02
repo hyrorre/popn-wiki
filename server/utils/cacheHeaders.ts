@@ -19,3 +19,8 @@ export function setPublicCdnCacheHeaders(
   setResponseHeader(event, 'Cache-Control', options.browser === 'same' ? value : 'no-store')
   setResponseHeader(event, 'CDN-Cache-Control', value)
 }
+
+export function setNoStoreCacheHeaders(event: H3Event) {
+  setResponseHeader(event, 'Cache-Control', 'no-store')
+  setResponseHeader(event, 'CDN-Cache-Control', 'no-store')
+}
