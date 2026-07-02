@@ -1,7 +1,7 @@
 import { db } from '@nuxthub/db'
 import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
 import { pagesTable } from '../db/schema'
-import { isMissingPageSearchIndex } from '../utils/pageSearchIndex'
+import { isMissingPageSearchIndex, isPageSearchIndexError } from '../utils/pageSearchIndex'
 import { searchQuerySchema } from '~/shared/zod'
 
 type SearchMatchType = 'title' | 'path' | 'body'
@@ -66,11 +66,15 @@ async function readSearchResult(terms: string[], page: number, limit: number): P
     try {
       return await readPageFtsSearchResult(terms, page, limit)
     } catch (error) {
-      if (!isMissingPageSearchIndex(error)) {
+      if (!isPageSearchIndexError(error)) {
         throw error
       }
 
-      console.warn('[Search] page_search_fts table is missing. Falling back to legacy page search.')
+      if (isMissingPageSearchIndex(error)) {
+        console.warn('[Search] page_search_fts table is missing. Falling back to legacy page search.')
+      } else {
+        console.warn('[Search] page_search_fts query failed. Falling back to legacy page search.')
+      }
     }
   }
 

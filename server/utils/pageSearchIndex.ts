@@ -11,7 +11,10 @@ export type PageSearchIndexEntry = {
 
 export async function replacePageSearchIndex(entry: PageSearchIndexEntry) {
   try {
-    await removePageSearchIndex(entry.path)
+    const removed = await removePageSearchIndex(entry.path)
+    if (!removed) {
+      return
+    }
 
     if (!entry.body) {
       return
@@ -27,17 +30,28 @@ export async function replacePageSearchIndex(entry: PageSearchIndexEntry) {
       return
     }
 
+    if (isPageSearchIndexError(error)) {
+      console.warn(`[PageSearchIndex] Failed to update page_search_fts. Skipped index update: ${getErrorMessage(error)}`)
+      return
+    }
+
     throw error
   }
 }
 
-export async function removePageSearchIndex(path: string) {
+export async function removePageSearchIndex(path: string): Promise<boolean> {
   try {
     await db.run(sql`DELETE FROM page_search_fts WHERE path = ${path}`)
+    return true
   } catch (error) {
     if (isMissingPageSearchIndex(error)) {
       console.warn('[PageSearchIndex] page_search_fts table is missing. Skipped index removal.')
-      return
+      return false
+    }
+
+    if (isPageSearchIndexError(error)) {
+      console.warn(`[PageSearchIndex] Failed to remove from page_search_fts. Skipped index removal: ${getErrorMessage(error)}`)
+      return false
     }
 
     throw error
@@ -67,11 +81,23 @@ export async function rebuildPageSearchIndex() {
       return { indexed: 0, skipped: 'page_search_fts table is missing' }
     }
 
+    if (isPageSearchIndexError(error)) {
+      return { indexed: 0, skipped: getErrorMessage(error) }
+    }
+
     throw error
   }
 }
 
 export function isMissingPageSearchIndex(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
+  const message = getErrorMessage(error)
   return message.includes('page_search_fts') && message.includes('no such table')
+}
+
+export function isPageSearchIndexError(error: unknown) {
+  return getErrorMessage(error).includes('page_search_fts')
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
