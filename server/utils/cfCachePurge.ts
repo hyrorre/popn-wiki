@@ -1,8 +1,16 @@
 const SITE_ORIGIN = 'https://popn.wiki'
 
+type CloudflarePurgeResponse = {
+  success: boolean
+  errors?: { message?: string }[]
+}
+
 export function getWikiPagePurgeUrl(path: string): string {
   if (path === '/' || path === '') return `${SITE_ORIGIN}/`
-  return `${SITE_ORIGIN}/${path}`
+
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+  const encodedPath = normalizedPath.split('/').map(encodeURIComponent).join('/')
+  return `${SITE_ORIGIN}/${encodedPath}`
 }
 
 export function getPageMutationPurgeUrls(path: string): string[] {
@@ -24,13 +32,39 @@ export function getCommentMutationPurgeUrls(path: string): string[] {
   ]
 }
 
-export async function purgeCdnByUrls(urls: string[]): Promise<void> {
+export async function purgeCdnByUrls(urls: string[]): Promise<boolean> {
   const config = useRuntimeConfig()
-  if (!config.cloudflareZoneId || !config.cloudflareCachePurgeToken) return
+  if (!config.cloudflareZoneId || !config.cloudflareCachePurgeToken) {
+    console.warn('[CloudflareCachePurge] Missing NUXT_CLOUDFLARE_ZONE_ID or NUXT_CLOUDFLARE_CACHE_PURGE_TOKEN.')
+    return false
+  }
 
-  await $fetch(`https://api.cloudflare.com/client/v4/zones/${config.cloudflareZoneId}/purge_cache`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.cloudflareCachePurgeToken}` },
-    body: { files: urls }
-  })
+  try {
+    const response = await $fetch<CloudflarePurgeResponse>(
+      `https://api.cloudflare.com/client/v4/zones/${config.cloudflareZoneId}/purge_cache`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.cloudflareCachePurgeToken}` },
+        body: { files: urls }
+      }
+    )
+
+    if (!response.success) {
+      console.warn(`[CloudflareCachePurge] Purge API returned success=false: ${formatPurgeErrors(response.errors)}`)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.warn(`[CloudflareCachePurge] Failed to purge CDN cache: ${getErrorMessage(error)}`)
+    return false
+  }
+}
+
+function formatPurgeErrors(errors: CloudflarePurgeResponse['errors']) {
+  return errors?.map((error) => error.message).filter(Boolean).join('; ') || 'Unknown error'
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
