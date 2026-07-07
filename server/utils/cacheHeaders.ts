@@ -17,10 +17,12 @@ export function setPublicCdnCacheHeaders(
   const value = `public, max-age=${maxAge}${options.immutable ? ', immutable' : ''}`
 
   setResponseHeader(event, 'Cache-Control', options.browser === 'same' ? value : 'no-store')
+  setResponseHeader(event, 'Cloudflare-CDN-Cache-Control', value)
   setResponseHeader(event, 'CDN-Cache-Control', value)
 }
 
 export function setNoStoreCacheHeaders(event: H3Event) {
   setResponseHeader(event, 'Cache-Control', 'no-store')
+  setResponseHeader(event, 'Cloudflare-CDN-Cache-Control', 'no-store')
   setResponseHeader(event, 'CDN-Cache-Control', 'no-store')
 }

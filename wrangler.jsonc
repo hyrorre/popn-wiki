@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "popn-wiki",
+  "compatibility_date": "2026-07-07",
+  "cache": {
+    "enabled": true
+  },
   "d1_databases": [
     {
       "binding": "DB",

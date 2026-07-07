@@ -3,9 +3,11 @@ import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
 import type { SitemapUrlInput } from '@nuxtjs/sitemap'
 import { pagesTable } from '../db/schema'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { getSitemapWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 export default defineSitemapEventHandler(async (event): Promise<SitemapUrlInput[]> => {
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.sitemap)
+  setWorkersCacheTags(event, getSitemapWorkersCacheTags())
 
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
 

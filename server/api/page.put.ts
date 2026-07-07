@@ -7,6 +7,7 @@ import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
 import { replacePageSearchIndex } from '../utils/pageSearchIndex'
+import { getPageMutationWorkersCacheTags, purgeWorkersCacheByTags } from '../utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { updatePageSchema } from '~/shared/zod'
@@ -66,6 +67,7 @@ export default defineEventHandler(async (event) => {
   await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
+  await purgeWorkersCacheByTags(event, getPageMutationWorkersCacheTags(path))
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 
   return inserted

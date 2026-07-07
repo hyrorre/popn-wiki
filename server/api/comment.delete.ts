@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import { getCommentMutationWorkersCacheTags, purgeWorkersCacheByTags } from '~/server/utils/workersCache'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -56,6 +57,7 @@ export default defineEventHandler(async (event) => {
 
   await invalidateCommentListCache(updated.path)
   await invalidateRecentCommentsCache()
+  await purgeWorkersCacheByTags(event, getCommentMutationWorkersCacheTags(updated.path))
   await purgeCdnByUrls(getCommentMutationPurgeUrls(updated.path))
 
   return { success: true }

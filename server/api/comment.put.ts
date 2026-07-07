@@ -5,6 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import { getCommentMutationWorkersCacheTags, purgeWorkersCacheByTags } from '~/server/utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { updateCommentSchema } from '~/shared/zod'
@@ -44,6 +45,7 @@ export default defineEventHandler(async (event) => {
   const profile = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
 
   await invalidateCommentListCache(updated.path)
+  await purgeWorkersCacheByTags(event, getCommentMutationWorkersCacheTags(updated.path))
   await purgeCdnByUrls(getCommentMutationPurgeUrls(updated.path))
 
   return {

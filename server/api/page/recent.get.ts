@@ -3,6 +3,7 @@ import { eq, desc, and, or, isNull, aliasedTable, gt, notExists, sql } from 'dri
 import { db } from '@nuxthub/db'
 import { getRecentPagesCacheKey, getRecentPagesCacheVersion, RECENT_PAGES_TTL } from '~/server/utils/recentPagesCache'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { getRecentPagesWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -12,6 +13,7 @@ export default defineEventHandler(async (event) => {
   const includeMinor = query.includeMinor === 'true'
 
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
+  setWorkersCacheTags(event, getRecentPagesWorkersCacheTags())
 
   const version = await getRecentPagesCacheVersion()
   const cacheKey = getRecentPagesCacheKey({ limit, page, includeMinor }, version)

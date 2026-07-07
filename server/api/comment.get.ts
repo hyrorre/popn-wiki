@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import type { H3Event } from 'h3'
 import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { getCommentListWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 
@@ -34,7 +35,9 @@ export default defineEventHandler(async (event) => {
   event.context.commentListQuery = parseCommentListQuery(event)
   const result = await cachedCommentListHandler(event)
   if (!event.node.res.headersSent) {
+    const query = getCommentListQuery(event)
     setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.commentList)
+    setWorkersCacheTags(event, getCommentListWorkersCacheTags(query.path))
   }
   return result
 })

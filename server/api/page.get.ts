@@ -6,6 +6,7 @@ import { mdcParseOptions } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { getPageResponseWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 const LATEST_PAGE_TTL = CDN_CACHE_TTL.pageLatest
 const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
 
   if (query.revision !== undefined) {
     setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageRevision)
+    setWorkersCacheTags(event, getPageResponseWorkersCacheTags(query.path, query.revision))
     return withRevisionCache(event, query)
   }
 
@@ -32,6 +34,7 @@ export default defineEventHandler(async (event) => {
   }
 
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageLatest)
+  setWorkersCacheTags(event, getPageResponseWorkersCacheTags(query.path))
   return withLatestCache(event, query)
 })
 
