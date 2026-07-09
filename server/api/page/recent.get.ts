@@ -12,13 +12,14 @@ export default defineEventHandler(async (event) => {
   const offset = (page - 1) * limit
   const includeMinor = query.includeMinor === 'true'
 
-  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
-  setWorkersCacheTags(event, getRecentPagesWorkersCacheTags())
-
   const version = await getRecentPagesCacheVersion()
   const cacheKey = getRecentPagesCacheKey({ limit, page, includeMinor }, version)
   const cached = await useStorage('cache').getItem(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
+    setWorkersCacheTags(event, getRecentPagesWorkersCacheTags())
+    return cached
+  }
 
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
   const newerVisibleRevision = aliasedTable(pagesTable, 'newer_visible_revision')
@@ -115,6 +116,8 @@ export default defineEventHandler(async (event) => {
 
   const result = { data, total: countResult?.count ?? 0 }
   event.waitUntil(useStorage('cache').setItem(cacheKey, result, { ttl: RECENT_PAGES_TTL }))
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
+  setWorkersCacheTags(event, getRecentPagesWorkersCacheTags())
   return result
 })
 

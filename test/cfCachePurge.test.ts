@@ -16,4 +16,10 @@ describe('Cloudflare cache purge URLs', () => {
 
     expect(getPageMutationPurgeUrls('/genre/popn')).toContain('https://popn.wiki/api/page?path=%2Fgenre%2Fpopn')
   })
+
+  test('purges recent comments when a page title or visibility changes', () => {
+    expect(getPageMutationPurgeUrls('/genre/popn')).toContain(
+      'https://popn.wiki/api/comment/recent?limit=10&page=1'
+    )
+  })
 })

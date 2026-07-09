@@ -15,13 +15,14 @@ export default defineEventHandler(async (event) => {
   const page = parsePositiveInteger(query.page, 1)
   const offset = (page - 1) * limit
 
-  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
-  setWorkersCacheTags(event, getRecentCommentsWorkersCacheTags())
-
   const version = await getRecentCommentsCacheVersion()
   const cacheKey = getRecentCommentsCacheKey({ limit, page }, version)
   const cached = await useStorage('cache').getItem(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
+    setWorkersCacheTags(event, getRecentCommentsWorkersCacheTags())
+    return cached
+  }
 
   // path ごとの最新コメントID（NOT EXISTS 相関サブクエリを GROUP BY + MAX に変更）
   const latestCommentPerPath = db
@@ -71,6 +72,8 @@ export default defineEventHandler(async (event) => {
   const data = rows.map(({ total: _, ...rest }) => rest)
   const result = { data, total }
   event.waitUntil(useStorage('cache').setItem(cacheKey, result, { ttl: RECENT_COMMENTS_TTL }))
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.recentList)
+  setWorkersCacheTags(event, getRecentCommentsWorkersCacheTags())
   return result
 })
 

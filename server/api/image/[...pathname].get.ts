@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Missing pathname.' })
   }
 
+  const body = await blob.serve(event, pathname)
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.image, { browser: 'same', immutable: true })
-
-  return blob.serve(event, pathname)
+  return body
 })

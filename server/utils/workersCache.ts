@@ -1,4 +1,4 @@
-import type { H3Event } from 'h3'
+import { setResponseHeader, type H3Event } from 'h3'
 
 type WorkersCachePurgeOptions =
   | {
@@ -80,7 +80,7 @@ export function getSitemapWorkersCacheTags() {
 }
 
 export function getPageMutationWorkersCacheTags(path: string) {
-  return [getLatestPageWorkersCacheTag(path), API_SITEMAP_TAG, API_RECENT_PAGES_TAG]
+  return [getLatestPageWorkersCacheTag(path), API_SITEMAP_TAG, API_RECENT_PAGES_TAG, API_RECENT_COMMENTS_TAG]
 }
 
 export function getRecentPagesWorkersCacheTags() {

@@ -3,6 +3,7 @@ import { eq, desc } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
+import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
 import { removePageSearchIndex } from '../utils/pageSearchIndex'
 import { getPageMutationWorkersCacheTags, purgeWorkersCacheByTags } from '../utils/workersCache'
@@ -52,6 +53,7 @@ export default defineEventHandler(async (event) => {
   await removePageSearchIndex(path)
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
+  await invalidateRecentCommentsCache()
   await purgeWorkersCacheByTags(event, getPageMutationWorkersCacheTags(path))
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 

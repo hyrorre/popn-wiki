@@ -6,9 +6,6 @@ import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHea
 import { getSitemapWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 export default defineSitemapEventHandler(async (event): Promise<SitemapUrlInput[]> => {
-  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.sitemap)
-  setWorkersCacheTags(event, getSitemapWorkersCacheTags())
-
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
 
   const pages = await db
@@ -30,12 +27,16 @@ export default defineSitemapEventHandler(async (event): Promise<SitemapUrlInput[
     )
     .all()
 
-  return pages.map((page) =>
+  const result = pages.map((page) =>
     asSitemapUrl({
       loc: normalizePageLoc(page.path),
       lastmod: page.updatedAt
     })
   )
+
+  setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.sitemap)
+  setWorkersCacheTags(event, getSitemapWorkersCacheTags())
+  return result
 })
 
 function normalizePageLoc(path: string) {

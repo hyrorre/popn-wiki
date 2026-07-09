@@ -19,6 +19,7 @@ export function getPageMutationPurgeUrls(path: string): string[] {
     `${SITE_ORIGIN}/api/page?path=${encodeURIComponent(path)}`,
     `${SITE_ORIGIN}/api/page/recent?limit=10&page=1&includeMinor=false`,
     `${SITE_ORIGIN}/api/page/recent?limit=10&page=1&includeMinor=true`,
+    `${SITE_ORIGIN}/api/comment/recent?limit=10&page=1`,
     `${SITE_ORIGIN}/api/sitemap`,
     `${SITE_ORIGIN}/sitemap.xml`
   ]

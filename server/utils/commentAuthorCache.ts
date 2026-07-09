@@ -1,0 +1,64 @@
+import type { H3Event } from 'h3'
+import { eq } from 'drizzle-orm'
+import { db } from '@nuxthub/db'
+import { commentsTable } from '~/server/db/schema'
+import { invalidateCommentListCache } from '~/server/utils/commentCache'
+import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
+import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import {
+  getCommentListWorkersCacheTags,
+  getRecentCommentsWorkersCacheTags,
+  purgeWorkersCacheByTags
+} from '~/server/utils/workersCache'
+
+export async function getCommentPathsByUser(userId: number) {
+  const rows = await db
+    .select({ path: commentsTable.path })
+    .from(commentsTable)
+    .where(eq(commentsTable.userId, userId))
+    .groupBy(commentsTable.path)
+    .all()
+
+  return rows.map((row) => row.path)
+}
+
+export async function invalidateCommentAuthorCaches(event: H3Event, paths: string[]): Promise<boolean> {
+  const uniquePaths = [...new Set(paths)]
+  if (uniquePaths.length === 0) {
+    return true
+  }
+
+  let success = true
+
+  const internalResults = await Promise.allSettled([
+    ...uniquePaths.map((path) => invalidateCommentListCache(path)),
+    invalidateRecentCommentsCache()
+  ])
+  const internalErrors = internalResults
+    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    .map((result) => getErrorMessage(result.reason))
+
+  if (internalErrors.length > 0) {
+    console.warn(`[CommentAuthorCache] Failed to invalidate internal caches: ${internalErrors.join('; ')}`)
+    success = false
+  }
+
+  const workersTags = [
+    ...uniquePaths.flatMap((path) => getCommentListWorkersCacheTags(path)),
+    ...getRecentCommentsWorkersCacheTags()
+  ]
+  if (!(await purgeWorkersCacheByTags(event, workersTags))) {
+    success = false
+  }
+
+  const cdnUrls = [...new Set(uniquePaths.flatMap((path) => getCommentMutationPurgeUrls(path)))]
+  if (!(await purgeCdnByUrls(cdnUrls))) {
+    success = false
+  }
+
+  return success
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}

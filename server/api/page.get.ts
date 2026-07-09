@@ -23,9 +23,10 @@ export default defineEventHandler(async (event) => {
   const query = parsePageQuery(event)
 
   if (query.revision !== undefined) {
-    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageRevision)
+    const data = await withRevisionCache(event, query)
+    setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageRevision, { immutable: true })
     setWorkersCacheTags(event, getPageResponseWorkersCacheTags(query.path, query.revision))
-    return withRevisionCache(event, query)
+    return data
   }
 
   if (query.fresh) {
@@ -33,9 +34,10 @@ export default defineEventHandler(async (event) => {
     return readLatestPage(event, query)
   }
 
+  const data = await withLatestCache(event, query)
   setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.pageLatest)
   setWorkersCacheTags(event, getPageResponseWorkersCacheTags(query.path))
-  return withLatestCache(event, query)
+  return data
 })
 
 async function withLatestCache(event: H3Event, query: PageQuery) {

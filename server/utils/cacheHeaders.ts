@@ -1,4 +1,4 @@
-import type { H3Event } from 'h3'
+import { setResponseHeader, type H3Event } from 'h3'
 
 export const CDN_CACHE_TTL = {
   pageLatest: 60 * 60 * 24,

@@ -5,6 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
+import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
 import { replacePageSearchIndex } from '../utils/pageSearchIndex'
 import { getPageMutationWorkersCacheTags, purgeWorkersCacheByTags } from '../utils/workersCache'
@@ -67,6 +68,7 @@ export default defineEventHandler(async (event) => {
   await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
+  await invalidateRecentCommentsCache()
   await purgeWorkersCacheByTags(event, getPageMutationWorkersCacheTags(path))
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 
