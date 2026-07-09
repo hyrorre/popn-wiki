@@ -17,6 +17,13 @@ export default defineNuxtConfig({
     url: 'https://popn.wiki',
     name: 'ポップンミュージック上級攻略Wiki'
   },
+  routeRules: {
+    '/_nuxt/**': {
+      headers: {
+        'Cloudflare-CDN-Cache-Control': 'no-store'
+      }
+    }
+  },
   sitemap: {
     excludeAppSources: true,
     sources: ['/api/sitemap']
