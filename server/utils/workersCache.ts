@@ -46,13 +46,14 @@ export async function purgeWorkersCacheByTags(event: H3Event, tags: string[]): P
     return true
   }
 
-  const context = getWorkersCacheExecutionContext(event)
-  if (!context?.cache?.purge) {
+  const cache = await getWorkersCache(event)
+  if (!cache) {
+    console.warn('[WorkersCachePurge] Purge API is unavailable in both cloudflare:workers and the execution context.')
     return false
   }
 
   try {
-    const result = await context.cache.purge({ tags: normalizedTags })
+    const result = await cache.purge({ tags: normalizedTags })
     if (result?.success === false) {
       console.warn(`[WorkersCachePurge] Purge returned success=false: ${formatPurgeErrors(result.errors)}`)
       return false
@@ -129,6 +130,19 @@ function isValidWorkersCacheTag(tag: string) {
 
 function getWorkersCacheExecutionContext(event: H3Event) {
   return (event.context.cloudflare as { context?: WorkersCacheExecutionContext } | undefined)?.context
+}
+
+async function getWorkersCache(event: H3Event) {
+  try {
+    const workersModule = (await import('cloudflare:workers')) as unknown as { cache?: WorkersCacheExecutionContext['cache'] }
+    if (workersModule.cache?.purge) {
+      return workersModule.cache
+    }
+  } catch {
+    // Local runtimes may not expose the newly released module API yet.
+  }
+
+  return getWorkersCacheExecutionContext(event)?.cache
 }
 
 function formatPurgeErrors(errors: WorkersCachePurgeResult['errors']) {

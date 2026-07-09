@@ -25,6 +25,7 @@ export type Page = {
   title: string
   revision: number
   body: string
+  bodyAst?: string | null
   message: string | null
   createdBy: string
   updatedBy: string

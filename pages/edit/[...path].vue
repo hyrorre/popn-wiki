@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import type { Page } from '~/shared/types'
+import { usePendingPage } from '~/composables/usePendingPage'
+
 const route = useRoute()
 const { user } = useUserSession()
 const { isSidebarOpen, setRevision, setCanEdit } = usePageActions()
 const { app } = useAppConfig()
+const pendingPage = usePendingPage()
 
 const conflictMessage = ref('')
 const deleting = ref(false)
@@ -57,9 +61,10 @@ useSeoMeta({
   robots: 'noindex'
 })
 
-const onSaved = async () => {
+const onSaved = async (saved: Page) => {
   conflictMessage.value = ''
   isSaved.value = true
+  pendingPage.value = saved
   await navigateTo(`/${path}`.replace('//', '/'))
 }
 
@@ -81,10 +86,11 @@ const deletePage = async () => {
   if (!confirm('このページを削除しますか？この操作は履歴から復元できます。')) return
   deleting.value = true
   try {
-    await $fetch('/api/page', {
+    const deleted = await $fetch<Page>('/api/page', {
       method: 'DELETE',
       query: { path }
     })
+    pendingPage.value = deleted
     await navigateTo(`/${path}`)
   } catch {
     alert('削除に失敗しました。')

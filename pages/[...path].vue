@@ -1,16 +1,27 @@
 <script setup lang="ts">
+import type { Page } from '~/shared/types'
+import { usePendingPage } from '~/composables/usePendingPage'
+
 const route = useRoute()
 const { user } = useUserSession()
 const { isSidebarOpen, setRevision, setCanEdit } = usePageActions()
 const { app } = useAppConfig()
+const pendingPage = usePendingPage()
 
 const path = computed(
   () => (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
 )
+const savedPage = pendingPage.value?.path === path.value ? pendingPage.value : undefined
 
-const { data: page, error: fetchError } = await useFetch('/api/page', {
-  query: { path }
+const { data: page, error: fetchError } = await useFetch<Page>('/api/page', {
+  query: { path },
+  immediate: !savedPage
 })
+
+if (savedPage) {
+  page.value = savedPage
+  pendingPage.value = null
+}
 
 // ページの状態
 const pageNotFound = computed(() => !page.value && !!fetchError.value)
