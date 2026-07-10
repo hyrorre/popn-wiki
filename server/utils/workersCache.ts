@@ -35,7 +35,7 @@ const API_SITEMAP_TAG = 'popn-wiki:api:sitemap'
 const API_RECENT_PAGES_TAG = 'popn-wiki:api:page:recent'
 const API_COMMENT_LIST_TAG_PREFIX = 'popn-wiki:api:comment:list:'
 const API_RECENT_COMMENTS_TAG = 'popn-wiki:api:comment:recent'
-const PAGE_MUTATION_PATH_PREFIXES = ['/api/page', '/api/sitemap', '/api/comment/recent']
+const PAGE_MUTATION_PATH_PREFIXES = ['/api/page', '/api/sitemap', '/api/comment/recent', '/sitemap.xml']
 const COMMENT_MUTATION_PATH_PREFIXES = ['/api/comment']
 
 export function setWorkersCacheTags(event: H3Event, tags: string[]) {

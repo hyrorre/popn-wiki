@@ -75,7 +75,7 @@ describe('Workers Cache', () => {
 
     expect(success).toBe(true)
     expect(receivedOptions?.tags).toEqual(options.tags)
-    expect(receivedOptions?.pathPrefixes).toEqual(['/api/page', '/api/sitemap', '/api/comment/recent'])
+    expect(receivedOptions?.pathPrefixes).toEqual(['/api/page', '/api/sitemap', '/api/comment/recent', '/sitemap.xml'])
   })
 
   test('comment mutations purge every cached comment response by path', async () => {
