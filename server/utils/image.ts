@@ -1,3 +1,5 @@
+import { createError, isError } from 'h3'
+
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'] as const
 const MAX_FILENAME_LENGTH = 255
 
@@ -6,6 +8,27 @@ export type ImageExtension = (typeof ALLOWED_EXTENSIONS)[number]
 type DetectedImage = {
   extension: Exclude<ImageExtension, 'jpg'>
   contentType: string
+}
+
+type BlobMetadataReader = {
+  head(pathname: string): Promise<unknown>
+}
+
+export async function ensureImageFilenameAvailable(storage: BlobMetadataReader, filename: string) {
+  try {
+    await storage.head(filename)
+  } catch (error) {
+    if (isError(error) && error.statusCode === 404) {
+      return
+    }
+
+    throw error
+  }
+
+  throw createError({
+    statusCode: 409,
+    message: `同名のファイルが既に存在します: ${filename}`
+  })
 }
 
 export function validateImageFilename(filename: string) {

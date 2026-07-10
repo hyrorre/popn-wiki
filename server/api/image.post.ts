@@ -1,6 +1,6 @@
 import { blob } from '@nuxthub/blob'
 import { checkRateLimit } from '~/server/utils/rateLimit'
-import { validateImageContent, validateImageFilename } from '~/server/utils/image'
+import { ensureImageFilenameAvailable, validateImageContent, validateImageFilename } from '~/server/utils/image'
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -31,6 +31,7 @@ export default defineEventHandler(async (event) => {
     // 常にコピーした `Uint8Array` を渡す。
     data instanceof Uint8Array ? new Uint8Array(data) : data
   const image = validateImageContent(body, extension)
+  await ensureImageFilenameAvailable(blob, filename)
 
   try {
     // オリジナルファイル名をそのまま使用
@@ -47,12 +48,6 @@ export default defineEventHandler(async (event) => {
     const error = err as { message?: string }
     // デバッグ用: miniflare / R2 側の詳細をコンソールに出す
     console.error('blob.put failed:', err)
-    if (error.message?.includes('already exists')) {
-      throw createError({
-        statusCode: 409,
-        message: `同名のファイルが既に存在します: ${filename}`
-      })
-    }
     throw createError({ statusCode: 500, message: error.message || 'Internal Server Error' })
   }
 })

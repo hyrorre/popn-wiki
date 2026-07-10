@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { validateImageContent, validateImageFilename } from '../server/utils/image'
+import { createError } from 'h3'
+import { ensureImageFilenameAvailable, validateImageContent, validateImageFilename } from '../server/utils/image'
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])
@@ -31,5 +32,36 @@ describe('Image upload validation', () => {
   test('rejects content that does not match the extension', () => {
     expect(() => validateImageContent(new TextEncoder().encode('not an image'), 'png')).toThrow()
     expect(() => validateImageContent(png, 'webp')).toThrow()
+  })
+
+  test('allows a filename that does not exist in blob storage', async () => {
+    const storage = {
+      async head() {
+        throw createError({ statusCode: 404, message: 'Blob not found' })
+      }
+    }
+
+    await expect(ensureImageFilenameAvailable(storage, 'new.png')).resolves.toBeUndefined()
+  })
+
+  test('rejects a filename that already exists in blob storage', async () => {
+    const storage = {
+      async head() {
+        return { pathname: 'existing.png' }
+      }
+    }
+
+    await expect(ensureImageFilenameAvailable(storage, 'existing.png')).rejects.toMatchObject({ statusCode: 409 })
+  })
+
+  test('does not hide blob storage failures', async () => {
+    const failure = new Error('R2 is unavailable')
+    const storage = {
+      async head() {
+        throw failure
+      }
+    }
+
+    await expect(ensureImageFilenameAvailable(storage, 'new.png')).rejects.toBe(failure)
   })
 })
