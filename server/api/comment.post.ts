@@ -5,7 +5,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
 import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
   await invalidateCommentListCache(path)
   await invalidateRecentCommentsCache()
   await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(path))
-  await purgeCdnByUrls(getCommentMutationPurgeUrls(path))
+  await purgeCdnByPrefixes(getCommentMutationPurgePrefixes())
 
   return {
     ...inserted,

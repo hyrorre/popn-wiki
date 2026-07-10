@@ -1,65 +1,74 @@
-const SITE_ORIGIN = 'https://popn.wiki'
+const SITE_HOST = 'popn.wiki'
+const MAX_PREFIXES_PER_REQUEST = 30
+
+const PAGE_MUTATION_PURGE_PREFIXES = [
+  `${SITE_HOST}/api/page`,
+  `${SITE_HOST}/api/comment/recent`,
+  `${SITE_HOST}/api/sitemap`,
+  `${SITE_HOST}/sitemap.xml`
+]
+const COMMENT_MUTATION_PURGE_PREFIXES = [`${SITE_HOST}/api/comment`]
 
 type CloudflarePurgeResponse = {
   success: boolean
   errors?: { message?: string }[]
 }
 
-export function getWikiPagePurgeUrl(path: string): string {
-  if (path === '/' || path === '') return `${SITE_ORIGIN}/`
-
-  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
-  const encodedPath = normalizedPath.split('/').map(encodeURIComponent).join('/')
-  return `${SITE_ORIGIN}/${encodedPath}`
+export function getPageMutationPurgePrefixes(): string[] {
+  return [...PAGE_MUTATION_PURGE_PREFIXES]
 }
 
-export function getPageMutationPurgeUrls(path: string): string[] {
-  return [
-    getWikiPagePurgeUrl(path),
-    `${SITE_ORIGIN}/api/page?path=${encodeURIComponent(path)}`,
-    `${SITE_ORIGIN}/api/page/recent?limit=10&page=1&includeMinor=false`,
-    `${SITE_ORIGIN}/api/page/recent?limit=10&page=1&includeMinor=true`,
-    `${SITE_ORIGIN}/api/comment/recent?limit=10&page=1`,
-    `${SITE_ORIGIN}/api/sitemap`,
-    `${SITE_ORIGIN}/sitemap.xml`
-  ]
+export function getCommentMutationPurgePrefixes(): string[] {
+  return [...COMMENT_MUTATION_PURGE_PREFIXES]
 }
 
-export function getCommentMutationPurgeUrls(path: string): string[] {
-  return [
-    getWikiPagePurgeUrl(path),
-    `${SITE_ORIGIN}/api/comment?path=${encodeURIComponent(path)}&page=1&limit=20`,
-    `${SITE_ORIGIN}/api/comment/recent?limit=10&page=1`
-  ]
-}
+export async function purgeCdnByPrefixes(prefixes: string[]): Promise<boolean> {
+  const normalizedPrefixes = [...new Set(prefixes.filter(isValidPurgePrefix))]
+  if (normalizedPrefixes.length === 0) {
+    return true
+  }
 
-export async function purgeCdnByUrls(urls: string[]): Promise<boolean> {
   const config = useRuntimeConfig()
   if (!config.cloudflareZoneId || !config.cloudflareCachePurgeToken) {
     console.warn('[CloudflareCachePurge] Missing NUXT_CLOUDFLARE_ZONE_ID or NUXT_CLOUDFLARE_CACHE_PURGE_TOKEN.')
     return false
   }
 
+  for (let index = 0; index < normalizedPrefixes.length; index += MAX_PREFIXES_PER_REQUEST) {
+    const batch = normalizedPrefixes.slice(index, index + MAX_PREFIXES_PER_REQUEST)
+    if (!(await purgeCdnPrefixBatch(config.cloudflareZoneId, config.cloudflareCachePurgeToken, batch))) {
+      return false
+    }
+  }
+
+  return true
+}
+
+async function purgeCdnPrefixBatch(zoneId: string, token: string, prefixes: string[]): Promise<boolean> {
   try {
     const response = await $fetch<CloudflarePurgeResponse>(
-      `https://api.cloudflare.com/client/v4/zones/${config.cloudflareZoneId}/purge_cache`,
+      `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${config.cloudflareCachePurgeToken}` },
-        body: { files: urls }
+        headers: { Authorization: `Bearer ${token}` },
+        body: { prefixes }
       }
     )
 
     if (!response.success) {
-      console.warn(`[CloudflareCachePurge] Purge API returned success=false: ${formatPurgeErrors(response.errors)}`)
+      console.warn(`[CloudflareCachePurge] Prefix purge returned success=false: ${formatPurgeErrors(response.errors)}`)
       return false
     }
 
     return true
   } catch (error) {
-    console.warn(`[CloudflareCachePurge] Failed to purge CDN cache: ${getErrorMessage(error)}`)
+    console.warn(`[CloudflareCachePurge] Failed to purge CDN cache by prefix: ${getErrorMessage(error)}`)
     return false
   }
+}
+
+function isValidPurgePrefix(prefix: string) {
+  return prefix.startsWith(`${SITE_HOST}/`) && !/[?#]/.test(prefix)
 }
 
 function formatPurgeErrors(errors: CloudflarePurgeResponse['errors']) {

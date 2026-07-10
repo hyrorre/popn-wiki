@@ -122,7 +122,9 @@ export function getCommentMutationWorkersCachePurgeOptions(paths: string | strin
   const normalizedPaths = Array.isArray(paths) ? [...new Set(paths)] : [paths]
 
   return {
-    tags: [...new Set(normalizedPaths.flatMap((path) => getCommentMutationWorkersCacheTags(path)))],
+    ...(Array.isArray(paths)
+      ? {}
+      : { tags: [...new Set(normalizedPaths.flatMap((path) => getCommentMutationWorkersCacheTags(path)))] }),
     pathPrefixes: COMMENT_MUTATION_PATH_PREFIXES
   }
 }

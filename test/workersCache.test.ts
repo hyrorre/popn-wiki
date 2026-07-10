@@ -96,7 +96,7 @@ describe('Workers Cache', () => {
     const success = await purgeWorkersCache(event, options)
 
     expect(success).toBe(true)
-    expect(receivedOptions?.tags).toEqual(options.tags)
+    expect(receivedOptions?.tags).toBeUndefined()
     expect(receivedOptions?.pathPrefixes).toEqual(['/api/comment'])
   })
 })

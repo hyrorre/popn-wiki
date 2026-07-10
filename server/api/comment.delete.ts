@@ -3,7 +3,7 @@ import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
+import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
 import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 
 export default defineEventHandler(async (event) => {
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
   await invalidateCommentListCache(updated.path)
   await invalidateRecentCommentsCache()
   await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(updated.path))
-  await purgeCdnByUrls(getCommentMutationPurgeUrls(updated.path))
+  await purgeCdnByPrefixes(getCommentMutationPurgePrefixes())
 
   return { success: true }
 })

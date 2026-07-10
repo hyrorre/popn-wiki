@@ -4,7 +4,7 @@ import { db } from '@nuxthub/db'
 import { invalidateLatestPageCache } from '../utils/pageCache'
 import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
-import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
+import { getPageMutationPurgePrefixes, purgeCdnByPrefixes } from '../utils/cfCachePurge'
 import { removePageSearchIndex } from '../utils/pageSearchIndex'
 import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../utils/workersCache'
 
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
   await invalidateRecentPagesCache()
   await invalidateRecentCommentsCache()
   await purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
-  await purgeCdnByUrls(getPageMutationPurgeUrls(path))
+  await purgeCdnByPrefixes(getPageMutationPurgePrefixes())
 
   return inserted
 })
