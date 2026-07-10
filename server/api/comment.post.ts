@@ -6,7 +6,7 @@ import { checkRateLimit } from '~/server/utils/rateLimit'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
-import { getCommentMutationWorkersCacheTags, purgeWorkersCacheByTags } from '~/server/utils/workersCache'
+import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
 
   await invalidateCommentListCache(path)
   await invalidateRecentCommentsCache()
-  await purgeWorkersCacheByTags(event, getCommentMutationWorkersCacheTags(path))
+  await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(path))
   await purgeCdnByUrls(getCommentMutationPurgeUrls(path))
 
   return {

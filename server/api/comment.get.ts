@@ -3,7 +3,7 @@ import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-
 import { db } from '@nuxthub/db'
 import type { H3Event } from 'h3'
 import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
-import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
+import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getCommentListWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
@@ -12,6 +12,7 @@ type CommentListQuery = {
   path: string
   page: number
   limit: number
+  fresh: boolean
 }
 
 const cachedCommentListHandler = defineCachedEventHandler(
@@ -33,9 +34,16 @@ const cachedCommentListHandler = defineCachedEventHandler(
 
 export default defineEventHandler(async (event) => {
   event.context.commentListQuery = parseCommentListQuery(event)
+
+  const query = getCommentListQuery(event)
+  if (query.fresh) {
+    const result = await readCommentList(event, query)
+    setNoStoreCacheHeaders(event)
+    return result
+  }
+
   const result = await cachedCommentListHandler(event)
   if (!event.node.res.headersSent) {
-    const query = getCommentListQuery(event)
     setPublicCdnCacheHeaders(event, CDN_CACHE_TTL.commentList)
     setWorkersCacheTags(event, getCommentListWorkersCacheTags(query.path))
   }
@@ -63,7 +71,8 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
   return {
     path,
     page: parsePositiveInteger(query.page, 1),
-    limit: parsePositiveInteger(query.limit, 20)
+    limit: parsePositiveInteger(query.limit, 20),
+    fresh: query.fresh !== undefined
   }
 }
 

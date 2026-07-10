@@ -36,6 +36,7 @@ const API_RECENT_PAGES_TAG = 'popn-wiki:api:page:recent'
 const API_COMMENT_LIST_TAG_PREFIX = 'popn-wiki:api:comment:list:'
 const API_RECENT_COMMENTS_TAG = 'popn-wiki:api:comment:recent'
 const PAGE_MUTATION_PATH_PREFIXES = ['/api/page', '/api/sitemap', '/api/comment/recent']
+const COMMENT_MUTATION_PATH_PREFIXES = ['/api/comment']
 
 export function setWorkersCacheTags(event: H3Event, tags: string[]) {
   const normalizedTags = normalizeWorkersCacheTags(tags)
@@ -115,6 +116,15 @@ export function getRecentCommentsWorkersCacheTags() {
 
 export function getCommentMutationWorkersCacheTags(path: string) {
   return [`${API_COMMENT_LIST_TAG_PREFIX}${getPathTagKey(path)}`, API_RECENT_COMMENTS_TAG]
+}
+
+export function getCommentMutationWorkersCachePurgeOptions(paths: string | string[]) {
+  const normalizedPaths = Array.isArray(paths) ? [...new Set(paths)] : [paths]
+
+  return {
+    tags: [...new Set(normalizedPaths.flatMap((path) => getCommentMutationWorkersCacheTags(path)))],
+    pathPrefixes: COMMENT_MUTATION_PATH_PREFIXES
+  }
 }
 
 function getLatestPageWorkersCacheTag(path: string) {

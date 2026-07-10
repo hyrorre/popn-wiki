@@ -13,6 +13,7 @@ type FlatCommentThread = {
   root: Comment
   replies: Comment[]
 }
+type CommentListResponse = { comments: Comment[]; total: number }
 
 const { user } = useUserSession()
 
@@ -27,13 +28,33 @@ const commentLayoutOptions: { label: string; value: CommentLayout; icon: string 
 ]
 
 // APIリクエストでpathを指定してコメントを取得します
-const { data: commentData, refresh } = await useFetch<{ comments: Comment[]; total: number }>('/api/comment', {
+const { data: commentData } = await useFetch<CommentListResponse>('/api/comment', {
   query: {
     path: props.path,
     page,
     limit: itemsPerPage
   }
 })
+
+const refreshComments = async () => {
+  commentData.value = await $fetch<CommentListResponse>('/api/comment', {
+    query: {
+      path: props.path,
+      page: page.value,
+      limit: itemsPerPage,
+      fresh: Date.now().toString()
+    }
+  })
+}
+
+const refreshCommentsAfterMutation = async () => {
+  try {
+    await refreshComments()
+  } catch (error) {
+    console.error(error)
+    alert('コメントの変更は完了しましたが、一覧の更新に失敗しました。再読み込みしてください。')
+  }
+}
 
 const comments = computed(() => commentData.value?.comments || [])
 const totalRoots = computed(() => commentData.value?.total || 0)
@@ -66,7 +87,7 @@ const submitComment = async () => {
       }
     })
     newCommentBody.value = ''
-    await refresh()
+    await refreshCommentsAfterMutation()
   } catch (error) {
     console.error(error)
     alert('コメントの送信に失敗しました')
@@ -218,7 +239,7 @@ watch(page, (newVal) => {
           :path="path"
           :show-children="false"
           :show-reply-target="false"
-          @refresh="refresh"
+          @refresh="refreshCommentsAfterMutation"
         />
 
         <div
@@ -244,7 +265,7 @@ watch(page, (newVal) => {
               :comment="child"
               :path="path"
               :show-reply-target="false"
-              @refresh="refresh"
+              @refresh="refreshCommentsAfterMutation"
             />
           </template>
         </div>
@@ -258,7 +279,7 @@ watch(page, (newVal) => {
           :path="path"
           :show-children="false"
           :show-reply-target="false"
-          @refresh="refresh"
+          @refresh="refreshCommentsAfterMutation"
         />
 
         <div
@@ -287,7 +308,7 @@ watch(page, (newVal) => {
               :path="path"
               :show-children="false"
               :show-reply-target="reply.replyTo !== thread.root.id"
-              @refresh="refresh"
+              @refresh="refreshCommentsAfterMutation"
             />
           </template>
         </div>

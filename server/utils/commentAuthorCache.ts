@@ -5,11 +5,7 @@ import { commentsTable } from '~/server/db/schema'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { getCommentMutationPurgeUrls, purgeCdnByUrls } from '~/server/utils/cfCachePurge'
-import {
-  getCommentListWorkersCacheTags,
-  getRecentCommentsWorkersCacheTags,
-  purgeWorkersCacheByTags
-} from '~/server/utils/workersCache'
+import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 
 export async function getCommentPathsByUser(userId: number) {
   const rows = await db
@@ -43,11 +39,7 @@ export async function invalidateCommentAuthorCaches(event: H3Event, paths: strin
     success = false
   }
 
-  const workersTags = [
-    ...uniquePaths.flatMap((path) => getCommentListWorkersCacheTags(path)),
-    ...getRecentCommentsWorkersCacheTags()
-  ]
-  if (!(await purgeWorkersCacheByTags(event, workersTags))) {
+  if (!(await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(uniquePaths)))) {
     success = false
   }
 

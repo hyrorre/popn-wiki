@@ -3,6 +3,7 @@ import { createEvent } from 'h3'
 import type { IncomingMessage as NodeIncomingMessage, ServerResponse as NodeServerResponse } from 'node:http'
 import { IncomingMessage, ServerResponse } from 'node-mock-http'
 import {
+  getCommentMutationWorkersCachePurgeOptions,
   getPageMutationWorkersCacheTags,
   getPageMutationWorkersCachePurgeOptions,
   getPageResponseWorkersCacheTags,
@@ -75,5 +76,27 @@ describe('Workers Cache', () => {
     expect(success).toBe(true)
     expect(receivedOptions?.tags).toEqual(options.tags)
     expect(receivedOptions?.pathPrefixes).toEqual(['/api/page', '/api/sitemap', '/api/comment/recent'])
+  })
+
+  test('comment mutations purge every cached comment response by path', async () => {
+    const event = createTestEvent()
+    let receivedOptions: { tags?: string[]; pathPrefixes?: string[] } | undefined
+    event.context.cloudflare = {
+      context: {
+        cache: {
+          async purge(options: { tags?: string[]; pathPrefixes?: string[] }) {
+            receivedOptions = options
+            return { success: true }
+          }
+        }
+      }
+    }
+
+    const options = getCommentMutationWorkersCachePurgeOptions(['genre/popn', 'genre/popn', 'series/ac'])
+    const success = await purgeWorkersCache(event, options)
+
+    expect(success).toBe(true)
+    expect(receivedOptions?.tags).toEqual(options.tags)
+    expect(receivedOptions?.pathPrefixes).toEqual(['/api/comment'])
   })
 })
