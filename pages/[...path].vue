@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Page } from '~/shared/types'
 import { usePendingPage } from '~/composables/usePendingPage'
+import { selectNewestPage } from '~/utils/pageFreshness'
 
 const route = useRoute()
 const { user } = useUserSession()
@@ -11,17 +12,21 @@ const pendingPage = usePendingPage()
 const path = computed(
   () => (typeof route.params.path === 'string' ? route.params.path : route.params.path?.join('/')) || '/'
 )
-const savedPage = pendingPage.value?.path === path.value ? pendingPage.value : undefined
-
-const { data: page, error: fetchError } = await useFetch<Page>('/api/page', {
-  query: { path },
-  immediate: !savedPage
+const { data: fetchedPage, error: fetchError } = await useFetch<Page>('/api/page', {
+  query: { path }
 })
 
-if (savedPage) {
-  page.value = savedPage
-  pendingPage.value = null
-}
+const page = computed(() => selectNewestPage(path.value, fetchedPage.value, pendingPage.value))
+
+watch(
+  [fetchedPage, pendingPage],
+  ([fetched, pending]) => {
+    if (fetched && pending?.path === fetched.path && fetched.revision >= pending.revision) {
+      pendingPage.value = null
+    }
+  },
+  { immediate: true }
+)
 
 // ページの状態
 const pageNotFound = computed(() => !page.value && !!fetchError.value)

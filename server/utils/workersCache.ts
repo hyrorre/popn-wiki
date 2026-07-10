@@ -17,6 +17,11 @@ type WorkersCachePurgeResult = {
   errors?: { message?: string }[]
 }
 
+type WorkersCacheSelectivePurgeOptions = {
+  tags?: string[]
+  pathPrefixes?: string[]
+}
+
 type WorkersCacheExecutionContext = {
   cache?: {
     purge: (options: WorkersCachePurgeOptions) => Promise<WorkersCachePurgeResult | undefined>
@@ -30,6 +35,7 @@ const API_SITEMAP_TAG = 'popn-wiki:api:sitemap'
 const API_RECENT_PAGES_TAG = 'popn-wiki:api:page:recent'
 const API_COMMENT_LIST_TAG_PREFIX = 'popn-wiki:api:comment:list:'
 const API_RECENT_COMMENTS_TAG = 'popn-wiki:api:comment:recent'
+const PAGE_MUTATION_PATH_PREFIXES = ['/api/page', '/api/sitemap', '/api/comment/recent']
 
 export function setWorkersCacheTags(event: H3Event, tags: string[]) {
   const normalizedTags = normalizeWorkersCacheTags(tags)
@@ -41,8 +47,12 @@ export function setWorkersCacheTags(event: H3Event, tags: string[]) {
 }
 
 export async function purgeWorkersCacheByTags(event: H3Event, tags: string[]): Promise<boolean> {
-  const normalizedTags = normalizeWorkersCacheTags(tags)
-  if (normalizedTags.length === 0) {
+  return purgeWorkersCache(event, { tags })
+}
+
+export async function purgeWorkersCache(event: H3Event, options: WorkersCacheSelectivePurgeOptions): Promise<boolean> {
+  const normalizedOptions = normalizeWorkersCachePurgeOptions(options)
+  if (!normalizedOptions.tags?.length && !normalizedOptions.pathPrefixes?.length) {
     return true
   }
 
@@ -53,7 +63,7 @@ export async function purgeWorkersCacheByTags(event: H3Event, tags: string[]): P
   }
 
   try {
-    const result = await cache.purge({ tags: normalizedTags })
+    const result = await cache.purge(normalizedOptions)
     if (result?.success === false) {
       console.warn(`[WorkersCachePurge] Purge returned success=false: ${formatPurgeErrors(result.errors)}`)
       return false
@@ -82,6 +92,13 @@ export function getSitemapWorkersCacheTags() {
 
 export function getPageMutationWorkersCacheTags(path: string) {
   return [getLatestPageWorkersCacheTag(path), API_SITEMAP_TAG, API_RECENT_PAGES_TAG, API_RECENT_COMMENTS_TAG]
+}
+
+export function getPageMutationWorkersCachePurgeOptions(path: string) {
+  return {
+    tags: getPageMutationWorkersCacheTags(path),
+    pathPrefixes: PAGE_MUTATION_PATH_PREFIXES
+  }
 }
 
 export function getRecentPagesWorkersCacheTags() {
@@ -124,8 +141,22 @@ function normalizeWorkersCacheTags(tags: string[]) {
   return [...new Set(tags.filter(isValidWorkersCacheTag))]
 }
 
+function normalizeWorkersCachePurgeOptions(options: WorkersCacheSelectivePurgeOptions) {
+  const tags = normalizeWorkersCacheTags(options.tags ?? [])
+  const pathPrefixes = [...new Set((options.pathPrefixes ?? []).filter(isValidWorkersCachePathPrefix))]
+
+  return {
+    ...(tags.length > 0 ? { tags } : {}),
+    ...(pathPrefixes.length > 0 ? { pathPrefixes } : {})
+  }
+}
+
 function isValidWorkersCacheTag(tag: string) {
   return /^[!-~]{1,1024}$/.test(tag)
+}
+
+function isValidWorkersCachePathPrefix(pathPrefix: string) {
+  return pathPrefix.startsWith('/') && !/[?#]/.test(pathPrefix)
 }
 
 function getWorkersCacheExecutionContext(event: H3Event) {

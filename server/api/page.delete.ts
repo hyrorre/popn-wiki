@@ -6,7 +6,7 @@ import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
 import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
 import { getPageMutationPurgeUrls, purgeCdnByUrls } from '../utils/cfCachePurge'
 import { removePageSearchIndex } from '../utils/pageSearchIndex'
-import { getPageMutationWorkersCacheTags, purgeWorkersCacheByTags } from '../utils/workersCache'
+import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../utils/workersCache'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   await invalidateLatestPageCache(path)
   await invalidateRecentPagesCache()
   await invalidateRecentCommentsCache()
-  await purgeWorkersCacheByTags(event, getPageMutationWorkersCacheTags(path))
+  await purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
   await purgeCdnByUrls(getPageMutationPurgeUrls(path))
 
   return inserted

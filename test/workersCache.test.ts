@@ -4,10 +4,12 @@ import type { IncomingMessage as NodeIncomingMessage, ServerResponse as NodeServ
 import { IncomingMessage, ServerResponse } from 'node-mock-http'
 import {
   getPageMutationWorkersCacheTags,
+  getPageMutationWorkersCachePurgeOptions,
   getPageResponseWorkersCacheTags,
   getRecentCommentsWorkersCacheTags,
   getRecentPagesWorkersCacheTags,
   getSitemapWorkersCacheTags,
+  purgeWorkersCache,
   purgeWorkersCacheByTags
 } from '../server/utils/workersCache'
 
@@ -51,5 +53,27 @@ describe('Workers Cache', () => {
 
     expect(success).toBe(true)
     expect(receivedTags).toEqual(['tag-a', 'tag-b'])
+  })
+
+  test('page mutations also purge cacheable page-related paths', async () => {
+    const event = createTestEvent()
+    let receivedOptions: { tags?: string[]; pathPrefixes?: string[] } | undefined
+    event.context.cloudflare = {
+      context: {
+        cache: {
+          async purge(options: { tags?: string[]; pathPrefixes?: string[] }) {
+            receivedOptions = options
+            return { success: true }
+          }
+        }
+      }
+    }
+
+    const options = getPageMutationWorkersCachePurgeOptions('genre/popn')
+    const success = await purgeWorkersCache(event, options)
+
+    expect(success).toBe(true)
+    expect(receivedOptions?.tags).toEqual(options.tags)
+    expect(receivedOptions?.pathPrefixes).toEqual(['/api/page', '/api/sitemap', '/api/comment/recent'])
   })
 })
