@@ -2,6 +2,7 @@ import { db } from '@nuxthub/db'
 import { aliasedTable, and, desc, eq, gt, isNull, notExists, sql } from 'drizzle-orm'
 import { commentsTable, pagesTable, usersTable } from '~/server/db/schema'
 import { searchQuerySchema } from '~/shared/zod'
+import { parseZodQuery } from '~/server/utils/validation'
 
 type CommentSearchItem = {
   id: number
@@ -15,17 +16,7 @@ type CommentSearchItem = {
 }
 
 export default defineEventHandler(async (event) => {
-  const parsed = searchQuerySchema.safeParse(getQuery(event))
-
-  if (!parsed.success) {
-    throw createError({
-      statusCode: 400,
-      message: 'Invalid query.',
-      data: parsed.error.flatten()
-    })
-  }
-
-  const { q, page, limit } = parsed.data
+  const { q, page, limit } = parseZodQuery(event, searchQuerySchema)
   const terms = splitTerms(q)
   const offset = (page - 1) * limit
   const where = buildCommentSearchWhere(terms)

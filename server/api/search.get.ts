@@ -3,6 +3,7 @@ import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
 import { pagesTable } from '../db/schema'
 import { isMissingPageSearchIndex, isPageSearchIndexError } from '../utils/pageSearchIndex'
 import { searchQuerySchema } from '~/shared/zod'
+import { parseZodQuery } from '~/server/utils/validation'
 
 type SearchMatchType = 'title' | 'path' | 'body'
 type SnippetType = SearchMatchType
@@ -38,17 +39,7 @@ type FtsPageSearchRow = LatestPage & {
 const MIN_FTS_TERM_LENGTH = 3
 
 export default defineEventHandler(async (event) => {
-  const parsed = searchQuerySchema.safeParse(getQuery(event))
-
-  if (!parsed.success) {
-    throw createError({
-      statusCode: 400,
-      message: 'Invalid query.',
-      data: parsed.error.flatten()
-    })
-  }
-
-  const { q, page, limit } = parsed.data
+  const { q, page, limit } = parseZodQuery(event, searchQuerySchema)
   const terms = splitTerms(q)
   const result = await readSearchResult(terms, page, limit)
 
