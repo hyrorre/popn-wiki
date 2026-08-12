@@ -1,9 +1,5 @@
 import { runTask } from 'nitropack/runtime'
-
-type BackfillCommentAstBody = {
-  limit?: unknown
-  path?: unknown
-}
+import { parseBackfillCommentAstPayload } from '~/server/utils/adminTaskPayload'
 
 type BackfillCommentAstResult = {
   scanned: number
@@ -12,8 +8,6 @@ type BackfillCommentAstResult = {
   touchedPaths: string[]
 }
 
-const DEFAULT_LIMIT = 100
-const MAX_LIMIT = 500
 const BACKFILL_COMMENT_AST_TASK = 'backfill-comment-ast'
 
 export default defineEventHandler(async (event): Promise<BackfillCommentAstResult> => {
@@ -25,9 +19,9 @@ export default defineEventHandler(async (event): Promise<BackfillCommentAstResul
     throw createError({ statusCode: 403, message: 'Forbidden.' })
   }
 
-  const body = await readBody<BackfillCommentAstBody>(event)
+  const body = await readBody(event)
   const { result } = await runTask<BackfillCommentAstResult>(BACKFILL_COMMENT_AST_TASK, {
-    payload: parsePayload(body)
+    payload: parseBackfillCommentAstPayload(body)
   })
 
   if (!result) {
@@ -36,13 +30,3 @@ export default defineEventHandler(async (event): Promise<BackfillCommentAstResul
 
   return result
 })
-
-function parsePayload(body: BackfillCommentAstBody | undefined) {
-  const rawLimit = Number(body?.limit ?? DEFAULT_LIMIT)
-  const path = typeof body?.path === 'string' ? body.path.trim() : ''
-
-  return {
-    limit: Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_LIMIT) : DEFAULT_LIMIT,
-    ...(path ? { path } : {})
-  }
-}

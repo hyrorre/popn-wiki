@@ -1,10 +1,5 @@
 import { runTask } from 'nitropack/runtime'
-
-type RebuildPageSearchFtsBody = {
-  reset?: unknown
-  limit?: unknown
-  cursor?: unknown
-}
+import { parseRebuildPageSearchPayload } from '~/server/utils/adminTaskPayload'
 
 type RebuildPageSearchFtsResult = {
   scanned: number
@@ -15,8 +10,6 @@ type RebuildPageSearchFtsResult = {
   skipped?: string
 }
 
-const DEFAULT_LIMIT = 50
-const MAX_LIMIT = 200
 const REBUILD_PAGE_SEARCH_FTS_TASK = 'rebuild-page-search-fts'
 
 export default defineEventHandler(async (event): Promise<RebuildPageSearchFtsResult> => {
@@ -28,9 +21,9 @@ export default defineEventHandler(async (event): Promise<RebuildPageSearchFtsRes
     throw createError({ statusCode: 403, message: 'Forbidden.' })
   }
 
-  const body = await readBody<RebuildPageSearchFtsBody>(event)
+  const body = await readBody(event)
   const { result } = await runTask<RebuildPageSearchFtsResult>(REBUILD_PAGE_SEARCH_FTS_TASK, {
-    payload: parsePayload(body)
+    payload: parseRebuildPageSearchPayload(body)
   })
 
   if (!result) {
@@ -39,15 +32,3 @@ export default defineEventHandler(async (event): Promise<RebuildPageSearchFtsRes
 
   return result
 })
-
-function parsePayload(body: RebuildPageSearchFtsBody | undefined) {
-  const rawLimit = Number(body?.limit ?? DEFAULT_LIMIT)
-  const cursor = typeof body?.cursor === 'string' ? body.cursor.trim() : ''
-  const reset = typeof body?.reset === 'boolean' ? body.reset : !cursor
-
-  return {
-    limit: Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_LIMIT) : DEFAULT_LIMIT,
-    reset,
-    ...(cursor ? { cursor } : {})
-  }
-}

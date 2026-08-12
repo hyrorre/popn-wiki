@@ -1,5 +1,6 @@
 import { db } from '@nuxthub/db'
 import { sql } from 'drizzle-orm'
+import { parseRebuildPageSearchPayload } from './adminTaskPayload'
 
 export type PageSearchIndexEntry = {
   path: string
@@ -23,9 +24,6 @@ export type RebuildPageSearchIndexResult = {
   nextCursor?: string
   skipped?: string
 }
-
-const DEFAULT_REBUILD_LIMIT = 50
-const MAX_REBUILD_LIMIT = 200
 
 export async function replacePageSearchIndex(entry: PageSearchIndexEntry) {
   try {
@@ -80,7 +78,7 @@ export async function removePageSearchIndex(path: string): Promise<boolean> {
 export async function rebuildPageSearchIndex(
   options: RebuildPageSearchIndexOptions = {}
 ): Promise<RebuildPageSearchIndexResult> {
-  const { limit, cursor, reset } = parseRebuildOptions(options)
+  const { limit, cursor, reset } = parseRebuildPageSearchPayload(options)
 
   try {
     if (reset) {
@@ -170,20 +168,6 @@ async function recreatePageSearchIndex() {
       tokenize = 'trigram'
     )
   `)
-}
-
-function parseRebuildOptions(options: RebuildPageSearchIndexOptions) {
-  const rawLimit = Number(options.limit ?? DEFAULT_REBUILD_LIMIT)
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(Math.trunc(rawLimit), 1), MAX_REBUILD_LIMIT)
-    : DEFAULT_REBUILD_LIMIT
-  const cursor = typeof options.cursor === 'string' ? options.cursor.trim() : ''
-
-  return {
-    limit,
-    cursor: cursor || undefined,
-    reset: options.reset ?? !cursor
-  }
 }
 
 export function isMissingPageSearchIndex(error: unknown) {

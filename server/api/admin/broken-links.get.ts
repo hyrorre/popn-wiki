@@ -181,6 +181,9 @@ export default defineEventHandler(async (event): Promise<BrokenLinksResponse> =>
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
+  if (user.role !== 'admin') {
+    throw createError({ statusCode: 403, message: 'Forbidden.' })
+  }
 
   console.log('[BrokenLinkChecker] Starting full scan...')
 
@@ -274,7 +277,8 @@ export default defineEventHandler(async (event): Promise<BrokenLinksResponse> =>
         }
 
         if (ast) {
-          visit(ast, (node: unknown) => {
+          const astRoot = (ast as { body?: MDCNode }).body ?? ast
+          visit(astRoot, (node: unknown) => {
             const n = node as MDCNode
             if (n.type !== 'element' && n.type !== 'link' && n.type !== 'image') return
 

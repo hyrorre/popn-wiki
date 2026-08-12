@@ -684,6 +684,132 @@ describe('API characterization', async () => {
     })
   })
 
+  describe.sequential('admin API contracts', () => {
+    const endpoints: Array<{ path: string; options?: JsonRequestOptions }> = [
+      { path: '/api/admin/backfill-comment-ast', options: { method: 'POST', body: {} } },
+      { path: '/api/admin/rebuild-page-search-fts', options: { method: 'POST', body: {} } },
+      { path: '/api/admin/broken-links' }
+    ]
+
+    test('requires an administrator for every admin endpoint', async () => {
+      for (const endpoint of endpoints) {
+        const anonymous = await requestJson(endpoint.path, endpoint.options)
+        const ordinaryUser = await requestJson(endpoint.path, {
+          ...endpoint.options,
+          headers: withSession('editor')
+        })
+
+        expect(anonymous.response.status).toBe(401)
+        expect(ordinaryUser.response.status).toBe(403)
+      }
+    })
+
+    test('backfills missing comment ASTs once and is idempotent', async () => {
+      const path = 'characterization/admin-backfill'
+      const now = new Date().toISOString()
+      await database.execute({
+        sql: `
+          INSERT INTO comments (path, body, body_ast, reply_to, user_id, created_at, updated_at, deleted_at)
+          VALUES (?, ?, NULL, NULL, ?, ?, ?, NULL)
+        `,
+        args: [path, '**backfill me**', users.editor.id, now, now]
+      })
+
+      const first = await requestJson<{
+        scanned: number
+        updated: number
+        failed: unknown[]
+        touchedPaths: string[]
+      }>('/api/admin/backfill-comment-ast', {
+        method: 'POST',
+        headers: withSession('admin'),
+        body: { limit: 9999, path: ` ${path} ` }
+      })
+      const second = await requestJson<{ scanned: number; updated: number }>('/api/admin/backfill-comment-ast', {
+        method: 'POST',
+        headers: withSession('admin'),
+        body: { limit: 9999, path }
+      })
+      const stored = await database.execute({
+        sql: 'SELECT body_ast FROM comments WHERE path = ?',
+        args: [path]
+      })
+
+      expect(first.response.status).toBe(200)
+      expect(first.payload).toEqual({ scanned: 1, updated: 1, failed: [], touchedPaths: [path] })
+      expect(second.payload).toMatchObject({ scanned: 0, updated: 0 })
+      expect(JSON.parse(String(stored.rows[0]?.body_ast))).toHaveProperty('body')
+    })
+
+    test('rebuilds the search index repeatedly without duplicate rows', async () => {
+      const first = await requestJson<{
+        scanned: number
+        indexed: number
+        done: boolean
+        reset: boolean
+      }>('/api/admin/rebuild-page-search-fts', {
+        method: 'POST',
+        headers: withSession('admin'),
+        body: { limit: 9999, reset: true }
+      })
+      const firstRows = await database.execute('SELECT count(*) AS count FROM page_search_fts')
+      const second = await requestJson<{
+        scanned: number
+        indexed: number
+        done: boolean
+        reset: boolean
+      }>('/api/admin/rebuild-page-search-fts', {
+        method: 'POST',
+        headers: withSession('admin'),
+        body: { limit: 9999, reset: true }
+      })
+      const secondRows = await database.execute('SELECT count(*) AS count FROM page_search_fts')
+
+      expect(first.response.status).toBe(200)
+      expect(first.payload).toMatchObject({ done: true, reset: true })
+      expect(first.payload.indexed).toBeGreaterThan(0)
+      expect(second.payload).toEqual(first.payload)
+      expect(Number(secondRows.rows[0]?.count)).toBe(Number(firstRows.rows[0]?.count))
+    })
+
+    test('reports missing internal pages and images without flagging an existing image', async () => {
+      const path = 'characterization/admin-broken-source'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: {
+          path,
+          body: [
+            '# Broken source',
+            '[missing page](/admin-missing-page)',
+            '![missing image](/api/image/admin-missing.png)',
+            '![existing image](/api/image/integration.png)'
+          ].join('\n'),
+          baseRevision: 0
+        }
+      })
+
+      const report = await requestJson<{
+        totalChecked: number
+        brokenLinks: Array<{ sourcePath: string; targetUrl: string; type: string }>
+        warnings: string[]
+      }>('/api/admin/broken-links', { headers: withSession('admin') })
+
+      expect(report.response.status).toBe(200)
+      expect(report.payload.totalChecked).toBeGreaterThan(0)
+      expect(report.payload.warnings).toEqual([])
+      expect(report.payload.brokenLinks).toContainEqual(
+        expect.objectContaining({ sourcePath: path, targetUrl: '/admin-missing-page', type: 'internal' })
+      )
+      expect(report.payload.brokenLinks).toContainEqual(
+        expect.objectContaining({ sourcePath: path, targetUrl: '/api/image/admin-missing.png', type: 'image' })
+      )
+      expect(report.payload.brokenLinks).not.toContainEqual(
+        expect.objectContaining({ sourcePath: path, targetUrl: '/api/image/integration.png' })
+      )
+    })
+  })
+
   describe.sequential('page lifecycle and cache contracts', () => {
     const path = 'characterization/page'
     const originalBody = '# Characterization title\n<script>alert(1)</script>\nbody keyword'
