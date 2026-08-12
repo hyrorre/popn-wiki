@@ -62,8 +62,24 @@ export default defineEventHandler(async (event) => {
       createdBy: user.id,
       updatedBy: user.id
     })
+    .onConflictDoNothing({ target: [pagesTable.path, pagesTable.revision] })
     .returning()
     .get()
+
+  if (!inserted) {
+    const current = await db
+      .select({ revision: pagesTable.revision })
+      .from(pagesTable)
+      .where(eq(pagesTable.path, path))
+      .orderBy(desc(pagesTable.revision))
+      .get()
+
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Revision conflict.',
+      data: { latestRevision: current?.revision ?? latestRevision }
+    })
+  }
 
   await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)

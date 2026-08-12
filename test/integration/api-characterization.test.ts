@@ -458,6 +458,61 @@ describe('API characterization', async () => {
     })
   })
 
+  describe.sequential('concurrent page-write contracts', () => {
+    test('accepts only one of two simultaneous page creations', async () => {
+      const path = 'characterization/concurrent-create'
+      const writes = await Promise.all(
+        ['# First create', '# Second create'].map((body) =>
+          requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page', {
+            method: 'PUT',
+            headers: withSession('editor'),
+            body: { path, body, baseRevision: 0 }
+          })
+        )
+      )
+      const statuses = writes.map(({ response }) => response.status).sort((left, right) => left - right)
+      const rows = await database.execute({
+        sql: 'SELECT revision, body FROM pages WHERE path = ? ORDER BY revision',
+        args: [path]
+      })
+
+      expect(statuses).toEqual([200, 409])
+      expect(rows.rows).toHaveLength(1)
+      expect(Number(rows.rows[0]?.revision)).toBe(1)
+      expect(['# First create', '# Second create']).toContain(String(rows.rows[0]?.body))
+      expect(writes.find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(1)
+    })
+
+    test('accepts only one update for the same base revision', async () => {
+      const path = 'characterization/concurrent-update'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Base revision', baseRevision: 0 }
+      })
+
+      const writes = await Promise.all(
+        ['# First update', '# Second update'].map((body) =>
+          requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page', {
+            method: 'PUT',
+            headers: withSession('editor'),
+            body: { path, body, baseRevision: 1 }
+          })
+        )
+      )
+      const statuses = writes.map(({ response }) => response.status).sort((left, right) => left - right)
+      const rows = await database.execute({
+        sql: 'SELECT revision, body FROM pages WHERE path = ? ORDER BY revision',
+        args: [path]
+      })
+
+      expect(statuses).toEqual([200, 409])
+      expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2])
+      expect(['# First update', '# Second update']).toContain(String(rows.rows[1]?.body))
+      expect(writes.find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(2)
+    })
+  })
+
   describe.sequential('comment ownership, threading, and list contracts', () => {
     const path = 'characterization/page'
     let rootCommentId = 0
