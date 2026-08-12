@@ -300,6 +300,24 @@ describe('API characterization', async () => {
 
       expect(lastStatus).toBe(429)
     })
+
+    test('signout clears the client session cookie', async () => {
+      const signedOut = await requestJson<{ message: string }>('/api/auth/signout', {
+        method: 'POST',
+        headers: withSession('migration')
+      })
+      const setCookie = signedOut.response.headers.get('set-cookie')
+      const clearedCookie = setCookie?.split(';', 1)[0]
+
+      expect(signedOut.response.status).toBe(200)
+      expect(signedOut.payload).toEqual({ message: 'Signed out' })
+      expect(clearedCookie).toBeTruthy()
+
+      const profile = await requestJson('/api/profile', {
+        headers: { cookie: clearedCookie ?? '' }
+      })
+      expect(profile.response.status).toBe(401)
+    })
   })
 
   describe.sequential('registration and email delivery contracts', () => {
@@ -978,6 +996,27 @@ describe('API characterization', async () => {
         message: 'Restore revision 1'
       })
       expect(search.payload.items).toContainEqual(expect.objectContaining({ path, revision: 4 }))
+    })
+
+    test('sitemap includes active pages, excludes tombstones, and is CDN-cacheable', async () => {
+      const deletedPath = 'characterization/sitemap-deleted'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path: deletedPath, body: '# Removed from sitemap', baseRevision: 0 }
+      })
+      await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(deletedPath)}&baseRevision=1`, {
+        method: 'DELETE',
+        headers: withSession('editor')
+      })
+
+      const sitemap = await requestJson<Array<{ loc: string; lastmod: string }>>('/api/sitemap')
+
+      expect(sitemap.response.status).toBe(200)
+      expect(sitemap.payload).toContainEqual(expect.objectContaining({ loc: `/${path}` }))
+      expect(sitemap.payload).not.toContainEqual(expect.objectContaining({ loc: `/${deletedPath}` }))
+      expect(sitemap.response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=86400')
+      expect(sitemap.response.headers.get('cache-tag')).toContain('popn-wiki:api:sitemap')
     })
   })
 
