@@ -16,7 +16,8 @@ export type UpdatePageInput = z.output<typeof updatePageSchema>
 
 export const restorePageSchema = z.object({
   path: wikiPathSchema,
-  targetRevision: positiveIntSchema
+  targetRevision: positiveIntSchema,
+  baseRevision: positiveIntSchema
 })
 
 export type RestorePageInput = z.output<typeof restorePageSchema>

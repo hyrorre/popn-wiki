@@ -130,12 +130,21 @@ const restore = async (revision: number) => {
       method: 'POST',
       body: {
         path: props.path,
-        targetRevision: revision
+        targetRevision: revision,
+        baseRevision: props.baseRevision
       }
     })
     emit('saved', saved)
-  } catch {
-    errorMessage.value = '復元に失敗しました。'
+  } catch (error: unknown) {
+    const err = error as {
+      statusCode?: number
+      data?: { latestRevision?: number; data?: { latestRevision?: number } }
+    }
+    if (err.statusCode === 409) {
+      emit('conflict', err.data?.latestRevision ?? err.data?.data?.latestRevision ?? props.baseRevision)
+    } else {
+      errorMessage.value = '復元に失敗しました。'
+    }
   } finally {
     restoring.value = null
   }

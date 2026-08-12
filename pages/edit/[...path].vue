@@ -88,12 +88,17 @@ const deletePage = async () => {
   try {
     const deleted = await $fetch<Page>('/api/page', {
       method: 'DELETE',
-      query: { path }
+      query: { path, baseRevision: page.value?.revision }
     })
     pendingPage.value = deleted
     await navigateTo(`/${path}`)
-  } catch {
-    alert('削除に失敗しました。')
+  } catch (error: unknown) {
+    const err = error as { statusCode?: number; data?: { data?: { latestRevision?: number } } }
+    if (err.statusCode === 409) {
+      onConflict(err.data?.data?.latestRevision ?? page.value?.revision ?? 0)
+    } else {
+      alert('削除に失敗しました。')
+    }
   } finally {
     deleting.value = false
   }

@@ -3,6 +3,7 @@ import {
   createCommentSchema,
   emailOnlySchema,
   resetPasswordSchema,
+  restorePageSchema,
   signinSchema,
   updateCommentSchema,
   updatePageSchema,
@@ -87,5 +88,12 @@ describe('API payload schemas', () => {
   test('page update rejects invalid revision and minor values', () => {
     expect(updatePageSchema.safeParse({ path: '/', body: '', baseRevision: -1 }).success).toBe(false)
     expect(updatePageSchema.safeParse({ path: '/', body: '', baseRevision: 0, minor: 2 }).success).toBe(false)
+  })
+
+  test('page restore requires positive target and base revisions', () => {
+    expect(restorePageSchema.safeParse({ path: '/', targetRevision: 1, baseRevision: 3 }).success).toBe(true)
+    expect(restorePageSchema.safeParse({ path: '/', targetRevision: 1 }).success).toBe(false)
+    expect(restorePageSchema.safeParse({ path: '/', targetRevision: 0, baseRevision: 3 }).success).toBe(false)
+    expect(restorePageSchema.safeParse({ path: '/', targetRevision: 1, baseRevision: 0 }).success).toBe(false)
   })
 })

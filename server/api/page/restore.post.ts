@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized.' })
   }
 
-  const { path, targetRevision } = await readZodBody(event, restorePageSchema)
+  const { path, targetRevision, baseRevision } = await readZodBody(event, restorePageSchema)
 
   const targetPage = await db
     .select()
@@ -39,6 +39,15 @@ export default defineEventHandler(async (event) => {
     .get()
 
   const nextRevision = (latest?.revision ?? 0) + 1
+
+  if (baseRevision !== latest?.revision) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Revision conflict.',
+      data: { latestRevision: latest?.revision ?? 0 }
+    })
+  }
+
   const now = new Date().toISOString()
 
   // 復元対象のページ本文を再解析（あるいは元データに AST があればそれを使っても良いが
@@ -59,8 +68,24 @@ export default defineEventHandler(async (event) => {
       createdBy: user.id,
       updatedBy: user.id
     })
+    .onConflictDoNothing({ target: [pagesTable.path, pagesTable.revision] })
     .returning()
     .get()
+
+  if (!inserted) {
+    const current = await db
+      .select({ revision: pagesTable.revision })
+      .from(pagesTable)
+      .where(eq(pagesTable.path, path))
+      .orderBy(desc(pagesTable.revision))
+      .get()
+
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Revision conflict.',
+      data: { latestRevision: current?.revision ?? latest?.revision ?? 0 }
+    })
+  }
 
   await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)

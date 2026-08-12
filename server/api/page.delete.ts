@@ -16,8 +16,9 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const path = typeof query.path === 'string' ? query.path.trim() : ''
+  const baseRevision = Number(query.baseRevision)
 
-  if (!path) {
+  if (!path || !Number.isInteger(baseRevision) || baseRevision <= 0) {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
   }
 
@@ -30,6 +31,14 @@ export default defineEventHandler(async (event) => {
 
   if (!latest || latest.body === '') {
     throw createError({ statusCode: 404, message: 'Page not found or already deleted.' })
+  }
+
+  if (baseRevision !== latest.revision) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Revision conflict.',
+      data: { latestRevision: latest.revision }
+    })
   }
 
   const nextRevision = latest.revision + 1
@@ -47,8 +56,24 @@ export default defineEventHandler(async (event) => {
       createdBy: user.id,
       updatedBy: user.id
     })
+    .onConflictDoNothing({ target: [pagesTable.path, pagesTable.revision] })
     .returning()
     .get()
+
+  if (!inserted) {
+    const current = await db
+      .select({ revision: pagesTable.revision })
+      .from(pagesTable)
+      .where(eq(pagesTable.path, path))
+      .orderBy(desc(pagesTable.revision))
+      .get()
+
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Revision conflict.',
+      data: { latestRevision: current?.revision ?? latest.revision }
+    })
+  }
 
   await removePageSearchIndex(path)
   await invalidateLatestPageCache(path)

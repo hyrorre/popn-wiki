@@ -425,7 +425,7 @@ describe('API characterization', async () => {
     })
 
     test('deletion creates a tombstone and removes the search result', async () => {
-      const deleted = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}`, {
+      const deleted = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}&baseRevision=2`, {
         method: 'DELETE',
         headers: withSession('editor')
       })
@@ -441,7 +441,7 @@ describe('API characterization', async () => {
       const restored = await requestJson<PageResponse>('/api/page/restore', {
         method: 'POST',
         headers: withSession('editor'),
-        body: { path, targetRevision: 1 }
+        body: { path, targetRevision: 1, baseRevision: 3 }
       })
       const search = await requestJson<{ total: number; items: Array<{ path: string; revision: number }> }>(
         '/api/search?q=keyword'
@@ -510,6 +510,106 @@ describe('API characterization', async () => {
       expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2])
       expect(['# First update', '# Second update']).toContain(String(rows.rows[1]?.body))
       expect(writes.find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(2)
+    })
+
+    test('does not create two revisions when deletion races with an update', async () => {
+      const path = 'characterization/concurrent-delete'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Revision before delete', baseRevision: 0 }
+      })
+
+      const [updated, deleted] = await Promise.all([
+        requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page', {
+          method: 'PUT',
+          headers: withSession('editor'),
+          body: { path, body: `# Concurrent update\n${'body '.repeat(20_000)}`, baseRevision: 1 }
+        }),
+        requestJson<PageResponse & { data?: { latestRevision?: number } }>(
+          `/api/page?path=${encodeURIComponent(path)}&baseRevision=1`,
+          { method: 'DELETE', headers: withSession('other') }
+        )
+      ])
+      const rows = await database.execute({
+        sql: 'SELECT revision, body FROM pages WHERE path = ? ORDER BY revision',
+        args: [path]
+      })
+
+      expect([updated.response.status, deleted.response.status].sort((left, right) => left - right)).toEqual([
+        200, 409
+      ])
+      expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2])
+      expect(
+        [updated, deleted].find(({ response }) => response.status === 409)?.payload.data?.latestRevision
+      ).toBe(2)
+    })
+
+    test('accepts only one of two simultaneous restores', async () => {
+      const path = 'characterization/concurrent-restore'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: `# Restore target\n${'old body '.repeat(10_000)}`, baseRevision: 0 }
+      })
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Current revision', baseRevision: 1 }
+      })
+
+      const restores = await Promise.all(
+        ['editor', 'other'].map((session) =>
+          requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page/restore', {
+            method: 'POST',
+            headers: withSession(session as 'editor' | 'other'),
+            body: { path, targetRevision: 1, baseRevision: 2 }
+          })
+        )
+      )
+      const rows = await database.execute({
+        sql: 'SELECT revision FROM pages WHERE path = ? ORDER BY revision',
+        args: [path]
+      })
+
+      expect(restores.map(({ response }) => response.status).sort((left, right) => left - right)).toEqual([200, 409])
+      expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2, 3])
+      expect(restores.find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(3)
+    })
+
+    test('does not create two revisions when restore races with an update', async () => {
+      const path = 'characterization/concurrent-restore-update'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: `# Old revision\n${'old body '.repeat(10_000)}`, baseRevision: 0 }
+      })
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Base revision', baseRevision: 1 }
+      })
+
+      const writes = await Promise.all([
+        requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page/restore', {
+          method: 'POST',
+          headers: withSession('editor'),
+          body: { path, targetRevision: 1, baseRevision: 2 }
+        }),
+        requestJson<PageResponse & { data?: { latestRevision?: number } }>('/api/page', {
+          method: 'PUT',
+          headers: withSession('other'),
+          body: { path, body: `# Concurrent revision\n${'new body '.repeat(10_000)}`, baseRevision: 2 }
+        })
+      ])
+      const rows = await database.execute({
+        sql: 'SELECT revision FROM pages WHERE path = ? ORDER BY revision',
+        args: [path]
+      })
+
+      expect(writes.map(({ response }) => response.status).sort((left, right) => left - right)).toEqual([200, 409])
+      expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2, 3])
+      expect(writes.find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(3)
     })
   })
 
@@ -724,7 +824,7 @@ describe('API characterization', async () => {
         headers: withSession('editor'),
         body: { path: deletedPath, body: '# Deleted later', baseRevision: 0 }
       })
-      await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(deletedPath)}`, {
+      await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(deletedPath)}&baseRevision=1`, {
         method: 'DELETE',
         headers: withSession('editor')
       })
