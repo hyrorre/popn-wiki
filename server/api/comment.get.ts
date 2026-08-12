@@ -10,6 +10,7 @@ import { parseZodValue } from '~/server/utils/validation'
 import { wikiPathSchema } from '~/shared/zod'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
+const COMMENT_LIST_MAX_LIMIT = 100
 
 type CommentListQuery = {
   path: string
@@ -70,7 +71,12 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
   return {
     path,
     page: parseIntegerOrFallback(query.page, { fallback: 1, minimum: 1, syntax: 'leading' }),
-    limit: parseIntegerOrFallback(query.limit, { fallback: 20, minimum: 1, syntax: 'leading' }),
+    limit: parseIntegerOrFallback(query.limit, {
+      fallback: 20,
+      minimum: 1,
+      maximum: COMMENT_LIST_MAX_LIMIT,
+      syntax: 'leading'
+    }),
     fresh: query.fresh !== undefined
   }
 }

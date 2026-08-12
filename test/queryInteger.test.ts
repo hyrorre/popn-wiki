@@ -23,6 +23,7 @@ describe('integer query parsing', () => {
     expect(parseIntegerOrFallback('2abc', options)).toBe(1)
     expect(parseIntegerOrFallback('0.9', options)).toBe(1)
     expect(parseIntegerOrFallback('2abc', { ...options, syntax: 'leading' })).toBe(2)
+    expect(parseIntegerOrFallback('200items', { ...options, maximum: 100, syntax: 'leading' })).toBe(100)
     expect(parseIntegerOrFallback(undefined, { ...options, syntax: 'leading' })).toBe(1)
   })
 

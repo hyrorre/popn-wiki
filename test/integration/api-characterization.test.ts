@@ -1126,6 +1126,29 @@ describe('API characterization', async () => {
     let replyId = 0
     let foreignRootId = 0
 
+    test('caps comment list requests at 100 root comments', async () => {
+      const limitedPath = 'characterization/comment-limit'
+      const now = '2026-08-13T00:00:00.000Z'
+      await database.batch(
+        Array.from({ length: 101 }, (_, index) => ({
+          sql: `
+            INSERT INTO comments (path, body, body_ast, reply_to, user_id, created_at, updated_at, deleted_at)
+            VALUES (?, ?, NULL, NULL, ?, ?, ?, NULL)
+          `,
+          args: [limitedPath, `comment ${index}`, users.editor.id, now, now]
+        })),
+        'write'
+      )
+
+      const listed = await requestJson<{ comments: CommentResponse[]; total: number }>(
+        `/api/comment?path=${encodeURIComponent(limitedPath)}&limit=1000`
+      )
+
+      expect(listed.response.status).toBe(200)
+      expect(listed.payload.total).toBe(101)
+      expect(listed.payload.comments).toHaveLength(100)
+    })
+
     test('creates a sanitized root comment with its public profile', async () => {
       const { response, payload } = await requestJson<CommentResponse>('/api/comment', {
         method: 'POST',
