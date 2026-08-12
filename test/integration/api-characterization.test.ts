@@ -734,4 +734,93 @@ describe('API characterization', async () => {
       expect(recent.payload.data.some((page) => page.path === deletedPath)).toBe(false)
     })
   })
+
+  describe.sequential('warmed internal-cache invalidation', () => {
+    const path = 'characterization/cache'
+    let firstCommentId = 0
+
+    test('a page mutation invalidates a previously populated latest-page cache entry', async () => {
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Cached revision 1', baseRevision: 0 }
+      })
+      const primed = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}`)
+
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Cached revision 2', baseRevision: 1 }
+      })
+      const afterMutation = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}`)
+
+      expect(primed.payload).toMatchObject({ revision: 1, body: '# Cached revision 1' })
+      expect(afterMutation.payload).toMatchObject({ revision: 2, body: '# Cached revision 2' })
+      expect(afterMutation.response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=86400')
+    })
+
+    test('a comment mutation switches a populated comment-list cache to a new version', async () => {
+      const first = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.41' }),
+        body: { path, body: 'first cached comment' }
+      })
+      firstCommentId = first.payload.id
+      const listUrl = `/api/comment?path=${encodeURIComponent(path)}&page=1&limit=5`
+      const primed = await requestJson<{ comments: CommentResponse[]; total: number }>(listUrl)
+
+      const second = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('other', { 'cf-connecting-ip': '203.0.113.42' }),
+        body: { path, body: 'second cached comment' }
+      })
+      const afterMutation = await requestJson<{ comments: CommentResponse[]; total: number }>(listUrl)
+
+      expect(primed.payload).toMatchObject({ total: 1 })
+      expect(primed.payload.comments.map((comment) => comment.id)).toEqual([firstCommentId])
+      expect(afterMutation.payload.total).toBe(2)
+      expect(afterMutation.payload.comments.map((comment) => comment.id)).toEqual(
+        expect.arrayContaining([firstCommentId, second.payload.id])
+      )
+      expect(afterMutation.response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=900')
+    })
+
+    test('a page mutation invalidates every query variant of the recent-page cache', async () => {
+      const listUrl = '/api/page/recent?limit=7&page=1&includeMinor=true'
+      const primed = await requestJson<{ data: PageResponse[]; total: number }>(listUrl)
+
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Cached revision 3', baseRevision: 2 }
+      })
+      const afterMutation = await requestJson<{ data: PageResponse[]; total: number }>(listUrl)
+
+      expect(primed.payload.data.find((page) => page.path === path)?.revision).toBe(2)
+      expect(afterMutation.payload.data.find((page) => page.path === path)?.revision).toBe(3)
+      expect(afterMutation.response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=600')
+    })
+
+    test('a comment mutation invalidates a populated recent-comment cache', async () => {
+      const listUrl = '/api/comment/recent?limit=7&page=1'
+      const primed = await requestJson<{ data: Array<{ path: string }>; total: number }>(listUrl)
+      const secondPath = 'characterization/cache-second'
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path: secondPath, body: '# Cache second page', baseRevision: 0 }
+      })
+      await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.43' }),
+        body: { path: secondPath, body: 'new recent cached comment' }
+      })
+      const afterMutation = await requestJson<{ data: Array<{ path: string }>; total: number }>(listUrl)
+
+      expect(primed.payload.data.some((entry) => entry.path === secondPath)).toBe(false)
+      expect(afterMutation.payload.total).toBe(primed.payload.total + 1)
+      expect(afterMutation.payload.data).toContainEqual(expect.objectContaining({ path: secondPath }))
+      expect(afterMutation.response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=600')
+    })
+  })
 })
