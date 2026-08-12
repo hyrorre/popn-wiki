@@ -1,5 +1,5 @@
 import { commentsTable, usersTable } from '../db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
@@ -23,6 +23,21 @@ export default defineEventHandler(async (event) => {
 
   if (!sanitizedBody) {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
+  }
+
+  if (replyTo !== null) {
+    const parent = await db
+      .select({
+        id: commentsTable.id,
+        path: commentsTable.path
+      })
+      .from(commentsTable)
+      .where(and(eq(commentsTable.id, replyTo), isNull(commentsTable.deletedAt)))
+      .get()
+
+    if (!parent || parent.path !== path) {
+      throw createError({ statusCode: 400, message: 'Invalid reply target.' })
+    }
   }
 
   const now = new Date().toISOString()

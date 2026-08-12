@@ -462,6 +462,7 @@ describe('API characterization', async () => {
     const path = 'characterization/page'
     let rootCommentId = 0
     let replyId = 0
+    let foreignRootId = 0
 
     test('creates a sanitized root comment with its public profile', async () => {
       const { response, payload } = await requestJson<CommentResponse>('/api/comment', {
@@ -480,6 +481,37 @@ describe('API characterization', async () => {
         profiles: { id: users.editor.id, name: users.editor.name }
       })
       expect(payload.profiles).not.toHaveProperty('password')
+    })
+
+    test('rejects a reply to a comment that does not exist', async () => {
+      const before = await database.execute('SELECT count(*) AS count FROM comments')
+      const invalid = await requestJson<{ message: string }>('/api/comment', {
+        method: 'POST',
+        headers: withSession('other', { 'cf-connecting-ip': '203.0.113.35' }),
+        body: { path, body: 'orphan reply', replyTo: 999_999 }
+      })
+      const after = await database.execute('SELECT count(*) AS count FROM comments')
+
+      expect(invalid.response.status).toBe(400)
+      expect(invalid.payload.message).toBe('Invalid reply target.')
+      expect(Number(after.rows[0]?.count)).toBe(Number(before.rows[0]?.count))
+    })
+
+    test('rejects a reply whose parent belongs to another page', async () => {
+      const foreignRoot = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.36' }),
+        body: { path: 'characterization/other-page', body: 'foreign root' }
+      })
+      foreignRootId = foreignRoot.payload.id
+      const invalid = await requestJson<{ message: string }>('/api/comment', {
+        method: 'POST',
+        headers: withSession('other', { 'cf-connecting-ip': '203.0.113.37' }),
+        body: { path, body: 'cross-page reply', replyTo: foreignRootId }
+      })
+
+      expect(invalid.response.status).toBe(400)
+      expect(invalid.payload.message).toBe('Invalid reply target.')
     })
 
     test('creates a reply and returns a flat depth-first thread', async () => {
@@ -559,6 +591,17 @@ describe('API characterization', async () => {
       expect(deleted.payload).toEqual({ success: true })
       expect(row.rows[0]?.deleted_at).toBeTruthy()
       expect(list.payload.comments.map((comment) => comment.id)).toEqual([rootCommentId])
+    })
+
+    test('rejects a reply to a soft-deleted comment', async () => {
+      const invalid = await requestJson<{ message: string }>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.38' }),
+        body: { path, body: 'reply to deleted comment', replyTo: replyId }
+      })
+
+      expect(invalid.response.status).toBe(400)
+      expect(invalid.payload.message).toBe('Invalid reply target.')
     })
 
     test('recent comments reflects mutation invalidation', async () => {
