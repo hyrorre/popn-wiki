@@ -32,7 +32,7 @@ export const sendVerificationEmail = async (event: H3Event, email: string, token
   const url = `${origin}/verify?token=${token}`
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from,
     to: email,
     subject: `【${app.title}】メールアドレスの確認`,
@@ -42,6 +42,10 @@ export const sendVerificationEmail = async (event: H3Event, email: string, token
 <p>このリンクの有効期限は${TOKEN_EXPIRES_IN_HOURS}時間です。</p>
 <p>このメールに心当たりがない場合は、無視していただいて構いません。</p>`
   })
+
+  if (error) {
+    throw createError({ statusCode: 502, message: 'Failed to send verification email.' })
+  }
 }
 
 export const sendResetPasswordEmail = async (event: H3Event, email: string, token: string) => {
@@ -51,7 +55,7 @@ export const sendResetPasswordEmail = async (event: H3Event, email: string, toke
   const url = `${origin}/reset?token=${token}`
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from,
     to: email,
     subject: `【${app.title}】パスワードのリセット`,
@@ -61,6 +65,10 @@ export const sendResetPasswordEmail = async (event: H3Event, email: string, toke
 <p>このリンクの有効期限は${TOKEN_EXPIRES_IN_HOURS}時間です。</p>
 <p>このメールに心当たりがない場合は、第三者が誤ってメールアドレスを入力した可能性があります。その場合、パスワードが変更されることはありません。</p>`
   })
+
+  if (error) {
+    throw createError({ statusCode: 502, message: 'Failed to send password reset email.' })
+  }
 }
 
 export const verifyAndUseToken = async (token: string, type: 'verification' | 'reset') => {

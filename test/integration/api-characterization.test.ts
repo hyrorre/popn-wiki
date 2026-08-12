@@ -1,4 +1,4 @@
-import { rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,6 +33,8 @@ type CommentResponse = {
 const rootDir = fileURLToPath(new URL('../..', import.meta.url))
 const testDataDir = join(tmpdir(), `popn-wiki-api-test-${process.pid}`)
 const databasePath = join(testDataDir, 'db', 'sqlite.db')
+const emailCapturePath = join(testDataDir, 'resend.jsonl')
+const resendMockPath = fileURLToPath(new URL('../fixtures/resend-mock.ts', import.meta.url))
 const password = 'test-password'
 const legacyBcryptHash = '$2y$04$abcdefghijklmnopqrstuuobFaEJANklW4I6zZpcLRbXjrME4Qa2m'
 
@@ -115,6 +117,15 @@ async function seedUsers() {
   }
 }
 
+function capturedEmails() {
+  if (!existsSync(emailCapturePath)) return []
+
+  return readFileSync(emailCapturePath, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { url: string; payload: { to: string; subject: string; html: string } })
+}
+
 describe('API characterization', async () => {
   await setup({
     rootDir,
@@ -141,7 +152,8 @@ describe('API characterization', async () => {
         clientBundle: { sizeLimitKb: 0 }
       },
       nitro: {
-        preset: 'node-server'
+        preset: 'node-server',
+        plugins: [resendMockPath]
       },
       hub: {
         dir: testDataDir,
@@ -160,6 +172,9 @@ describe('API characterization', async () => {
     env: {
       NODE_ENV: 'test',
       NUXT_SESSION_PASSWORD: 'test-session-password-with-at-least-thirty-two-characters',
+      NUXT_RESEND_API_KEY: 're_test_api_key',
+      NUXT_RESEND_FROM: 'test@example.com',
+      NUXT_TEST_EMAIL_CAPTURE_PATH: emailCapturePath,
       NUXT_CLOUDFLARE_ZONE_ID: '',
       NUXT_CLOUDFLARE_CACHE_PURGE_TOKEN: ''
     }
@@ -272,6 +287,169 @@ describe('API characterization', async () => {
       }
 
       expect(lastStatus).toBe(429)
+    })
+  })
+
+  describe.sequential('registration and email delivery contracts', () => {
+    const signupEmail = 'new-account@example.com'
+
+    test('signup creates an unconfirmed account and sends a verification link without a session', async () => {
+      const beforeEmails = capturedEmails().length
+      const signup = await requestJson<{ message: string }>('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.50' },
+        body: { name: 'New Account', email: signupEmail, password: 'safe-passphrase!' }
+      })
+      const user = await database.execute({
+        sql: 'SELECT id, confirmed, password FROM users WHERE email = ?',
+        args: [signupEmail]
+      })
+      const tokens = await database.execute({
+        sql: 'SELECT token, type FROM tokens WHERE user_id = ?',
+        args: [Number(user.rows[0]?.id)]
+      })
+      const emails = capturedEmails()
+
+      expect(signup.response.status).toBe(200)
+      expect(signup.response.headers.get('set-cookie')).toBeNull()
+      expect(user.rows[0]).toMatchObject({ confirmed: 0 })
+      expect(String(user.rows[0]?.password)).toMatch(/^\$scrypt\$/)
+      expect(tokens.rows).toHaveLength(1)
+      expect(tokens.rows[0]?.type).toBe('verification')
+      expect(emails).toHaveLength(beforeEmails + 1)
+      expect(emails.at(-1)?.payload).toMatchObject({
+        to: signupEmail,
+        subject: expect.stringContaining('メールアドレスの確認')
+      })
+      expect(emails.at(-1)?.payload.html).toContain(`/verify?token=${String(tokens.rows[0]?.token)}`)
+    })
+
+    test('duplicate signup does not create another token or send another email', async () => {
+      const beforeEmails = capturedEmails().length
+      const beforeTokens = await database.execute({
+        sql: 'SELECT count(*) AS count FROM tokens JOIN users ON tokens.user_id = users.id WHERE users.email = ?',
+        args: [signupEmail]
+      })
+      const duplicate = await requestJson<{ message: string }>('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.50' },
+        body: { name: 'Duplicate', email: signupEmail, password: 'another-passphrase!' }
+      })
+      const afterTokens = await database.execute({
+        sql: 'SELECT count(*) AS count FROM tokens JOIN users ON tokens.user_id = users.id WHERE users.email = ?',
+        args: [signupEmail]
+      })
+
+      expect(duplicate.response.status).toBe(400)
+      expect(duplicate.payload.message).toBe('User already exists')
+      expect(Number(afterTokens.rows[0]?.count)).toBe(Number(beforeTokens.rows[0]?.count))
+      expect(capturedEmails()).toHaveLength(beforeEmails)
+    })
+
+    test('resending verification replaces the old token', async () => {
+      await database.execute({
+        sql: 'UPDATE users SET confirmed = 0 WHERE id = ?',
+        args: [users.unconfirmed.id]
+      })
+      await database.execute({
+        sql: 'DELETE FROM tokens WHERE user_id = ? AND type = ?',
+        args: [users.unconfirmed.id, 'verification']
+      })
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
+        args: [users.unconfirmed.id, 'superseded-verification', 'verification', Date.now() + 60_000]
+      })
+      const beforeEmails = capturedEmails().length
+
+      const resent = await requestJson<{ message: string }>('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.51' },
+        body: { email: users.unconfirmed.email }
+      })
+      const tokens = await database.execute({
+        sql: 'SELECT token FROM tokens WHERE user_id = ? AND type = ?',
+        args: [users.unconfirmed.id, 'verification']
+      })
+      const oldToken = await requestJson<{ message: string }>('/api/auth/verify?token=superseded-verification')
+
+      expect(resent.response.status).toBe(200)
+      expect(tokens.rows).toHaveLength(1)
+      expect(tokens.rows[0]?.token).not.toBe('superseded-verification')
+      expect(oldToken.response.status).toBe(400)
+      expect(capturedEmails()).toHaveLength(beforeEmails + 1)
+    })
+
+    test('forgot password has the same response for existing and unknown emails', async () => {
+      const beforeEmails = capturedEmails().length
+      const existing = await requestJson<{ message: string }>('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.52' },
+        body: { email: users.other.email }
+      })
+      const unknown = await requestJson<{ message: string }>('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.53' },
+        body: { email: 'unknown-account@example.com' }
+      })
+      const resetTokens = await database.execute({
+        sql: 'SELECT token FROM tokens WHERE user_id = ? AND type = ?',
+        args: [users.other.id, 'reset']
+      })
+      const emails = capturedEmails()
+
+      expect(existing.response.status).toBe(200)
+      expect(unknown.response.status).toBe(200)
+      expect(existing.payload).toEqual(unknown.payload)
+      expect(resetTokens.rows).toHaveLength(1)
+      expect(emails).toHaveLength(beforeEmails + 1)
+      expect(emails.at(-1)?.payload.to).toBe(users.other.email)
+      expect(emails.at(-1)?.payload.html).toContain(`/reset?token=${String(resetTokens.rows[0]?.token)}`)
+    })
+
+    test('expired verification and reset tokens are rejected', async () => {
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
+        args: [users.editor.id, 'expired-verification', 'verification', Date.now() - 1]
+      })
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
+        args: [users.editor.id, 'expired-reset', 'reset', Date.now() - 1]
+      })
+
+      const verification = await requestJson<{ message: string }>('/api/auth/verify?token=expired-verification')
+      const reset = await requestJson<{ message: string }>('/api/auth/reset', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.54' },
+        body: { token: 'expired-reset', password: 'expired-token-pass!' }
+      })
+
+      expect(verification.response.status).toBe(400)
+      expect(verification.payload.message).toBe('Invalid or expired token')
+      expect(reset.response.status).toBe(400)
+      expect(reset.payload.message).toBe('Invalid or expired token')
+    })
+
+    test('signup reports delivery failure while preserving an account that can retry verification', async () => {
+      const failureEmail = 'delivery-failure@example.com'
+      const failed = await requestJson<{ message: string }>('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.55' },
+        body: { name: 'Delivery Failure', email: failureEmail, password: 'retry-later-pass!' }
+      })
+      const stored = await database.execute({
+        sql: `
+          SELECT users.confirmed, count(tokens.id) AS tokens
+          FROM users
+          LEFT JOIN tokens ON tokens.user_id = users.id
+          WHERE users.email = ?
+          GROUP BY users.id
+        `,
+        args: [failureEmail]
+      })
+
+      expect(failed.response.status).toBe(502)
+      expect(failed.payload.message).toBe('Failed to send verification email.')
+      expect(stored.rows[0]).toMatchObject({ confirmed: 0, tokens: 1 })
     })
   })
 
