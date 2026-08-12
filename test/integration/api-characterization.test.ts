@@ -1247,6 +1247,144 @@ describe('API characterization', async () => {
     })
   })
 
+  describe.sequential('reply thread-mode contracts', () => {
+    const path = 'characterization/reply-thread'
+    let rootId = 0
+    let directReplyId = 0
+    let grandchildId = 0
+
+    async function insertComment(input: {
+      body: string
+      userId: number
+      createdAt: string
+      replyTo?: number
+      deletedAt?: string
+      targetPath?: string
+    }) {
+      const result = await database.execute({
+        sql: `
+          INSERT INTO comments (path, body, body_ast, reply_to, user_id, created_at, updated_at, deleted_at)
+          VALUES (?, ?, NULL, ?, ?, ?, ?, ?)
+          RETURNING id
+        `,
+        args: [
+          input.targetPath ?? path,
+          input.body,
+          input.replyTo ?? null,
+          input.userId,
+          input.createdAt,
+          input.createdAt,
+          input.deletedAt ?? null
+        ]
+      })
+
+      return Number(result.rows[0]?.id)
+    }
+
+    test('returns descendants in a participated thread while excluding own, deleted, and unrelated comments', async () => {
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path, body: '# Reply thread title', baseRevision: 0 }
+      })
+      rootId = await insertComment({
+        body: 'thread root',
+        userId: users.migration.id,
+        createdAt: '2026-08-13T00:00:00.000Z'
+      })
+      directReplyId = await insertComment({
+        body: 'direct foreign reply',
+        userId: users.other.id,
+        replyTo: rootId,
+        createdAt: '2026-08-13T00:01:00.000Z'
+      })
+      grandchildId = await insertComment({
+        body: 'x'.repeat(120),
+        userId: users.admin.id,
+        replyTo: directReplyId,
+        createdAt: '2026-08-13T00:02:00.000Z'
+      })
+      await insertComment({
+        body: 'own reply',
+        userId: users.migration.id,
+        replyTo: directReplyId,
+        createdAt: '2026-08-13T00:03:00.000Z'
+      })
+      await insertComment({
+        body: 'deleted reply',
+        userId: users.other.id,
+        replyTo: rootId,
+        createdAt: '2026-08-13T00:04:00.000Z',
+        deletedAt: '2026-08-13T00:05:00.000Z'
+      })
+      const unrelatedRoot = await insertComment({
+        body: 'unrelated root',
+        userId: users.other.id,
+        createdAt: '2026-08-13T00:06:00.000Z',
+        targetPath: 'characterization/unrelated-thread'
+      })
+      const unrelatedReply = await insertComment({
+        body: 'unrelated reply',
+        userId: users.admin.id,
+        replyTo: unrelatedRoot,
+        createdAt: '2026-08-13T00:07:00.000Z',
+        targetPath: 'characterization/unrelated-thread'
+      })
+
+      const replies = await requestJson<
+        Array<{ id: number; path: string; pageTitle: string; userName: string; bodyPreview: string }>
+      >('/api/reply?type=thread', { headers: withSession('migration') })
+
+      expect(replies.response.status).toBe(200)
+      expect(replies.payload.map((reply) => reply.id)).toEqual([grandchildId, directReplyId])
+      expect(replies.payload).not.toContainEqual(expect.objectContaining({ id: unrelatedReply }))
+      expect(replies.payload[0]).toMatchObject({
+        path,
+        pageTitle: 'Reply thread title',
+        userName: users.admin.name
+      })
+    })
+
+    test('direct mode includes only direct replies from other users', async () => {
+      const replies = await requestJson<Array<{ id: number }>>('/api/reply?type=direct', {
+        headers: withSession('migration')
+      })
+
+      expect(replies.payload.map((reply) => reply.id)).toEqual([directReplyId])
+    })
+
+    test('applies limit and offset after filtering and truncates long previews', async () => {
+      const firstPage = await requestJson<Array<{ id: number; bodyPreview: string }>>(
+        '/api/reply?type=thread&limit=1&offset=0',
+        { headers: withSession('migration') }
+      )
+      const secondPage = await requestJson<Array<{ id: number }>>('/api/reply?type=thread&limit=1&offset=1', {
+        headers: withSession('migration')
+      })
+
+      expect(firstPage.payload).toEqual([
+        expect.objectContaining({ id: grandchildId, bodyPreview: `${'x'.repeat(100)}...` })
+      ])
+      expect(secondPage.payload).toEqual([expect.objectContaining({ id: directReplyId })])
+    })
+
+    test('requires authentication and rejects unsupported types or negative pagination', async () => {
+      const anonymous = await requestJson('/api/reply?type=thread')
+      const invalidType = await requestJson('/api/reply?type=unknown', { headers: withSession('migration') })
+      const invalidLimit = await requestJson('/api/reply?type=thread&limit=-1', {
+        headers: withSession('migration')
+      })
+      const invalidOffset = await requestJson('/api/reply?type=thread&offset=-1', {
+        headers: withSession('migration')
+      })
+
+      expect(anonymous.response.status).toBe(401)
+      expect(invalidType.response.status).toBe(400)
+      expect(invalidLimit.response.status).toBe(400)
+      expect(invalidOffset.response.status).toBe(400)
+    })
+  })
+
   describe.sequential('search and recent-page contracts', () => {
     const recentPath = 'characterization/recent'
     const deletedPath = 'characterization/deleted'

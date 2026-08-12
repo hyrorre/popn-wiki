@@ -7,8 +7,13 @@ export default defineEventHandler(async (event) => {
   const userId = session.user.id
   const query = getQuery(event)
   const type = (query.type as string) || 'direct'
-  const limit = Math.min(Number(query.limit) || 20, 100)
-  const offset = Number(query.offset) || 0
+
+  if (type !== 'direct' && type !== 'thread') {
+    throw createError({ statusCode: 400, message: 'Invalid reply type.' })
+  }
+
+  const limit = parseIntegerQuery(query.limit, { fallback: 20, minimum: 1, maximum: 100 })
+  const offset = parseIntegerQuery(query.offset, { fallback: 0, minimum: 0 })
 
   let replyIds: number[] = []
 
@@ -119,3 +124,17 @@ export default defineEventHandler(async (event) => {
     bodyPreview: r.body.length > 100 ? `${r.body.substring(0, 100)}...` : r.body
   }))
 })
+
+function parseIntegerQuery(
+  value: unknown,
+  options: { fallback: number; minimum: number; maximum?: number }
+) {
+  if (value === undefined) return options.fallback
+
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < options.minimum) {
+    throw createError({ statusCode: 400, message: 'Invalid pagination.' })
+  }
+
+  return options.maximum === undefined ? parsed : Math.min(parsed, options.maximum)
+}
