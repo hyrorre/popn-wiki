@@ -4,7 +4,7 @@ import { db } from '@nuxthub/db'
 import { commentsTable } from '~/server/db/schema'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { purgeCommentMutationExternalCaches } from '~/server/utils/mutationCache'
+import { purgeCommentMutationExternalCaches, runBestEffortCacheInvalidations } from '~/server/utils/mutationCache'
 
 export async function getCommentPathsByUser(userId: number) {
   const rows = await db
@@ -23,28 +23,15 @@ export async function invalidateCommentAuthorCaches(event: H3Event, paths: strin
     return true
   }
 
-  let success = true
-
-  const internalResults = await Promise.allSettled([
-    ...uniquePaths.map((path) => invalidateCommentListCache(path)),
-    invalidateRecentCommentsCache()
+  return runBestEffortCacheInvalidations('CommentAuthorCache', [
+    ...uniquePaths.map((path) => ({
+      name: `comment list cache (${path})`,
+      run: () => invalidateCommentListCache(path)
+    })),
+    { name: 'recent comments cache', run: () => invalidateRecentCommentsCache() },
+    {
+      name: 'external comment caches',
+      run: () => purgeCommentMutationExternalCaches(event, uniquePaths)
+    }
   ])
-  const internalErrors = internalResults
-    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-    .map((result) => getErrorMessage(result.reason))
-
-  if (internalErrors.length > 0) {
-    console.warn(`[CommentAuthorCache] Failed to invalidate internal caches: ${internalErrors.join('; ')}`)
-    success = false
-  }
-
-  if (!(await purgeCommentMutationExternalCaches(event, uniquePaths))) {
-    success = false
-  }
-
-  return success
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error)
 }
