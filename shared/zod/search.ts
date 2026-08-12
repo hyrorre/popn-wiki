@@ -6,7 +6,7 @@ const parseInteger = (value: unknown) => {
   }
 
   if (typeof value === 'string' && value.trim() !== '') {
-    return Number.parseInt(value, 10)
+    return Number(value)
   }
 
   return undefined

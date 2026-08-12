@@ -5,6 +5,7 @@ import {
   emailOnlySchema,
   resetPasswordSchema,
   restorePageSchema,
+  searchQuerySchema,
   signinSchema,
   updateCommentSchema,
   updatePageSchema,
@@ -102,5 +103,16 @@ describe('API payload schemas', () => {
     expect(restorePageSchema.safeParse({ path: '/', targetRevision: 1 }).success).toBe(false)
     expect(restorePageSchema.safeParse({ path: '/', targetRevision: 0, baseRevision: 3 }).success).toBe(false)
     expect(restorePageSchema.safeParse({ path: '/', targetRevision: 1, baseRevision: 0 }).success).toBe(false)
+  })
+
+  test('search query accepts integer strings and rejects partial or fractional numbers', () => {
+    expect(searchQuerySchema.parse({ q: 'keyword', page: '2', limit: '10' })).toEqual({
+      q: 'keyword',
+      page: 2,
+      limit: 10
+    })
+    expect(searchQuerySchema.safeParse({ q: 'keyword', page: '2abc' }).success).toBe(false)
+    expect(searchQuerySchema.safeParse({ q: 'keyword', limit: '5.9' }).success).toBe(false)
+    expect(searchQuerySchema.safeParse({ q: 'keyword', limit: '51' }).success).toBe(false)
   })
 })

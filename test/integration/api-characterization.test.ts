@@ -1504,12 +1504,16 @@ describe('API characterization', async () => {
 
     test('search validates pagination and supports multiple exact terms', async () => {
       const invalid = await requestJson('/api/search?q=x')
+      const invalidPage = await requestJson('/api/search?q=keyword&page=2abc')
+      const invalidCommentLimit = await requestJson('/api/comment/search?q=keyword&limit=5.9')
       const valid = await requestJson<{
         total: number
         items: Array<{ path: string; matchTypes: string[]; snippetType: string }>
       }>('/api/search?q=body%20keyword&page=1&limit=5')
 
       expect(invalid.response.status).toBe(400)
+      expect(invalidPage.response.status).toBe(400)
+      expect(invalidCommentLimit.response.status).toBe(400)
       expect(valid.payload.items).toContainEqual(
         expect.objectContaining({
           path: 'characterization/page',
