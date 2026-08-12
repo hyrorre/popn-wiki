@@ -42,7 +42,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  const profile = await db.select().from(usersTable).where(eq(usersTable.id, user.id)).get()
+  const profile = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      avatar: usersTable.avatar
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id))
+    .get()
 
   await invalidateCommentListCache(updated.path)
   await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(updated.path))

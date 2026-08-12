@@ -17,8 +17,10 @@ bun run tsc          # type-check (vue-tsc --noEmit)
 bunx eslint .        # lint without auto-fix
 bun run lint         # lint with auto-fix (eslint . --fix)
 bun run format       # format (prettier . --write)
-bun test             # run all tests
-bun test test/foo.test.ts  # run a single test file
+bun run test             # run all tests
+bun run test:unit        # run Bun unit tests
+bun run test:integration # run Nitro API integration tests
+bun run test:nuxt        # run Nuxt component tests
 bun run db:generate  # generate Drizzle migration after schema changes
 bun run db:migrate   # apply migrations
 bun run db:push      # push schema to DB directly (dev only)

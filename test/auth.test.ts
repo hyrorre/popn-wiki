@@ -2,19 +2,19 @@ import { expect, test, describe } from 'bun:test'
 import { verifyPasswordMD5Crypt, verifyPasswordBcrypt } from '../server/utils/auth'
 
 describe('Auth Utilities', () => {
-  test('verifyPasswordMD5Crypt', async () => {
-    const password = process.env.TEST_PASSWORD_MD5CRYPT!
-    const hash = process.env.TEST_PASSWORDHASH_MD5CRYPT!
+  test('verifyPasswordMD5Crypt', () => {
+    const password = 'focus123'
+    const hash = '$1$erXgIjX7$fi/gmab/rku/qc6.ivndo0'
+
     expect(verifyPasswordMD5Crypt(hash, password)).toBe(true)
+    expect(verifyPasswordMD5Crypt(hash, 'wrong-password')).toBe(false)
   })
 
-  test('verifyPasswordBcrypt', async () => {
-    const password = process.env.TEST_PASSWORD_BCRYPT!
-    const hash = process.env.TEST_PASSWORDHASH_BCRYPT!
-    const ok = verifyPasswordBcrypt(hash, password)
-    expect(ok).toBe(true)
+  test('verifyPasswordBcrypt', () => {
+    const password = 'test-password'
+    const hash = '$2b$04$abcdefghijklmnopqrstuuobFaEJANklW4I6zZpcLRbXjrME4Qa2m'
+
+    expect(verifyPasswordBcrypt(hash, password)).toBe(true)
+    expect(verifyPasswordBcrypt(hash, 'wrong-password')).toBe(false)
   })
 })
-
-// Since we can't easily run full Nitro environment tests here without more setup,
-// we provide a template for the user to expand upon.

@@ -108,9 +108,12 @@ const save = async () => {
     })
     emit('saved', saved)
   } catch (error: unknown) {
-    const err = error as { statusCode?: number; data?: { latestRevision?: number } }
+    const err = error as {
+      statusCode?: number
+      data?: { latestRevision?: number; data?: { latestRevision?: number } }
+    }
     if (err.statusCode === 409) {
-      emit('conflict', err.data?.latestRevision ?? props.baseRevision)
+      emit('conflict', err.data?.latestRevision ?? err.data?.data?.latestRevision ?? props.baseRevision)
     } else {
       errorMessage.value = '保存に失敗しました。'
     }

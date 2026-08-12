@@ -61,7 +61,7 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 - [x] feat(wiki): add big/small text buttons to markdown-toolbar
 - [x] ~~feat(wiki): change color broken-link~~
 - [ ] feat(core): backup images
-- [ ] feat(test): test codes (bun test)
+- [x] feat(test): unit, API integration, and Nuxt component tests (`bun run test`)
 - [ ] feat(core): toc component
 - [ ] feat(ui): breadcrumb ui
 - [ ] feat(core): user role (admin/editor/commenter/viewer)

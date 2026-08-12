@@ -69,10 +69,18 @@ bun run format
 テスト:
 
 ```bash
-bun test
+bun run test
 ```
 
-注意: `package.json` に `test` script はありません。既存テストは `test/auth.test.ts` で、`.env.example` の `TEST_*` 変数が必要です。
+スイートを個別に実行する場合:
+
+```bash
+bun run test:unit
+bun run test:integration
+bun run test:nuxt
+```
+
+注意: API 結合テストは一時 SQLite DB とローカル Nitro サーバーを使います。外部サービスや `.env` の秘密値には依存しません。
 
 DB マイグレーション生成:
 
@@ -156,7 +164,7 @@ bun run db:studio
 - TypeScript / API / server logic を変更した場合: `bun run tsc`
 - Lint 対象のコードを変更した場合: `bunx eslint .` または必要に応じて `bun run lint`
 - フォーマットが崩れた場合: 対象ファイルを確認してから `bun run format`
-- テスト対象を変更した場合: `bun test`
+- テスト対象を変更した場合: `bun run test`
 - Nuxt config / build / Cloudflare preset に関わる変更: `bun run build`
 - DB schema を変更した場合: migration 生成と差分確認
 
