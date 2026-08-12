@@ -41,7 +41,8 @@ const users = {
   other: { id: 102, name: 'Other', email: 'other@example.com', role: 'user' },
   admin: { id: 103, name: 'Admin', email: 'admin@example.com', role: 'admin' },
   unconfirmed: { id: 104, name: 'Pending', email: 'pending@example.com', role: 'user' },
-  migration: { id: 105, name: 'Legacy', email: 'legacy@example.com', role: 'user' }
+  migration: { id: 105, name: 'Legacy', email: 'legacy@example.com', role: 'user' },
+  deletable: { id: 106, name: 'Deletable', email: 'deletable@example.com', role: 'user' }
 } as const
 
 let database: Client
@@ -172,6 +173,7 @@ describe('API characterization', async () => {
     await login('editor', '203.0.113.11')
     await login('other', '203.0.113.12')
     await login('admin', '203.0.113.13')
+    await login('deletable', '203.0.113.14')
   })
 
   afterAll(() => {
@@ -335,6 +337,86 @@ describe('API characterization', async () => {
         name: 'Legacy Updated',
         avatar: 'https://example.com/avatar.png'
       })
+    })
+  })
+
+  describe.sequential('account deletion contracts', () => {
+    const path = 'characterization/deleted-account'
+
+    test('requires authentication without changing any account', async () => {
+      const before = await database.execute('SELECT count(*) AS count FROM users')
+      const deleted = await requestJson('/api/user/delete', { method: 'POST' })
+      const after = await database.execute('SELECT count(*) AS count FROM users')
+
+      expect(deleted.response.status).toBe(401)
+      expect(Number(after.rows[0]?.count)).toBe(Number(before.rows[0]?.count))
+    })
+
+    test('removes only the account and its tokens while preserving authored content', async () => {
+      await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('deletable'),
+        body: { path, body: '# Deleted account page', baseRevision: 0 }
+      })
+      const comment = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('deletable', { 'cf-connecting-ip': '203.0.113.45' }),
+        body: { path, body: 'comment by a deleted account' }
+      })
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
+        args: [users.deletable.id, 'deletable-token', 'reset', Date.now() + 60_000]
+      })
+
+      const commentListUrl = `/api/comment?path=${encodeURIComponent(path)}&page=1&limit=11`
+      const recentUrl = '/api/comment/recent?limit=17&page=1'
+      const primedList = await requestJson<{ comments: CommentResponse[]; total: number }>(commentListUrl)
+      const primedRecent = await requestJson<{
+        data: Array<{ path: string; commenter: string }>
+        total: number
+      }>(recentUrl)
+      const deleted = await requestJson<{ message: string }>('/api/user/delete', {
+        method: 'POST',
+        headers: withSession('deletable')
+      })
+      const afterList = await requestJson<{ comments: CommentResponse[]; total: number }>(commentListUrl)
+      const afterRecent = await requestJson<{
+        data: Array<{ path: string; commenter: string }>
+        total: number
+      }>(recentUrl)
+
+      const stored = await database.execute({
+        sql: `
+          SELECT
+            (SELECT count(*) FROM users WHERE id = ?) AS users,
+            (SELECT count(*) FROM users WHERE id = ?) AS other_users,
+            (SELECT count(*) FROM tokens WHERE user_id = ?) AS tokens,
+            (SELECT count(*) FROM pages WHERE path = ?) AS pages,
+            (SELECT count(*) FROM comments WHERE id = ?) AS comments
+        `,
+        args: [users.deletable.id, users.other.id, users.deletable.id, path, comment.payload.id]
+      })
+
+      expect(primedList.payload.comments[0]?.profiles).toMatchObject({ name: users.deletable.name })
+      expect(primedRecent.payload.data).toContainEqual(
+        expect.objectContaining({ path, commenter: users.deletable.name })
+      )
+      expect(deleted.response.status).toBe(200)
+      expect(deleted.payload).toEqual({ message: 'User deleted.' })
+      expect(stored.rows[0]).toMatchObject({ users: 0, other_users: 1, tokens: 0, pages: 1, comments: 1 })
+      expect(afterList.payload.comments[0]).toMatchObject({ id: comment.payload.id, profiles: null })
+      expect(afterRecent.payload.data).toContainEqual(expect.objectContaining({ path, commenter: '匿名' }))
+
+      const setCookie = deleted.response.headers.get('set-cookie')
+      expect(setCookie).toBeTruthy()
+      const clearedCookie = setCookie?.split(';', 1)[0]
+      if (!clearedCookie) {
+        throw new Error('Account deletion did not clear the session cookie')
+      }
+      const afterClearedSession = await requestJson('/api/profile', {
+        headers: { cookie: clearedCookie }
+      })
+      expect(afterClearedSession.response.status).toBe(401)
     })
   })
 
