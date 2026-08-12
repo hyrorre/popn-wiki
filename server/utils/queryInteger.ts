@@ -9,10 +9,6 @@ type IntegerFallbackOptions = IntegerBounds & {
   fallback: number
 }
 
-type IntegerOrFallbackOptions = IntegerFallbackOptions & {
-  syntax?: 'number' | 'leading'
-}
-
 type StrictIntegerQueryOptions = IntegerBounds & {
   fallback?: number
   message?: string
@@ -26,11 +22,8 @@ export function parseClampedInteger(value: unknown, options: IntegerFallbackOpti
   return options.maximum === undefined ? integer : Math.min(integer, options.maximum)
 }
 
-export function parseIntegerOrFallback(value: unknown, options: IntegerOrFallbackOptions) {
-  const parsed =
-    options.syntax === 'leading'
-      ? Number.parseInt(String(value ?? options.fallback), 10)
-      : Number(value)
+export function parseIntegerOrFallback(value: unknown, options: IntegerFallbackOptions) {
+  const parsed = Number(value)
 
   if (!Number.isFinite(parsed) || parsed < options.minimum) return options.fallback
 

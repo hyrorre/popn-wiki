@@ -70,12 +70,11 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
 
   return {
     path,
-    page: parseIntegerOrFallback(query.page, { fallback: 1, minimum: 1, syntax: 'leading' }),
+    page: parseIntegerOrFallback(query.page, { fallback: 1, minimum: 1 }),
     limit: parseIntegerOrFallback(query.limit, {
       fallback: 20,
       minimum: 1,
-      maximum: COMMENT_LIST_MAX_LIMIT,
-      syntax: 'leading'
+      maximum: COMMENT_LIST_MAX_LIMIT
     }),
     fresh: query.fresh !== undefined
   }

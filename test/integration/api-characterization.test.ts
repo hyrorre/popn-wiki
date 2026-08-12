@@ -1212,10 +1212,14 @@ describe('API characterization', async () => {
       const listed = await requestJson<{ comments: CommentResponse[]; total: number }>(
         `/api/comment?path=${encodeURIComponent(limitedPath)}&limit=1000`
       )
+      const malformedLimit = await requestJson<{ comments: CommentResponse[]; total: number }>(
+        `/api/comment?path=${encodeURIComponent(limitedPath)}&limit=2abc`
+      )
 
       expect(listed.response.status).toBe(200)
       expect(listed.payload.total).toBe(101)
       expect(listed.payload.comments).toHaveLength(100)
+      expect(malformedLimit.payload.comments).toHaveLength(20)
     })
 
     test('creates a sanitized root comment with its public profile', async () => {

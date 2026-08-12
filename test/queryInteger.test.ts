@@ -16,15 +16,14 @@ describe('integer query parsing', () => {
     expect(parseClampedInteger('100', options)).toBe(50)
   })
 
-  test('supports both numeric and legacy leading-integer fallback behavior', () => {
+  test('truncates numeric values and falls back for malformed or undersized values', () => {
     const options = { fallback: 1, minimum: 1 }
 
     expect(parseIntegerOrFallback('2.9', options)).toBe(2)
     expect(parseIntegerOrFallback('2abc', options)).toBe(1)
     expect(parseIntegerOrFallback('0.9', options)).toBe(1)
-    expect(parseIntegerOrFallback('2abc', { ...options, syntax: 'leading' })).toBe(2)
-    expect(parseIntegerOrFallback('200items', { ...options, maximum: 100, syntax: 'leading' })).toBe(100)
-    expect(parseIntegerOrFallback(undefined, { ...options, syntax: 'leading' })).toBe(1)
+    expect(parseIntegerOrFallback('200', { ...options, maximum: 100 })).toBe(100)
+    expect(parseIntegerOrFallback(undefined, options)).toBe(1)
   })
 
   test('requires exact integers, applies defaults, and caps accepted values', () => {
