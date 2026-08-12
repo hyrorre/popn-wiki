@@ -10,13 +10,11 @@ import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
+import { requireApiUser } from '~/server/utils/authorization'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'comment:post', limit: 10 })
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  const user = await requireApiUser(event)
 
   const { path, body, replyTo } = await readZodBody(event, createCommentSchema)
   const sanitizedBody = sanitizeDangerousMarkdownHtml(body).trim()

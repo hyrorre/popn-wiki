@@ -1,15 +1,13 @@
 import { blob } from '@nuxthub/blob'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { ensureImageFilenameAvailable, validateImageContent, validateImageFilename } from '~/server/utils/image'
+import { requireApiUser } from '~/server/utils/authorization'
 
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'image:post', limit: 10 })
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  await requireApiUser(event)
 
   const formData = await readMultipartFormData(event)
   const file = formData?.find((f) => f.name === 'file')

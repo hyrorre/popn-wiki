@@ -1,5 +1,6 @@
 import { runTask } from 'nitropack/runtime'
 import { parseRebuildPageSearchPayload } from '~/server/utils/adminTaskPayload'
+import { requireApiAdmin } from '~/server/utils/authorization'
 
 type RebuildPageSearchFtsResult = {
   scanned: number
@@ -13,13 +14,7 @@ type RebuildPageSearchFtsResult = {
 const REBUILD_PAGE_SEARCH_FTS_TASK = 'rebuild-page-search-fts'
 
 export default defineEventHandler(async (event): Promise<RebuildPageSearchFtsResult> => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
-  if (user.role !== 'admin') {
-    throw createError({ statusCode: 403, message: 'Forbidden.' })
-  }
+  await requireApiAdmin(event)
 
   const body = await readBody(event)
   const { result } = await runTask<RebuildPageSearchFtsResult>(REBUILD_PAGE_SEARCH_FTS_TASK, {

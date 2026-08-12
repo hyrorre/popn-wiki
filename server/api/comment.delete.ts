@@ -5,12 +5,10 @@ import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
 import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
 import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
+import { requireApiUser } from '~/server/utils/authorization'
 
 export default defineEventHandler(async (event) => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  const user = await requireApiUser(event)
 
   const query = getQuery(event)
   const id = query.id !== undefined ? Number(query.id) : undefined

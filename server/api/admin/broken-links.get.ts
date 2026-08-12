@@ -3,6 +3,7 @@ import { blob } from '@nuxthub/blob'
 import { aliasedTable, and, asc, eq, gt, inArray, notExists, sql } from 'drizzle-orm'
 import { visit } from 'unist-util-visit'
 import { pagesTable } from '../../db/schema'
+import { requireApiAdmin } from '~/server/utils/authorization'
 
 type LinkInfo = {
   sourcePath: string
@@ -177,13 +178,7 @@ const readLatestVisiblePagesByPath = (paths: string[]) => {
 }
 
 export default defineEventHandler(async (event): Promise<BrokenLinksResponse> => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
-  if (user.role !== 'admin') {
-    throw createError({ statusCode: 403, message: 'Forbidden.' })
-  }
+  await requireApiAdmin(event)
 
   console.log('[BrokenLinkChecker] Starting full scan...')
 

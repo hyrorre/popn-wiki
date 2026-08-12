@@ -9,13 +9,11 @@ import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../u
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
+import { requireApiUser } from '~/server/utils/authorization'
 import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  const user = await requireApiUser(event)
 
   const payload = await readZodBody(event, updatePageSchema)
   const { path, body, baseRevision } = payload

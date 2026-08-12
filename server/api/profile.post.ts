@@ -4,12 +4,10 @@ import { eq } from 'drizzle-orm'
 import { readZodBody } from '~/server/utils/validation'
 import { getCommentPathsByUser, invalidateCommentAuthorCaches } from '~/server/utils/commentAuthorCache'
 import { updateProfileSchema } from '~/shared/zod'
+import { requireApiUser } from '~/server/utils/authorization'
 
 export default defineEventHandler(async (event) => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  const user = await requireApiUser(event)
 
   const payload = await readZodBody(event, updateProfileSchema)
   const commentPaths = await getCommentPathsByUser(user.id)

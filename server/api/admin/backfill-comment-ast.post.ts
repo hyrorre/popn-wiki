@@ -1,5 +1,6 @@
 import { runTask } from 'nitropack/runtime'
 import { parseBackfillCommentAstPayload } from '~/server/utils/adminTaskPayload'
+import { requireApiAdmin } from '~/server/utils/authorization'
 
 type BackfillCommentAstResult = {
   scanned: number
@@ -11,13 +12,7 @@ type BackfillCommentAstResult = {
 const BACKFILL_COMMENT_AST_TASK = 'backfill-comment-ast'
 
 export default defineEventHandler(async (event): Promise<BackfillCommentAstResult> => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
-  if (user.role !== 'admin') {
-    throw createError({ statusCode: 403, message: 'Forbidden.' })
-  }
+  await requireApiAdmin(event)
 
   const body = await readBody(event)
   const { result } = await runTask<BackfillCommentAstResult>(BACKFILL_COMMENT_AST_TASK, {

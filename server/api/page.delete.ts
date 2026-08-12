@@ -5,12 +5,10 @@ import { getPageMutationPurgePrefixes, purgeCdnByPrefixes } from '../utils/cfCac
 import { removePageSearchIndex } from '../utils/pageSearchIndex'
 import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../utils/workersCache'
 import { assertPageBaseRevision, getLatestPage, insertPageRevision } from '../utils/pageRevision'
+import { requireApiUser } from '../utils/authorization'
 
 export default defineEventHandler(async (event) => {
-  const { user } = await getUserSession(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized.' })
-  }
+  const user = await requireApiUser(event)
 
   const query = getQuery(event)
   const path = typeof query.path === 'string' ? query.path.trim() : ''
