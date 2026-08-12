@@ -935,6 +935,20 @@ describe('API characterization', async () => {
       expect(fresh.response.headers.get('cloudflare-cdn-cache-control')).toBe('no-store')
     })
 
+    test('rejects malformed revision identifiers', async () => {
+      const malformed = await requestJson<{ message: string }>(
+        `/api/page?path=${encodeURIComponent(path)}&revision=1abc`
+      )
+      const fractional = await requestJson<{ message: string }>(
+        `/api/page?path=${encodeURIComponent(path)}&revision=1.5`
+      )
+
+      expect(malformed.response.status).toBe(400)
+      expect(fractional.response.status).toBe(400)
+      expect(malformed.payload.message).toBe('Invalid revision.')
+      expect(fractional.payload.message).toBe('Invalid revision.')
+    })
+
     test('rejects a stale base revision with the latest revision number', async () => {
       const { response, payload } = await requestJson<{ data: { latestRevision: number } }>('/api/page', {
         method: 'PUT',

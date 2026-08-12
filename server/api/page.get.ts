@@ -7,7 +7,7 @@ import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getPageResponseWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
-import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
+import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
 import { parseZodValue } from '~/server/utils/validation'
 import { wikiPathSchema } from '~/shared/zod'
 
@@ -73,14 +73,10 @@ function parsePageQuery(event: H3Event): PageQuery {
     return base
   }
 
-  const revision = parseIntegerOrFallback(query.revision, {
-    fallback: 0,
+  const revision = parseStrictIntegerQuery(query.revision, {
     minimum: 1,
-    syntax: 'leading'
+    message: 'Invalid revision.'
   })
-  if (revision === 0) {
-    throw createError({ statusCode: 400, message: 'Invalid revision.' })
-  }
 
   return { ...base, revision }
 }
