@@ -1,5 +1,5 @@
 import { pagesTable } from '../../db/schema'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '../../utils/markdown'
@@ -11,6 +11,7 @@ import { replacePageSearchIndex } from '../../utils/pageSearchIndex'
 import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../../utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
+import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
 
 export default defineEventHandler(async (event) => {
   const { user } = await getUserSession(event)
@@ -30,23 +31,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Target revision not found.' })
   }
 
-  const latest = await db
-    .select({ revision: pagesTable.revision })
-    .from(pagesTable)
-    .where(eq(pagesTable.path, path))
-    .orderBy(desc(pagesTable.revision))
-    .limit(1)
-    .get()
-
-  const nextRevision = (latest?.revision ?? 0) + 1
-
-  if (baseRevision !== latest?.revision) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: 'Revision conflict.',
-      data: { latestRevision: latest?.revision ?? 0 }
-    })
-  }
+  const latestRevision = await getLatestPageRevision(path)
+  const nextRevision = latestRevision + 1
+  assertPageBaseRevision(baseRevision, latestRevision)
 
   const now = new Date().toISOString()
 
@@ -54,38 +41,18 @@ export default defineEventHandler(async (event) => {
   // スキーマ変更前のデータには AST がないので再解析するのが安全）
   const ast = await parseMarkdown(targetPage.body, mdcParseOptions)
 
-  const inserted = await db
-    .insert(pagesTable)
-    .values({
-      path,
-      title: targetPage.title,
-      revision: nextRevision,
-      body: targetPage.body,
-      bodyAst: JSON.stringify(ast),
-      message: `Restore revision ${targetRevision}`,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: user.id,
-      updatedBy: user.id
-    })
-    .onConflictDoNothing({ target: [pagesTable.path, pagesTable.revision] })
-    .returning()
-    .get()
-
-  if (!inserted) {
-    const current = await db
-      .select({ revision: pagesTable.revision })
-      .from(pagesTable)
-      .where(eq(pagesTable.path, path))
-      .orderBy(desc(pagesTable.revision))
-      .get()
-
-    throw createError({
-      statusCode: 409,
-      statusMessage: 'Revision conflict.',
-      data: { latestRevision: current?.revision ?? latest?.revision ?? 0 }
-    })
-  }
+  const inserted = await insertPageRevision({
+    path,
+    title: targetPage.title,
+    revision: nextRevision,
+    body: targetPage.body,
+    bodyAst: JSON.stringify(ast),
+    message: `Restore revision ${targetRevision}`,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: user.id,
+    updatedBy: user.id
+  })
 
   await replacePageSearchIndex(inserted)
   await invalidateLatestPageCache(path)
