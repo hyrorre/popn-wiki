@@ -1,5 +1,8 @@
-import { expect, test, describe } from 'bun:test'
-import { verifyPasswordMD5Crypt, verifyPasswordBcrypt } from '../server/utils/auth'
+import { expect, test, describe, mock } from 'bun:test'
+
+mock.module('@nuxthub/db', () => ({ db: {} }))
+
+const { verifyPasswordMD5Crypt, verifyPasswordBcrypt } = await import('../server/utils/auth')
 
 describe('Auth Utilities', () => {
   test('verifyPasswordMD5Crypt', () => {
