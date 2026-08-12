@@ -98,6 +98,18 @@ async function login(session: keyof typeof users, ip: string, loginPassword = pa
   return payload
 }
 
+async function uploadImage(filename: string, data: Uint8Array, session?: keyof typeof users, ip = '203.0.113.60') {
+  const formData = new FormData()
+  const blobBytes = new Uint8Array(data.byteLength)
+  blobBytes.set(data)
+  formData.append('file', new Blob([blobBytes.buffer]), filename)
+  const headers = session ? withSession(session, { 'cf-connecting-ip': ip }) : { 'cf-connecting-ip': ip }
+  const response = await fetch('/api/image', { method: 'POST', headers, body: formData })
+  const payload = (await response.json()) as { url?: string; filename?: string; message?: string }
+
+  return { response, payload }
+}
+
 async function seedUsers() {
   await database.execute('DELETE FROM page_search_fts')
   await database.execute('DELETE FROM comments')
@@ -157,7 +169,7 @@ describe('API characterization', async () => {
       },
       hub: {
         dir: testDataDir,
-        blob: false,
+        blob: { driver: 'fs', dir: join(testDataDir, 'blob') },
         cache: { driver: 'memory' },
         kv: { driver: 'memory' },
         db: {
@@ -595,6 +607,80 @@ describe('API characterization', async () => {
         headers: { cookie: clearedCookie }
       })
       expect(afterClearedSession.response.status).toBe(401)
+    })
+  })
+
+  describe.sequential('image API contracts', () => {
+    const pngBytes = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])
+    const gifBytes = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x00])
+
+    test('requires authentication for multipart uploads', async () => {
+      const uploaded = await uploadImage('anonymous.png', pngBytes)
+
+      expect(uploaded.response.status).toBe(401)
+      expect(uploaded.payload.message).toBe('Unauthorized.')
+    })
+
+    test('uploads a valid image with its original filename', async () => {
+      const uploaded = await uploadImage('integration.png', pngBytes, 'editor', '203.0.113.61')
+
+      expect(uploaded.response.status).toBe(200)
+      expect(uploaded.payload).toEqual({ url: 'integration.png', filename: 'integration.png' })
+    })
+
+    test('rejects mismatched content, oversized files, and duplicate names', async () => {
+      const mismatch = await uploadImage('mismatch.jpg', pngBytes, 'editor', '203.0.113.62')
+      const oversized = await uploadImage(
+        'oversized.png',
+        new Uint8Array(5 * 1024 * 1024 + 1),
+        'editor',
+        '203.0.113.63'
+      )
+      const duplicate = await uploadImage('integration.png', pngBytes, 'editor', '203.0.113.64')
+
+      expect(mismatch.response.status).toBe(400)
+      expect(mismatch.payload.message).toBe('拡張子とファイル内容が一致しません。')
+      expect(oversized.response.status).toBe(400)
+      expect(oversized.payload.message).toBe('ファイルサイズは5MB以下にしてください。')
+      expect(duplicate.response.status).toBe(409)
+      expect(duplicate.payload.message).toContain('同名のファイルが既に存在します')
+    })
+
+    test('lists images with cursor pagination and public URLs', async () => {
+      const second = await uploadImage('second.gif', gifBytes, 'other', '203.0.113.65')
+      expect(second.response.status).toBe(200)
+
+      const firstPage = await requestJson<{
+        images: Array<{ name: string; url: string; created_at: string }>
+        cursor?: string
+        hasMore: boolean
+      }>('/api/image?limit=1')
+      const secondPage = await requestJson<{
+        images: Array<{ name: string; url: string; created_at: string }>
+        hasMore: boolean
+      }>(`/api/image?limit=1&cursor=${encodeURIComponent(firstPage.payload.cursor ?? '')}`)
+      const images = [...firstPage.payload.images, ...secondPage.payload.images]
+
+      expect(firstPage.response.status).toBe(200)
+      expect(firstPage.payload.hasMore).toBe(true)
+      expect(firstPage.payload.cursor).toBeTruthy()
+      expect(images).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'integration.png', url: '/api/image/integration.png' }),
+          expect.objectContaining({ name: 'second.gif', url: '/api/image/second.gif' })
+        ])
+      )
+    })
+
+    test('serves image bytes with content type and immutable browser caching', async () => {
+      const response = await fetch('/api/image/integration.png')
+      const bytes = new Uint8Array(await response.arrayBuffer())
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe('image/png')
+      expect(response.headers.get('cache-control')).toBe('public, max-age=2592000, immutable')
+      expect(response.headers.get('cloudflare-cdn-cache-control')).toBe('public, max-age=2592000, immutable')
+      expect(bytes).toEqual(pngBytes)
     })
   })
 
