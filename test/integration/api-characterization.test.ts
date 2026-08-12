@@ -396,7 +396,7 @@ describe('API characterization', async () => {
       const existing = await requestJson<{ message: string }>('/api/auth/forgot', {
         method: 'POST',
         headers: { 'cf-connecting-ip': '203.0.113.52' },
-        body: { email: users.other.email }
+        body: { email: ` ${users.other.email.toUpperCase()} ` }
       })
       const unknown = await requestJson<{ message: string }>('/api/auth/forgot', {
         method: 'POST',
@@ -416,6 +416,19 @@ describe('API characterization', async () => {
       expect(emails).toHaveLength(beforeEmails + 1)
       expect(emails.at(-1)?.payload.to).toBe(users.other.email)
       expect(emails.at(-1)?.payload.html).toContain(`/reset?token=${String(resetTokens.rows[0]?.token)}`)
+    })
+
+    test('forgot password rejects malformed email payloads before lookup', async () => {
+      const beforeEmails = capturedEmails().length
+      const malformed = await requestJson<{ message: string }>('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.58' },
+        body: { email: 'not-an-email' }
+      })
+
+      expect(malformed.response.status).toBe(400)
+      expect(malformed.payload.message).toBe('Invalid payload.')
+      expect(capturedEmails()).toHaveLength(beforeEmails)
     })
 
     test('expired verification and reset tokens are rejected', async () => {

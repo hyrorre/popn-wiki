@@ -2,17 +2,12 @@ import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { readZodBody } from '~/server/utils/validation'
+import { emailOnlySchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'auth:forgot', limit: 3 })
-  const { email } = await readBody(event)
-
-  if (!email) {
-    throw createError({
-      statusCode: 400,
-      message: 'Email is required'
-    })
-  }
+  const { email } = await readZodBody(event, emailOnlySchema)
 
   const user = await db.select().from(usersTable).where(eq(usersTable.email, email)).get()
 
