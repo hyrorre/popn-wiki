@@ -1,5 +1,5 @@
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
-import { extractTitleFromMarkdown } from '../utils/page'
+import { resolvePageTitle } from '../utils/page'
 import { replacePageSearchIndex } from '../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   // Markdown を解析
   const ast = await parseMarkdown(sanitizedBody, mdcParseOptions)
 
-  const title = extractTitleFromMarkdown(sanitizedBody) || (path === '/' ? 'Home' : path.split('/').pop() || path)
+  const title = resolvePageTitle(sanitizedBody, path)
 
   const inserted = await insertPageRevision({
     path,

@@ -889,6 +889,22 @@ describe('API characterization', async () => {
       expect(searchIndex.rows[0]).toMatchObject({ path, revision: 1 })
     })
 
+    test('does not derive a page title from a heading inside a code fence', async () => {
+      const fencedPath = 'characterization/fenced-title'
+      const created = await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: {
+          path: fencedPath,
+          body: ['```md', '# Code example', '```', '# Visible title'].join('\n'),
+          baseRevision: 0
+        }
+      })
+
+      expect(created.response.status).toBe(200)
+      expect(created.payload.title).toBe('Visible title')
+    })
+
     test('returns public CDN headers for cached reads and no-store for fresh reads', async () => {
       const cached = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}`)
       const fresh = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}&fresh=1`)
