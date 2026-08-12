@@ -7,6 +7,7 @@ import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getPageResponseWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
+import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
 
 const LATEST_PAGE_TTL = CDN_CACHE_TTL.pageLatest
 const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
@@ -73,8 +74,12 @@ function parsePageQuery(event: H3Event): PageQuery {
     return base
   }
 
-  const revision = Number.parseInt(query.revision, 10)
-  if (!Number.isInteger(revision) || revision < 1) {
+  const revision = parseIntegerOrFallback(query.revision, {
+    fallback: 0,
+    minimum: 1,
+    syntax: 'leading'
+  })
+  if (revision === 0) {
     throw createError({ statusCode: 400, message: 'Invalid revision.' })
   }
 

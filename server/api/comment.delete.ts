@@ -3,16 +3,13 @@ import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { requireApiUser } from '~/server/utils/authorization'
 import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
+import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
 
   const query = getQuery(event)
-  const id = query.id !== undefined ? Number(query.id) : undefined
-
-  if (!id || !Number.isInteger(id) || id <= 0) {
-    throw createError({ statusCode: 400, message: 'ID is required.' })
-  }
+  const id = parseStrictIntegerQuery(query.id, { minimum: 1, message: 'ID is required.' })
 
   const isAdmin = user.role === 'admin'
 

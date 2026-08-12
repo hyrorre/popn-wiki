@@ -2,15 +2,19 @@ import { removePageSearchIndex } from '../utils/pageSearchIndex'
 import { assertPageBaseRevision, getLatestPage, insertPageRevision } from '../utils/pageRevision'
 import { requireApiUser } from '../utils/authorization'
 import { invalidatePageMutationCaches } from '../utils/mutationCache'
+import { parseStrictIntegerQuery } from '../utils/queryInteger'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
 
   const query = getQuery(event)
   const path = typeof query.path === 'string' ? query.path.trim() : ''
-  const baseRevision = Number(query.baseRevision)
+  const baseRevision = parseStrictIntegerQuery(query.baseRevision, {
+    minimum: 1,
+    message: 'Invalid payload.'
+  })
 
-  if (!path || !Number.isInteger(baseRevision) || baseRevision <= 0) {
+  if (!path) {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
   }
 

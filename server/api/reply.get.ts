@@ -1,6 +1,7 @@
 import { commentsTable, usersTable, pagesTable } from '../db/schema'
 import { eq, desc, and, isNull, sql, ne, aliasedTable, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
+import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
 
 export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event)
@@ -12,8 +13,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Invalid reply type.' })
   }
 
-  const limit = parseIntegerQuery(query.limit, { fallback: 20, minimum: 1, maximum: 100 })
-  const offset = parseIntegerQuery(query.offset, { fallback: 0, minimum: 0 })
+  const limit = parseStrictIntegerQuery(query.limit, { fallback: 20, minimum: 1, maximum: 100 })
+  const offset = parseStrictIntegerQuery(query.offset, { fallback: 0, minimum: 0 })
 
   let replyIds: number[] = []
 
@@ -124,17 +125,3 @@ export default defineEventHandler(async (event) => {
     bodyPreview: r.body.length > 100 ? `${r.body.substring(0, 100)}...` : r.body
   }))
 })
-
-function parseIntegerQuery(
-  value: unknown,
-  options: { fallback: number; minimum: number; maximum?: number }
-) {
-  if (value === undefined) return options.fallback
-
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed < options.minimum) {
-    throw createError({ statusCode: 400, message: 'Invalid pagination.' })
-  }
-
-  return options.maximum === undefined ? parsed : Math.min(parsed, options.maximum)
-}

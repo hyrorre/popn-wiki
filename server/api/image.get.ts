@@ -1,11 +1,12 @@
 import { blob } from '@nuxthub/blob'
+import { parseClampedInteger } from '~/server/utils/queryInteger'
 
 const MAX_LIMIT = 1000
 const FALLBACK_CURSOR_PREFIX = 'offset:'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const limit = parseLimit(query.limit)
+  const limit = parseClampedInteger(query.limit, { fallback: MAX_LIMIT, minimum: 1, maximum: MAX_LIMIT })
   const cursor = query.cursor as string | undefined
   const fallbackOffset = parseFallbackCursor(cursor)
 
@@ -36,12 +37,6 @@ export default defineEventHandler(async (event) => {
     hasMore
   }
 })
-
-function parseLimit(value: unknown) {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) return MAX_LIMIT
-  return Math.min(Math.max(Math.trunc(parsed), 1), MAX_LIMIT)
-}
 
 function parseFallbackCursor(value: unknown) {
   if (typeof value !== 'string' || !value.startsWith(FALLBACK_CURSOR_PREFIX)) return null

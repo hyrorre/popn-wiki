@@ -8,11 +8,12 @@ import {
 } from '~/server/utils/recentCommentsCache'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getRecentCommentsWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
+import { parseClampedInteger, parseIntegerOrFallback } from '~/server/utils/queryInteger'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const limit = parseLimit(query.limit)
-  const page = parsePositiveInteger(query.page, 1)
+  const limit = parseClampedInteger(query.limit, { fallback: 10, minimum: 1, maximum: 50 })
+  const page = parseIntegerOrFallback(query.page, { fallback: 1, minimum: 1 })
   const offset = (page - 1) * limit
 
   const version = await getRecentCommentsCacheVersion()
@@ -76,15 +77,3 @@ export default defineEventHandler(async (event) => {
   setWorkersCacheTags(event, getRecentCommentsWorkersCacheTags())
   return result
 })
-
-function parseLimit(value: unknown) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return 10
-  return Math.min(Math.max(Math.trunc(n), 1), 50)
-}
-
-function parsePositiveInteger(value: unknown, fallback: number) {
-  const n = Number(value)
-  if (!Number.isFinite(n) || n < 1) return fallback
-  return Math.trunc(n)
-}

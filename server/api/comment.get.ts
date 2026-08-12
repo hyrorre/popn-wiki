@@ -5,6 +5,7 @@ import type { H3Event } from 'h3'
 import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getCommentListWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
+import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 
@@ -70,8 +71,8 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
 
   return {
     path,
-    page: parsePositiveInteger(query.page, 1),
-    limit: parsePositiveInteger(query.limit, 20),
+    page: parseIntegerOrFallback(query.page, { fallback: 1, minimum: 1, syntax: 'leading' }),
+    limit: parseIntegerOrFallback(query.limit, { fallback: 20, minimum: 1, syntax: 'leading' }),
     fresh: query.fresh !== undefined
   }
 }
@@ -170,9 +171,4 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
     comments,
     total
   }
-}
-
-function parsePositiveInteger(value: unknown, fallback: number) {
-  const parsed = Number.parseInt(String(value ?? fallback), 10)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
