@@ -1,12 +1,11 @@
 import { db } from '@nuxthub/db'
 import { pagesTable, usersTable } from '../../db/schema'
 import { eq, desc } from 'drizzle-orm'
+import { parseZodValue } from '~/server/utils/validation'
+import { wikiPathSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
-  const query = (await getQuery(event)) as { path?: string }
-  if (!query.path) {
-    throw createError({ statusCode: 400, message: 'Path is required.' })
-  }
+  const path = parseZodValue(getQuery(event).path, wikiPathSchema, { message: 'Path is required.' })
   const data = await db
     .select({
       path: pagesTable.path,
@@ -19,7 +18,7 @@ export default defineEventHandler(async (event) => {
     })
     .from(pagesTable)
     .leftJoin(usersTable, eq(pagesTable.updatedBy, usersTable.id))
-    .where(eq(pagesTable.path, query.path))
+    .where(eq(pagesTable.path, path))
     .orderBy(desc(pagesTable.revision))
     .all()
 

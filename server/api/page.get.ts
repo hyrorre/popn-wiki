@@ -8,6 +8,8 @@ import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/p
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getPageResponseWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
+import { parseZodValue } from '~/server/utils/validation'
+import { wikiPathSchema } from '~/shared/zod'
 
 const LATEST_PAGE_TTL = CDN_CACHE_TTL.pageLatest
 const REVISION_PAGE_TTL = CDN_CACHE_TTL.pageRevision
@@ -62,13 +64,10 @@ async function withRevisionCache(event: H3Event, query: PageQuery) {
 }
 
 function parsePageQuery(event: H3Event): PageQuery {
-  const query = getQuery(event) as { path?: string; revision?: string; fresh?: string }
+  const query = getQuery(event)
+  const path = parseZodValue(query.path, wikiPathSchema, { message: 'Path is required.' })
 
-  if (!query.path) {
-    throw createError({ statusCode: 400, message: 'Path is required.' })
-  }
-
-  const base = { path: query.path, fresh: query.fresh === '1' || query.fresh === 'true' }
+  const base = { path, fresh: query.fresh === '1' || query.fresh === 'true' }
 
   if (query.revision === undefined) {
     return base

@@ -3,20 +3,18 @@ import { assertPageBaseRevision, getLatestPage, insertPageRevision } from '../ut
 import { requireApiUser } from '../utils/authorization'
 import { invalidatePageMutationCaches } from '../utils/mutationCache'
 import { parseStrictIntegerQuery } from '../utils/queryInteger'
+import { parseZodValue } from '../utils/validation'
+import { wikiPathSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
 
   const query = getQuery(event)
-  const path = typeof query.path === 'string' ? query.path.trim() : ''
+  const path = parseZodValue(query.path, wikiPathSchema, { message: 'Invalid payload.' })
   const baseRevision = parseStrictIntegerQuery(query.baseRevision, {
     minimum: 1,
     message: 'Invalid payload.'
   })
-
-  if (!path) {
-    throw createError({ statusCode: 400, message: 'Invalid payload.' })
-  }
 
   const latest = await getLatestPage(path)
 

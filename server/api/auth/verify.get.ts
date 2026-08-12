@@ -1,16 +1,13 @@
 import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
 import { eq } from 'drizzle-orm'
+import { authTokenSchema } from '~/shared/zod'
+import { parseZodValue } from '~/server/utils/validation'
 
 export default defineEventHandler(async (event) => {
-  const { token } = getQuery(event)
-
-  if (!token || typeof token !== 'string') {
-    throw createError({
-      statusCode: 400,
-      message: 'Missing or invalid token'
-    })
-  }
+  const token = parseZodValue(getQuery(event).token, authTokenSchema, {
+    message: 'Missing or invalid token'
+  })
 
   const tokenRecord = await verifyAndUseToken(token, 'verification')
 

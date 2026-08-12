@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   createCommentSchema,
+  authTokenSchema,
   emailOnlySchema,
   resetPasswordSchema,
   restorePageSchema,
@@ -11,6 +12,12 @@ import {
 } from '../shared/zod'
 
 describe('API payload schemas', () => {
+  test('authentication tokens are trimmed and bounded', () => {
+    expect(authTokenSchema.parse(' token-value ')).toBe('token-value')
+    expect(authTokenSchema.safeParse('').success).toBe(false)
+    expect(authTokenSchema.safeParse('x'.repeat(513)).success).toBe(false)
+  })
+
   test('signin normalizes email and preserves password', () => {
     const result = signinSchema.parse({
       email: ' USER@Example.COM ',

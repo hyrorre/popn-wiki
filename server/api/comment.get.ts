@@ -6,6 +6,8 @@ import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getCommentListWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
+import { parseZodValue } from '~/server/utils/validation'
+import { wikiPathSchema } from '~/shared/zod'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 
@@ -63,11 +65,7 @@ function getCommentListQuery(event: H3Event): CommentListQuery {
 
 function parseCommentListQuery(event: H3Event): CommentListQuery {
   const query = getQuery(event)
-  const path = query.path as string | undefined
-
-  if (!path) {
-    throw createError({ statusCode: 400, message: 'Path is required.' })
-  }
+  const path = parseZodValue(query.path, wikiPathSchema, { message: 'Path is required.' })
 
   return {
     path,

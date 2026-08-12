@@ -31,8 +31,10 @@ export const resetPasswordFormSchema = z.object({
   password: strongPasswordSchema
 })
 
+export const authTokenSchema = z.string().trim().min(1, 'トークンが必要です').max(512, 'トークンが長すぎます')
+
 export const resetPasswordSchema = z.object({
-  token: z.string().trim().min(1, 'トークンが必要です').max(512, 'トークンが長すぎます'),
+  token: authTokenSchema,
   password: strongPasswordSchema
 })
 

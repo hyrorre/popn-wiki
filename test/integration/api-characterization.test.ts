@@ -837,6 +837,28 @@ describe('API characterization', async () => {
       expect(response.status).toBe(401)
     })
 
+    test('rejects malformed wiki paths before read or delete queries', async () => {
+      const malformedPath = encodeURIComponent('../secret')
+      const [page, history, comments, deletion] = await Promise.all([
+        requestJson<{ message: string }>(`/api/page?path=${malformedPath}`),
+        requestJson<{ message: string }>(`/api/page/history?path=${malformedPath}`),
+        requestJson<{ message: string }>(`/api/comment?path=${malformedPath}`),
+        requestJson<{ message: string }>(`/api/page?path=${malformedPath}&baseRevision=1`, {
+          method: 'DELETE',
+          headers: withSession('editor')
+        })
+      ])
+
+      expect(page.response.status).toBe(400)
+      expect(history.response.status).toBe(400)
+      expect(comments.response.status).toBe(400)
+      expect(deletion.response.status).toBe(400)
+      expect(page.payload.message).toBe('Path is required.')
+      expect(history.payload.message).toBe('Path is required.')
+      expect(comments.payload.message).toBe('Path is required.')
+      expect(deletion.payload.message).toBe('Invalid payload.')
+    })
+
     test('creates revision 1, sanitizes Markdown, and updates the search index', async () => {
       const { response, payload } = await requestJson<PageResponse>('/api/page', {
         method: 'PUT',
