@@ -1,11 +1,7 @@
-import { invalidateLatestPageCache } from '../utils/pageCache'
-import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
-import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
-import { getPageMutationPurgePrefixes, purgeCdnByPrefixes } from '../utils/cfCachePurge'
 import { removePageSearchIndex } from '../utils/pageSearchIndex'
-import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../utils/workersCache'
 import { assertPageBaseRevision, getLatestPage, insertPageRevision } from '../utils/pageRevision'
 import { requireApiUser } from '../utils/authorization'
+import { invalidatePageMutationCaches } from '../utils/mutationCache'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
@@ -41,11 +37,7 @@ export default defineEventHandler(async (event) => {
   })
 
   await removePageSearchIndex(path)
-  await invalidateLatestPageCache(path)
-  await invalidateRecentPagesCache()
-  await invalidateRecentCommentsCache()
-  await purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
-  await purgeCdnByPrefixes(getPageMutationPurgePrefixes())
+  await invalidatePageMutationCaches(event, path)
 
   return inserted
 })

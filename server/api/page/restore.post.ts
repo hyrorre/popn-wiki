@@ -3,16 +3,12 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { mdcParseOptions } from '../../utils/markdown'
-import { invalidateLatestPageCache } from '../../utils/pageCache'
-import { invalidateRecentPagesCache } from '../../utils/recentPagesCache'
-import { invalidateRecentCommentsCache } from '../../utils/recentCommentsCache'
-import { getPageMutationPurgePrefixes, purgeCdnByPrefixes } from '../../utils/cfCachePurge'
 import { replacePageSearchIndex } from '../../utils/pageSearchIndex'
-import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../../utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
 import { requireApiUser } from '~/server/utils/authorization'
+import { invalidatePageMutationCaches } from '~/server/utils/mutationCache'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
@@ -53,11 +49,7 @@ export default defineEventHandler(async (event) => {
   })
 
   await replacePageSearchIndex(inserted)
-  await invalidateLatestPageCache(path)
-  await invalidateRecentPagesCache()
-  await invalidateRecentCommentsCache()
-  await purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
-  await purgeCdnByPrefixes(getPageMutationPurgePrefixes())
+  await invalidatePageMutationCaches(event, path)
 
   return inserted
 })

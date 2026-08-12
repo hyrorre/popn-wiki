@@ -1,11 +1,8 @@
 import { commentsTable } from '../db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { invalidateCommentListCache } from '~/server/utils/commentCache'
-import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
-import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 import { requireApiUser } from '~/server/utils/authorization'
+import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
 
 export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
@@ -53,10 +50,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  await invalidateCommentListCache(updated.path)
-  await invalidateRecentCommentsCache()
-  await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(updated.path))
-  await purgeCdnByPrefixes(getCommentMutationPurgePrefixes())
+  await invalidateCommentMutationCaches(event, updated.path, 'delete')
 
   return { success: true }
 })

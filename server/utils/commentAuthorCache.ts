@@ -4,8 +4,7 @@ import { db } from '@nuxthub/db'
 import { commentsTable } from '~/server/db/schema'
 import { invalidateCommentListCache } from '~/server/utils/commentCache'
 import { invalidateRecentCommentsCache } from '~/server/utils/recentCommentsCache'
-import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
-import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
+import { purgeCommentMutationExternalCaches } from '~/server/utils/mutationCache'
 
 export async function getCommentPathsByUser(userId: number) {
   const rows = await db
@@ -39,11 +38,7 @@ export async function invalidateCommentAuthorCaches(event: H3Event, paths: strin
     success = false
   }
 
-  if (!(await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(uniquePaths)))) {
-    success = false
-  }
-
-  if (!(await purgeCdnByPrefixes(getCommentMutationPurgePrefixes()))) {
+  if (!(await purgeCommentMutationExternalCaches(event, uniquePaths))) {
     success = false
   }
 

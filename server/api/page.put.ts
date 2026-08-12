@@ -1,15 +1,11 @@
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { extractTitleFromMarkdown } from '../utils/page'
-import { invalidateLatestPageCache } from '../utils/pageCache'
-import { invalidateRecentPagesCache } from '../utils/recentPagesCache'
-import { invalidateRecentCommentsCache } from '../utils/recentCommentsCache'
-import { getPageMutationPurgePrefixes, purgeCdnByPrefixes } from '../utils/cfCachePurge'
 import { replacePageSearchIndex } from '../utils/pageSearchIndex'
-import { getPageMutationWorkersCachePurgeOptions, purgeWorkersCache } from '../utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
 import { requireApiUser } from '~/server/utils/authorization'
+import { invalidatePageMutationCaches } from '~/server/utils/mutationCache'
 import { updatePageSchema } from '~/shared/zod'
 
 export default defineEventHandler(async (event) => {
@@ -45,11 +41,7 @@ export default defineEventHandler(async (event) => {
   })
 
   await replacePageSearchIndex(inserted)
-  await invalidateLatestPageCache(path)
-  await invalidateRecentPagesCache()
-  await invalidateRecentCommentsCache()
-  await purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
-  await purgeCdnByPrefixes(getPageMutationPurgePrefixes())
+  await invalidatePageMutationCaches(event, path)
 
   return inserted
 })

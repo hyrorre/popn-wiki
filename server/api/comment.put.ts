@@ -3,13 +3,11 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
-import { invalidateCommentListCache } from '~/server/utils/commentCache'
-import { getCommentMutationPurgePrefixes, purgeCdnByPrefixes } from '~/server/utils/cfCachePurge'
-import { getCommentMutationWorkersCachePurgeOptions, purgeWorkersCache } from '~/server/utils/workersCache'
 import { readZodBody } from '~/server/utils/validation'
 import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
 import { updateCommentSchema } from '~/shared/zod'
 import { requireApiUser } from '~/server/utils/authorization'
+import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'comment:put', limit: 10 })
@@ -50,9 +48,7 @@ export default defineEventHandler(async (event) => {
     .where(eq(usersTable.id, user.id))
     .get()
 
-  await invalidateCommentListCache(updated.path)
-  await purgeWorkersCache(event, getCommentMutationWorkersCachePurgeOptions(updated.path))
-  await purgeCdnByPrefixes(getCommentMutationPurgePrefixes())
+  await invalidateCommentMutationCaches(event, updated.path, 'update')
 
   return {
     ...updated,
