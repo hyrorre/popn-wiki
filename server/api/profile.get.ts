@@ -18,6 +18,6 @@ export default defineEventHandler(async (event) => {
     id: data.id,
     name: data.name,
     email: data.email,
-    avatar: user.avatar // セッションから取得
+    avatar: data.avatar
   }
 })

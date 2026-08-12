@@ -23,7 +23,12 @@ export default defineEventHandler(async (event) => {
       updatedAt: now
     })
     .where(eq(usersTable.id, user.id))
-    .returning()
+    .returning({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      avatar: usersTable.avatar
+    })
     .get()
 
   await invalidateCommentAuthorCaches(event, commentPaths)

@@ -273,6 +273,71 @@ describe('API characterization', async () => {
     })
   })
 
+  describe.sequential('profile privacy and update contracts', () => {
+    test('requires authentication to read or update a profile', async () => {
+      const read = await requestJson('/api/profile')
+      const update = await requestJson('/api/profile', {
+        method: 'POST',
+        body: { name: 'Anonymous', avatar: null }
+      })
+
+      expect(read.response.status).toBe(401)
+      expect(update.response.status).toBe(401)
+    })
+
+    test('returns only public account fields after an update', async () => {
+      const avatar = 'https://example.com/avatar.png'
+      const updated = await requestJson<Record<string, unknown>>('/api/profile', {
+        method: 'POST',
+        headers: withSession('migration'),
+        body: { name: 'Legacy Updated', avatar }
+      })
+
+      expect(updated.response.status).toBe(200)
+      expect(updated.payload).toEqual({
+        id: users.migration.id,
+        name: 'Legacy Updated',
+        email: users.migration.email,
+        avatar
+      })
+      expect(updated.payload).not.toHaveProperty('password')
+      expect(updated.payload).not.toHaveProperty('confirmed')
+      expect(updated.payload).not.toHaveProperty('role')
+    })
+
+    test('reads the updated avatar from the database instead of the stale session', async () => {
+      const profile = await requestJson<Record<string, unknown>>('/api/profile', {
+        headers: withSession('migration')
+      })
+
+      expect(profile.payload).toEqual({
+        id: users.migration.id,
+        name: 'Legacy Updated',
+        email: users.migration.email,
+        avatar: 'https://example.com/avatar.png'
+      })
+      expect(profile.payload).not.toHaveProperty('password')
+    })
+
+    test('rejects invalid profile payloads without changing stored data', async () => {
+      const invalid = await requestJson('/api/profile', {
+        method: 'POST',
+        headers: withSession('migration'),
+        body: { name: '', avatar: null }
+      })
+      const stored = await database.execute({
+        sql: 'SELECT name, avatar FROM users WHERE id = ?',
+        args: [users.migration.id]
+      })
+
+      expect(invalid.response.status).toBe(400)
+      expect(stored.rows[0]).toMatchObject({
+        name: 'Legacy Updated',
+        avatar: 'https://example.com/avatar.png'
+      })
+    })
+  })
+
   describe.sequential('page lifecycle and cache contracts', () => {
     const path = 'characterization/page'
     const originalBody = '# Characterization title\n<script>alert(1)</script>\nbody keyword'
