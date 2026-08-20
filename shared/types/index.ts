@@ -13,7 +13,7 @@ export type Config = {
 }
 
 export type Profile = {
-  id: string
+  id: number
   name: string | null
   avatar: string | null
   createdAt: string
@@ -27,8 +27,8 @@ export type Page = {
   body: string
   bodyAst?: string | null
   message: string | null
-  createdBy: string
-  updatedBy: string
+  createdBy: number
+  updatedBy: number
   createdAt: string
   updatedAt: string
   minor: number | null
@@ -40,14 +40,14 @@ export type Comment = {
   path: string
   body: string
   bodyAst?: string | null
-  userId: string
+  userId: number
   replyTo: number | null
   replyToName: string | null
   createdAt: string
   updatedAt: string
   deletedAt?: string | null
   profiles: {
-    id: string
+    id: number
     name: string | null
   } | null
   children?: Comment[]
