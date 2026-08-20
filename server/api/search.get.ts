@@ -1,5 +1,5 @@
 import { db } from '@nuxthub/db'
-import { aliasedTable, and, eq, gt, notExists, sql } from 'drizzle-orm'
+import { aliasedTable, and, desc, eq, gt, notExists, sql } from 'drizzle-orm'
 import { pagesTable } from '../db/schema'
 import { isMissingPageSearchIndex, isPageSearchIndexError } from '../utils/pageSearchIndex'
 import { searchQuerySchema } from '~/shared/zod'
@@ -110,12 +110,16 @@ async function readPageFtsSearchResult(terms: string[], page: number, limit: num
 }
 
 async function readLegacySearchResult(terms: string[], page: number, limit: number): Promise<SearchResult> {
-  const latestPages = await readLatestVisiblePages(terms)
+  const total = await countLatestVisiblePages(terms)
 
-  if (latestPages.length === 0) {
+  if (total === 0) {
     return { total: 0, items: [] }
   }
 
+  const latestPages = await readLatestVisiblePages(terms, {
+    limit,
+    offset: (page - 1) * limit
+  })
   const items = latestPages
     .map((entry) => buildSearchResult(entry, terms))
     .filter((entry): entry is SearchResultItem => entry !== null)
@@ -127,15 +131,24 @@ async function readLegacySearchResult(terms: string[], page: number, limit: numb
       return right.updatedAt.localeCompare(left.updatedAt)
     })
 
-  const start = (page - 1) * limit
-
   return {
-    total: items.length,
-    items: items.slice(start, start + limit)
+    total,
+    items
   }
 }
 
-async function readLatestVisiblePages(terms: string[]) {
+async function countLatestVisiblePages(terms: string[]) {
+  const newerRevision = aliasedTable(pagesTable, 'newer_revision_count')
+  const result = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(pagesTable)
+    .where(buildLatestVisiblePageCondition(terms, newerRevision))
+    .get()
+
+  return Number(result?.total ?? 0)
+}
+
+async function readLatestVisiblePages(terms: string[], pagination: { limit: number; offset: number }) {
   const newerRevision = aliasedTable(pagesTable, 'newer_revision')
 
   return db
@@ -147,19 +160,24 @@ async function readLatestVisiblePages(terms: string[]) {
       updatedAt: pagesTable.updatedAt
     })
     .from(pagesTable)
-    .where(
-      and(
-        sql`${pagesTable.body} != ''`,
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(newerRevision)
-            .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
-        ),
-        ...terms.map(buildTermCandidateCondition)
-      )
-    )
+    .where(buildLatestVisiblePageCondition(terms, newerRevision))
+    .orderBy(desc(pagesTable.updatedAt), pagesTable.path)
+    .limit(pagination.limit)
+    .offset(pagination.offset)
     .all()
+}
+
+function buildLatestVisiblePageCondition(terms: string[], newerRevision: typeof pagesTable) {
+  return and(
+    sql`${pagesTable.body} != ''`,
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(newerRevision)
+        .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
+    ),
+    ...terms.map(buildTermCandidateCondition)
+  )
 }
 
 function buildTermCandidateCondition(term: string) {

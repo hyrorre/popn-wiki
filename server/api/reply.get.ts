@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const limit = parseStrictIntegerQuery(query.limit, { fallback: 20, minimum: 1, maximum: 100 })
-  const offset = parseStrictIntegerQuery(query.offset, { fallback: 0, minimum: 0 })
+  const offset = parseStrictIntegerQuery(query.offset, { fallback: 0, minimum: 0, maximum: 1_000_000 })
 
   let replyIds: number[] = []
 
@@ -33,59 +33,7 @@ export default defineEventHandler(async (event) => {
       .all()
     replyIds = results.map((r) => r.id)
   } else {
-    // 2. 自分が参加しているスレッドへの返信
-    // 再帰的クエリで各コメントをルートIDに関連付ける
-    const hierarchy = db.$with('hierarchy').as(
-      db
-        .select({
-          id: sql`id`.as('id'),
-          root_id: sql`id`.as('root_id'),
-          user_id: sql`user_id`.as('user_id')
-        })
-        .from(commentsTable)
-        .where(isNull(commentsTable.replyTo))
-        .unionAll(
-          db
-            .select({
-              id: sql`comments.id`,
-              root_id: sql`hierarchy.root_id`,
-              user_id: sql`comments.user_id`
-            })
-            .from(commentsTable)
-            .innerJoin(sql`hierarchy`, eq(commentsTable.replyTo, sql`hierarchy.id`))
-        )
-    )
-
-    // 自分が参加しているルートIDを特定
-    const myRoots = await db
-      .with(hierarchy)
-      .select({ rootId: sql<number>`hierarchy.root_id` })
-      .from(hierarchy)
-      .where(eq(sql`hierarchy.user_id`, userId))
-      .groupBy(sql`hierarchy.root_id`)
-      .all()
-
-    const rootIds = myRoots.map((r) => r.rootId)
-
-    if (rootIds.length > 0) {
-      const results = await db
-        .with(hierarchy)
-        .select({ id: sql<number>`hierarchy.id` })
-        .from(hierarchy)
-        .innerJoin(commentsTable, eq(sql`hierarchy.id`, commentsTable.id))
-        .where(
-          and(
-            inArray(sql`hierarchy.root_id`, rootIds),
-            ne(sql`hierarchy.user_id`, userId),
-            isNull(commentsTable.deletedAt)
-          )
-        )
-        .orderBy(desc(commentsTable.createdAt))
-        .limit(limit)
-        .offset(offset)
-        .all()
-      replyIds = results.map((r) => r.id)
-    }
+    replyIds = await readThreadReplyIds(userId, limit, offset)
   }
 
   if (replyIds.length === 0) {
@@ -126,3 +74,58 @@ export default defineEventHandler(async (event) => {
     bodyPreview: r.body.length > 100 ? `${r.body.substring(0, 100)}...` : r.body
   }))
 })
+
+const MAX_PARTICIPATION_SEEDS = 1_000
+const MAX_PARTICIPATED_ROOTS = 500
+const MAX_REPLY_TREE_DEPTH = 100
+const MAX_REPLY_TREE_NODES = 10_000
+
+async function readThreadReplyIds(userId: number, limit: number, offset: number) {
+  const results = await db.all<{ id: number }>(sql`
+    WITH RECURSIVE
+    recent_participation AS (
+      SELECT id, reply_to
+      FROM comments
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT ${MAX_PARTICIPATION_SEEDS}
+    ),
+    ancestry(id, reply_to, depth) AS (
+      SELECT id, reply_to, 0
+      FROM recent_participation
+      UNION ALL
+      SELECT parent.id, parent.reply_to, ancestry.depth + 1
+      FROM comments AS parent
+      INNER JOIN ancestry ON ancestry.reply_to = parent.id
+      WHERE ancestry.depth < ${MAX_REPLY_TREE_DEPTH}
+      LIMIT ${MAX_REPLY_TREE_NODES}
+    ),
+    my_roots AS (
+      SELECT DISTINCT id AS root_id
+      FROM ancestry
+      WHERE reply_to IS NULL
+      LIMIT ${MAX_PARTICIPATED_ROOTS}
+    ),
+    hierarchy(id, root_id, user_id, created_at, depth) AS (
+      SELECT comments.id, comments.id, comments.user_id, comments.created_at, 0
+      FROM comments
+      INNER JOIN my_roots ON comments.id = my_roots.root_id
+      UNION ALL
+      SELECT child.id, hierarchy.root_id, child.user_id, child.created_at, hierarchy.depth + 1
+      FROM comments AS child
+      INNER JOIN hierarchy ON child.reply_to = hierarchy.id
+      WHERE hierarchy.depth < ${MAX_REPLY_TREE_DEPTH}
+      LIMIT ${MAX_REPLY_TREE_NODES}
+    )
+    SELECT hierarchy.id
+    FROM hierarchy
+    INNER JOIN comments ON comments.id = hierarchy.id
+    WHERE hierarchy.user_id != ${userId}
+      AND comments.deleted_at IS NULL
+    ORDER BY comments.created_at DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `)
+
+  return results.map((result) => Number(result.id))
+}

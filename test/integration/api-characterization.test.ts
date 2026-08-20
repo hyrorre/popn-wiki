@@ -925,12 +925,26 @@ describe('API characterization', async () => {
 
     test('rolls back a page revision when its search index update fails', async () => {
       const path = 'characterization/atomic-page-index'
+      for (const suffix of ['a', 'b']) {
+        await requestJson<PageResponse>('/api/page', {
+          method: 'PUT',
+          headers: withSession('editor'),
+          body: {
+            path: `${path}-${suffix}`,
+            body: `# Fallback ${suffix}\nbounded fallback term`,
+            baseRevision: 0
+          }
+        })
+      }
       await database.execute('DROP TABLE page_search_fts')
 
       let failedWrite: Awaited<ReturnType<typeof requestJson>>
       let stored: Awaited<ReturnType<Client['execute']>>
 
       try {
+        const fallbackSearch = await requestJson<{ total: number; items: unknown[] }>(
+          '/api/search?q=bounded%20fallback&limit=1'
+        )
         failedWrite = await requestJson('/api/page', {
           method: 'PUT',
           headers: withSession('editor'),
@@ -940,6 +954,10 @@ describe('API characterization', async () => {
           sql: 'SELECT count(*) AS count FROM pages WHERE path = ?',
           args: [path]
         })
+
+        expect(fallbackSearch.response.status).toBe(200)
+        expect(fallbackSearch.payload.total).toBe(2)
+        expect(fallbackSearch.payload.items).toHaveLength(1)
       } finally {
         const rebuilt = await requestJson('/api/admin/rebuild-page-search-fts', {
           method: 'POST',
@@ -1127,6 +1145,20 @@ describe('API characterization', async () => {
       expect(revisionOne.response.headers.get('cloudflare-cdn-cache-control')).toBe(
         'public, max-age=2592000, immutable'
       )
+    })
+
+    test('paginates page history and rejects malformed offsets', async () => {
+      const secondEntry = await requestJson<PageResponse[]>(
+        `/api/page/history?path=${encodeURIComponent(path)}&limit=1&offset=1`
+      )
+      const invalidOffset = await requestJson<{ message: string }>(
+        `/api/page/history?path=${encodeURIComponent(path)}&offset=1.5`
+      )
+
+      expect(secondEntry.response.status).toBe(200)
+      expect(secondEntry.payload.map((entry) => entry.revision)).toEqual([1])
+      expect(invalidOffset.response.status).toBe(400)
+      expect(invalidOffset.payload.message).toBe('Invalid pagination.')
     })
 
     test('deletion creates a tombstone and removes the search result', async () => {

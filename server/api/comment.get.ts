@@ -1,5 +1,5 @@
 import { commentsTable, usersTable } from '../db/schema'
-import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray } from 'drizzle-orm'
+import { eq, desc, asc, aliasedTable, sql, and, isNull, inArray, lt } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import type { H3Event } from 'h3'
 import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
@@ -11,6 +11,8 @@ import { wikiPathSchema } from '~/shared/zod'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 const COMMENT_LIST_MAX_LIMIT = 100
+const COMMENT_TREE_MAX_DEPTH = 100
+const COMMENT_TREE_MAX_NODES = 5_000
 
 type CommentListQuery = {
   path: string
@@ -120,6 +122,7 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
         userId: commentsTable.userId,
         createdAt: commentsTable.createdAt,
         updatedAt: commentsTable.updatedAt,
+        depth: sql<number>`0`.as('depth'),
         rootCreatedAt: sql<string>`${commentsTable.createdAt}`.as('rootCreatedAt')
       })
       .from(commentsTable)
@@ -135,12 +138,14 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
             userId: commentsTable.userId,
             createdAt: commentsTable.createdAt,
             updatedAt: commentsTable.updatedAt,
+            depth: sql<number>`tree.depth + 1`.as('depth'),
             rootCreatedAt: sql<string>`tree.rootCreatedAt`.as('rootCreatedAt')
           })
           .from(commentsTable)
           .innerJoin(sql`tree`, eq(commentsTable.replyTo, sql`tree.id`))
-          .where(isNull(commentsTable.deletedAt))
+          .where(and(isNull(commentsTable.deletedAt), lt(sql`tree.depth`, COMMENT_TREE_MAX_DEPTH)))
       )
+      .limit(COMMENT_TREE_MAX_NODES + 1)
   )
 
   const parentComments = aliasedTable(commentsTable, 'parent_comments')
@@ -171,7 +176,8 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
     .all()
 
   return {
-    comments,
-    total
+    comments: comments.slice(0, COMMENT_TREE_MAX_NODES),
+    total,
+    truncated: comments.length > COMMENT_TREE_MAX_NODES
   }
 }

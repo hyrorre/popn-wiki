@@ -13,7 +13,7 @@ type FlatCommentThread = {
   root: Comment
   replies: Comment[]
 }
-type CommentListResponse = { comments: Comment[]; total: number }
+type CommentListResponse = { comments: Comment[]; total: number; truncated?: boolean }
 
 const { user } = useUserSession()
 
@@ -203,6 +203,14 @@ watch(page, (newVal) => {
       <u-icon name="i-lucide-messages-square" class="w-6 h-6" />
       {{ props.discussionTitle || 'コメント' }}
     </h3>
+
+    <u-alert
+      v-if="commentData?.truncated"
+      class="mb-6"
+      color="warning"
+      variant="soft"
+      title="返信数が多いため、一部のコメントを省略しています。"
+    />
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 

@@ -21,6 +21,7 @@ const saving = ref(false)
 const loadingHistory = ref(false)
 const restoring = ref<number | null>(null)
 const revisions = ref<Page[]>([])
+const hasMoreHistory = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isMinor = ref(false)
 
@@ -79,12 +80,17 @@ watch(
   }
 )
 
-const loadHistory = async () => {
+const HISTORY_PAGE_SIZE = 50
+
+const loadHistory = async (reset = true) => {
   loadingHistory.value = true
   try {
-    revisions.value = await $fetch<Page[]>('/api/page/history', {
-      query: { path: props.path }
+    const offset = reset ? 0 : revisions.value.length
+    const loaded = await $fetch<Page[]>('/api/page/history', {
+      query: { path: props.path, limit: HISTORY_PAGE_SIZE, offset }
     })
+    revisions.value = reset ? loaded : [...revisions.value, ...loaded]
+    hasMoreHistory.value = loaded.length === HISTORY_PAGE_SIZE
   } catch {
     errorMessage.value = '履歴の読み込みに失敗しました。'
   } finally {
@@ -222,7 +228,13 @@ await loadHistory()
           <u-icon name="i-lucide-history" />
           編集履歴
         </h3>
-        <u-button variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingHistory" @click="loadHistory">
+        <u-button
+          variant="ghost"
+          size="sm"
+          icon="i-lucide-refresh-cw"
+          :loading="loadingHistory"
+          @click="() => loadHistory()"
+        >
           再読み込み
         </u-button>
       </div>
@@ -277,6 +289,11 @@ await loadHistory()
           </div>
         </li>
       </ul>
+      <div v-if="hasMoreHistory" class="mt-4 flex justify-center">
+        <u-button variant="soft" color="neutral" :loading="loadingHistory" @click="() => loadHistory(false)">
+          さらに読み込む
+        </u-button>
+      </div>
     </section>
 
     <!-- リビジョン内容確認モーダル -->
