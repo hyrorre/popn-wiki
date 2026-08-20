@@ -11,7 +11,7 @@
       "database_name": "popn-wiki-db",
       "database_id": "783f9203-1334-4c69-b704-b69347ab34d3",
       "migrations_table": "_hub_migrations",
-      "migrations_dir": "db/migrations/"
+      "migrations_dir": "server/db/migrations"
     }
   ],
   "r2_buckets": [
@@ -40,7 +40,7 @@
     }
   },
   "vars": {
-    "NODE_VERSION": "25.9.0",
+    "NODE_VERSION": "24.15.0",
     "BUN_VERSION": "1.3.13"
   }
 }
