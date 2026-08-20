@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { createError } from 'h3'
-import { ensureImageFilenameAvailable, validateImageContent, validateImageFilename } from '../server/utils/image'
+import {
+  ensureImageFilenameAvailable,
+  putImageIfAbsent,
+  validateImageContent,
+  validateImageFilename
+} from '../server/utils/image'
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])
@@ -63,5 +68,59 @@ describe('Image upload validation', () => {
     }
 
     await expect(ensureImageFilenameAvailable(storage, 'new.png')).rejects.toBe(failure)
+  })
+
+  test('serializes fallback-driver writes so concurrent uploads cannot overwrite', async () => {
+    let exists = false
+    let writes = 0
+    const storage = {
+      async head() {
+        if (!exists) {
+          throw createError({ statusCode: 404, message: 'Blob not found' })
+        }
+        return { pathname: 'race.png' }
+      },
+      async put(pathname: string) {
+        await Promise.resolve()
+        exists = true
+        writes += 1
+        return { pathname }
+      }
+    }
+
+    const results = await Promise.allSettled([
+      putImageIfAbsent(storage, 'race.png', png, 'image/png'),
+      putImageIfAbsent(storage, 'race.png', png, 'image/png')
+    ])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
+    expect(results.find((result) => result.status === 'rejected')?.reason).toMatchObject({ statusCode: 409 })
+    expect(writes).toBe(1)
+  })
+
+  test('uses an atomic conditional write when an R2 bucket is available', async () => {
+    let writes = 0
+    const storage = {
+      async head() {
+        throw new Error('head should not be called')
+      },
+      async put() {
+        throw new Error('fallback put should not be called')
+      }
+    }
+    const r2Bucket = {
+      async put() {
+        writes += 1
+        return writes === 1 ? { key: 'atomic.png' } : null
+      }
+    }
+
+    await expect(putImageIfAbsent(storage, 'atomic.png', png, 'image/png', r2Bucket)).resolves.toEqual({
+      pathname: 'atomic.png'
+    })
+    await expect(putImageIfAbsent(storage, 'atomic.png', png, 'image/png', r2Bucket)).rejects.toMatchObject({
+      statusCode: 409
+    })
   })
 })

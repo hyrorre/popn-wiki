@@ -797,6 +797,18 @@ describe('API characterization', async () => {
       expect(duplicate.payload.message).toContain('同名のファイルが既に存在します')
     })
 
+    test('allows only one of two concurrent uploads with the same filename', async () => {
+      const results = await Promise.all([
+        uploadImage('concurrent.png', pngBytes, 'editor', '203.0.113.66'),
+        uploadImage('concurrent.png', pngBytes, 'other', '203.0.113.67')
+      ])
+
+      expect(results.map(({ response }) => response.status).sort()).toEqual([200, 409])
+      expect(results.find(({ response }) => response.status === 409)?.payload.message).toContain(
+        '同名のファイルが既に存在します'
+      )
+    })
+
     test('lists images with cursor pagination and public URLs', async () => {
       const second = await uploadImage('second.gif', gifBytes, 'other', '203.0.113.65')
       expect(second.response.status).toBe(200)
@@ -805,11 +817,11 @@ describe('API characterization', async () => {
         images: Array<{ name: string; url: string; created_at: string }>
         cursor?: string
         hasMore: boolean
-      }>('/api/image?limit=1')
+      }>('/api/image?limit=2')
       const secondPage = await requestJson<{
         images: Array<{ name: string; url: string; created_at: string }>
         hasMore: boolean
-      }>(`/api/image?limit=1&cursor=${encodeURIComponent(firstPage.payload.cursor ?? '')}`)
+      }>(`/api/image?limit=2&cursor=${encodeURIComponent(firstPage.payload.cursor ?? '')}`)
       const images = [...firstPage.payload.images, ...secondPage.payload.images]
 
       expect(firstPage.response.status).toBe(200)

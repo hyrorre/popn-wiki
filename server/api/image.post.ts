@@ -1,51 +1,47 @@
 import { blob } from '@nuxthub/blob'
 import { checkRateLimit } from '~/server/utils/rateLimit'
-import { ensureImageFilenameAvailable, validateImageContent, validateImageFilename } from '~/server/utils/image'
+import {
+  getConditionalR2Bucket,
+  putImageIfAbsent,
+  readImageUpload,
+  validateImageContent,
+  validateImageFilename
+} from '~/server/utils/image'
 import { requireApiUser } from '~/server/utils/authorization'
-
-const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'image:post', limit: 10 })
   await requireApiUser(event)
 
-  const formData = await readMultipartFormData(event)
-  const file = formData?.find((f) => f.name === 'file')
-
-  if (!file || !file.filename || !file.data?.length) {
-    throw createError({ statusCode: 400, message: 'ファイルが指定されていません。' })
-  }
-
-  const { filename, extension } = validateImageFilename(file.filename)
-
-  // サイズチェック
-  if (file.data.length > MAX_SIZE) {
-    throw createError({ statusCode: 400, message: 'ファイルサイズは5MB以下にしてください。' })
-  }
-
-  const data = file.data
-  const body =
-    // `Buffer` をそのまま渡すと miniflare 側の R2 実装でコケることがあるため、
-    // 常にコピーした `Uint8Array` を渡す。
-    data instanceof Uint8Array ? new Uint8Array(data) : data
+  const upload = await readImageUpload(event)
+  const { filename, extension } = validateImageFilename(upload.filename)
+  const body = upload.data
   const image = validateImageContent(body, extension)
-  await ensureImageFilenameAvailable(blob, filename)
 
   try {
-    // オリジナルファイル名をそのまま使用
-    const putBlob = await blob.put(filename, body, {
-      contentType: image.contentType,
-      addRandomSuffix: false // 既存のコードが同名チェックをしているため
-    })
+    const putBlob = await putImageIfAbsent(
+      blob,
+      filename,
+      body,
+      image.contentType,
+      getConditionalR2Bucket(event, blob)
+    )
 
     return {
       url: putBlob.pathname,
       filename
     }
-  } catch (err) {
-    const error = err as { message?: string }
-    // デバッグ用: miniflare / R2 側の詳細をコンソールに出す
-    console.error('blob.put failed:', err)
-    throw createError({ statusCode: 500, message: error.message || 'Internal Server Error' })
+  } catch (error) {
+    if (isError(error) && error.statusCode === 409) {
+      throw error
+    }
+
+    const errorId = crypto.randomUUID()
+    console.error(`[ImageUpload:${errorId}] Failed to store image:`, error)
+    throw createError({
+      statusCode: 503,
+      message: '画像の保存に失敗しました。時間をおいて再試行してください。',
+      data: { errorId }
+    })
   }
 })
