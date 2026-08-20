@@ -1,0 +1,94 @@
+import { describe, expect, test } from 'bun:test'
+import { parseSafeMarkdown } from '../server/utils/markdown'
+import { sanitizeLinkTarget, sanitizeUnknownMdcDocument } from '../utils/markdown-security'
+import { isLegacyPercentEncodedUrl } from '../utils/legacy-url'
+
+describe('Markdown AST security', () => {
+  test('removes entity-encoded javascript URLs and SVG from raw HTML', async () => {
+    const { ast } = await parseSafeMarkdown(
+      '<svg><a xlink:href="jav&#x61;script:alert(1)">unsafe</a></svg><p>safe</p>'
+    )
+
+    expect(JSON.stringify(ast)).not.toContain('javascript:')
+    expect(JSON.stringify(ast)).not.toContain('"tag":"svg"')
+    expect(JSON.stringify(ast)).toContain('safe')
+  })
+
+  test('does not preserve non-HTTP invalid-percent URLs as legacy links', async () => {
+    const { ast } = await parseSafeMarkdown('[unsafe](javascript:alert%281%29//%FF)')
+    const serialized = JSON.stringify(ast)
+
+    expect(serialized).not.toContain('javascript:')
+    expect(serialized).not.toContain('legacyHref')
+  })
+
+  test('keeps the intended legacy HTTP links', async () => {
+    const url = 'http://www.wikihouse.com/popnwakaba/index.php?%A5%E9'
+    const { ast } = await parseSafeMarkdown(`[legacy](${url})`)
+
+    expect(JSON.stringify(ast)).toContain(`"legacyHref":"${url}"`)
+  })
+
+  test('allows known MDC components but unwraps arbitrary application components', async () => {
+    const { ast } = await parseSafeMarkdown(
+      '::recent-edits{limit=10}\n::\n\n::profile-delete\nDo not render this component.\n::'
+    )
+    const serialized = JSON.stringify(ast)
+
+    expect(serialized).toContain('"tag":"recent-edits"')
+    expect(serialized).not.toContain('"tag":"profile-delete"')
+    expect(serialized).toContain('Do not render this component.')
+  })
+
+  test('preserves named slots for allowed MDC components', async () => {
+    const { ast } = await parseSafeMarkdown('::card\n#title\nHeading\n#default\nBody\n::')
+    const serialized = JSON.stringify(ast)
+
+    expect(serialized).toContain('"tag":"card"')
+    expect(serialized).toContain('"tag":"template"')
+    expect(serialized).toContain('"v-slot:title":""')
+  })
+
+  test('sanitizes stored MDC ASTs created before the security plugin existed', () => {
+    const document = sanitizeUnknownMdcDocument({
+      data: { title: '', description: '' },
+      body: {
+        type: 'root',
+        children: [
+          {
+            type: 'element',
+            tag: 'a',
+            props: { legacyHref: 'javascript:alert(1)', href: '/safe', onClick: 'alert(1)' },
+            children: [{ type: 'text', value: 'link' }]
+          },
+          {
+            type: 'element',
+            tag: 'svg',
+            props: {},
+            children: [{ type: 'text', value: 'drop this too' }]
+          }
+        ]
+      },
+      excerpt: undefined,
+      toc: undefined
+    })
+
+    expect(document).not.toBeNull()
+    expect(document?.body.children).toEqual([
+      {
+        type: 'element',
+        tag: 'a',
+        props: { href: '/safe' },
+        children: [{ type: 'text', value: 'link' }]
+      }
+    ])
+  })
+
+  test('accepts safe navigation targets and rejects executable schemes', () => {
+    expect(sanitizeLinkTarget('/wiki/path')).toBe('/wiki/path')
+    expect(sanitizeLinkTarget('https://example.com/%A5')).toBe('https://example.com/%A5')
+    expect(sanitizeLinkTarget('jav&#x61;script:alert(1)')).toBeNull()
+    expect(sanitizeLinkTarget('java\nscript:alert(1)')).toBeNull()
+    expect(isLegacyPercentEncodedUrl('javascript:alert%281%29//%FF')).toBe(false)
+  })
+})

@@ -1,8 +1,7 @@
 import { pagesTable } from '../../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
-import { mdcParseOptions } from '../../utils/markdown'
+import { parseSafeMarkdown } from '../../utils/markdown'
 import { replacePageSearchIndex } from '../../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
@@ -31,15 +30,13 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date().toISOString()
 
-  // 復元対象のページ本文を再解析（あるいは元データに AST があればそれを使っても良いが
-  // スキーマ変更前のデータには AST がないので再解析するのが安全）
-  const ast = await parseMarkdown(targetPage.body, mdcParseOptions)
+  const { sanitizedMarkdown, ast } = await parseSafeMarkdown(targetPage.body)
 
   const inserted = await insertPageRevision({
     path,
     title: targetPage.title,
     revision: nextRevision,
-    body: targetPage.body,
+    body: sanitizedMarkdown,
     bodyAst: JSON.stringify(ast),
     message: `Restore revision ${targetRevision}`,
     createdAt: now,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { sanitizeLinkTarget } from '~/utils/markdown-security'
+
 defineOptions({
   inheritAttrs: false
 })
@@ -13,7 +15,7 @@ const linkClass = [
   'focus-visible:has-[>code]:outline-0 [&>code]:border-dashed hover:[&>code]:border-primary hover:[&>code]:text-primary',
   'focus-visible:[&>code]:border-primary focus-visible:[&>code]:text-primary transition-colors [&>code]:transition-colors'
 ]
-const resolvedHref = computed(() => props.legacyHref || props.href || '')
+const resolvedHref = computed(() => sanitizeLinkTarget(props.legacyHref) || sanitizeLinkTarget(props.href) || '#')
 // const isInternal = computed(() => resolvedHref.value.startsWith('/'))
 </script>
 

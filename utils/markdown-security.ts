@@ -1,0 +1,340 @@
+import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
+
+type HastNode = {
+  type?: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  children?: HastNode[]
+}
+
+const SAFE_HTML_TAGS = new Set([
+  'a',
+  'abbr',
+  'b',
+  'blockquote',
+  'br',
+  'caption',
+  'code',
+  'col',
+  'colgroup',
+  'dd',
+  'del',
+  'details',
+  'div',
+  'dl',
+  'dt',
+  'em',
+  'figcaption',
+  'figure',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'i',
+  'img',
+  'input',
+  'kbd',
+  'li',
+  'mark',
+  'ol',
+  'p',
+  'pre',
+  'q',
+  's',
+  'samp',
+  'small',
+  'span',
+  'strong',
+  'sub',
+  'summary',
+  'sup',
+  'table',
+  'tbody',
+  'td',
+  'template',
+  'tfoot',
+  'th',
+  'thead',
+  'tr',
+  'u',
+  'ul',
+  'var',
+  'wbr'
+])
+
+const SAFE_MDC_COMPONENTS = new Set([
+  'accordion',
+  'accordion-item',
+  'callout',
+  'card',
+  'card-group',
+  'caution',
+  'code-collapse',
+  'code-group',
+  'code-icon',
+  'code-preview',
+  'code-tree',
+  'component-slot',
+  'field',
+  'field-group',
+  'icon',
+  'id-generator',
+  'image-list',
+  'image-uploader',
+  'note',
+  'recent-comments',
+  'recent-edits',
+  'sortable',
+  'steps',
+  'tip',
+  'warning'
+])
+
+const DROP_WITH_CONTENT_TAGS = new Set([
+  'applet',
+  'base',
+  'embed',
+  'form',
+  'frame',
+  'frameset',
+  'iframe',
+  'link',
+  'math',
+  'meta',
+  'noscript',
+  'object',
+  'script',
+  'style',
+  'svg'
+])
+
+const URL_PROPERTIES = new Set([
+  'action',
+  'cite',
+  'formaction',
+  'href',
+  'legacyhref',
+  'poster',
+  'src',
+  'to',
+  'xlinkhref'
+])
+
+const BLOCKED_PROPERTIES = new Set([
+  'as',
+  'innerhtml',
+  'is',
+  'outerhtml',
+  'srcdoc',
+  'xmlns'
+])
+
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
+const SAFE_COLOR_PATTERN =
+  /^(?:[a-zA-Z]+|#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.%\s,]+\)|hsla?\(\s*[0-9.%\s,]+\))$/
+
+export function sanitizeHastTree(tree: HastNode) {
+  tree.children = sanitizeHastChildren(tree.children ?? [])
+  return tree
+}
+
+export function sanitizeMdcParserResult(result: MDCParserResult): MDCParserResult {
+  return {
+    ...result,
+    body: sanitizeMdcRoot(result.body),
+    ...(result.excerpt ? { excerpt: sanitizeMdcRoot(result.excerpt) } : {})
+  }
+}
+
+export function sanitizeUnknownMdcDocument(value: unknown): MDCParserResult | null {
+  if (!isRecord(value) || !isRecord(value.body) || value.body.type !== 'root') {
+    return null
+  }
+
+  const result = value as unknown as MDCParserResult
+  return sanitizeMdcParserResult(result)
+}
+
+export function sanitizeLinkTarget(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const normalized = removeUrlControlCharacters(decodeHtmlCharacterReferences(trimmed))
+  const scheme = normalized.match(/^([A-Za-z][A-Za-z0-9+.-]*):/)?.[1]?.toLowerCase()
+
+  if (scheme && !SAFE_URL_PROTOCOLS.has(`${scheme}:`)) {
+    return null
+  }
+
+  return trimmed
+}
+
+function sanitizeHastChildren(children: HastNode[]): HastNode[] {
+  return children.flatMap((child) => {
+    if (child.type !== 'element' || !child.tagName) {
+      return [child]
+    }
+
+    const tag = child.tagName.toLowerCase()
+    if (DROP_WITH_CONTENT_TAGS.has(tag)) {
+      return []
+    }
+
+    child.children = sanitizeHastChildren(child.children ?? [])
+    if (!isSafeTag(tag)) {
+      return child.children
+    }
+
+    child.tagName = tag
+    child.properties = sanitizeProperties(tag, child.properties)
+    return [child]
+  })
+}
+
+function sanitizeMdcRoot(root: MDCRoot): MDCRoot {
+  return {
+    ...root,
+    type: 'root',
+    children: sanitizeMdcChildren(Array.isArray(root.children) ? root.children : [])
+  }
+}
+
+function sanitizeMdcChildren(children: MDCNode[]): MDCNode[] {
+  return children.flatMap((child) => {
+    if (child.type !== 'element') {
+      return [child]
+    }
+
+    const tag = child.tag.toLowerCase()
+    if (DROP_WITH_CONTENT_TAGS.has(tag)) {
+      return []
+    }
+
+    const sanitizedChildren = sanitizeMdcChildren(Array.isArray(child.children) ? child.children : [])
+    if (!isSafeTag(tag)) {
+      return sanitizedChildren
+    }
+
+    const sanitized: MDCElement = {
+      ...child,
+      tag,
+      props: sanitizeProperties(tag, child.props),
+      children: sanitizedChildren
+    }
+    return [sanitized]
+  })
+}
+
+function isSafeTag(tag: string) {
+  return SAFE_HTML_TAGS.has(tag) || SAFE_MDC_COMPONENTS.has(tag)
+}
+
+function sanitizeProperties(tag: string, properties: Record<string, unknown> | null | undefined) {
+  const sanitized: Record<string, unknown> = {}
+
+  for (const [name, value] of Object.entries(properties ?? {})) {
+    const normalizedName = normalizePropertyName(name)
+
+    if (tag === 'template' || tag === 'component-slot') {
+      if (/^v-slot:[A-Za-z][\w-]*$/.test(name) && (value === '' || value === true)) {
+        sanitized[name] = value
+      }
+      continue
+    }
+
+    if (isBlockedProperty(name, normalizedName)) continue
+
+    if (URL_PROPERTIES.has(normalizedName)) {
+      const safeValue = sanitizeLinkTarget(value)
+      if (safeValue !== null) sanitized[name] = safeValue
+      continue
+    }
+
+    if (normalizedName === 'style') {
+      const safeStyle = sanitizeStyle(value)
+      if (safeStyle) sanitized[name] = safeStyle
+      continue
+    }
+
+    sanitized[name] = value
+  }
+
+  if (tag === 'input') {
+    if (sanitized.type !== 'checkbox') return {}
+    return {
+      type: 'checkbox',
+      checked: sanitized.checked === true,
+      disabled: true
+    }
+  }
+
+  return sanitized
+}
+
+function isBlockedProperty(name: string, normalizedName: string) {
+  const lowerName = name.toLowerCase()
+  return (
+    lowerName.startsWith('@') ||
+    lowerName.startsWith(':') ||
+    lowerName.startsWith('v-') ||
+    normalizedName.startsWith('on') ||
+    BLOCKED_PROPERTIES.has(normalizedName)
+  )
+}
+
+function normalizePropertyName(name: string) {
+  return name.toLowerCase().replace(/[-_:]/g, '')
+}
+
+function sanitizeStyle(value: unknown) {
+  if (typeof value !== 'string') return ''
+
+  const declarations = value.split(';').flatMap((declaration) => {
+    const separator = declaration.indexOf(':')
+    if (separator === -1) return []
+
+    const property = declaration.slice(0, separator).trim().toLowerCase()
+    const color = declaration.slice(separator + 1).trim()
+    if ((property !== 'color' && property !== 'background-color') || !SAFE_COLOR_PATTERN.test(color)) {
+      return []
+    }
+
+    return [`${property}: ${color}`]
+  })
+
+  return declarations.join('; ')
+}
+
+function decodeHtmlCharacterReferences(value: string) {
+  return value
+    .replace(/&#x([0-9a-f]+);?/gi, (_, code: string) => safeCodePoint(code, 16))
+    .replace(/&#(\d+);?/g, (_, code: string) => safeCodePoint(code, 10))
+    .replace(/&colon;?/gi, ':')
+    .replace(/&tab;?/gi, '\t')
+    .replace(/&newline;?/gi, '\n')
+}
+
+function removeUrlControlCharacters(value: string) {
+  return Array.from(value)
+    .filter((character) => {
+      const codePoint = character.codePointAt(0) ?? 0
+      return codePoint > 32 && (codePoint < 127 || codePoint > 159)
+    })
+    .join('')
+}
+
+function safeCodePoint(value: string, radix: number) {
+  const codePoint = Number.parseInt(value, radix)
+  return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+    ? String.fromCodePoint(codePoint)
+    : ''
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}

@@ -2,6 +2,7 @@
 import type { Page } from '~/shared/types'
 import { usePendingPage } from '~/composables/usePendingPage'
 import { selectNewestPage } from '~/utils/pageFreshness'
+import { sanitizeUnknownMdcDocument } from '~/utils/markdown-security'
 
 const route = useRoute()
 const { user } = useUserSession()
@@ -36,7 +37,8 @@ const isDeleted = computed(() => page.value?.body === '')
 const mdcAst = computed(() => {
   if (!page.value?.bodyAst) return null
   try {
-    return typeof page.value.bodyAst === 'string' ? JSON.parse(page.value.bodyAst) : page.value.bodyAst
+    const parsed = typeof page.value.bodyAst === 'string' ? JSON.parse(page.value.bodyAst) : page.value.bodyAst
+    return sanitizeUnknownMdcDocument(parsed)
   } catch {
     return null
   }

@@ -1,10 +1,13 @@
+import { sanitizeLinkTarget } from './markdown-security'
+
 export const LEGACY_HREF_FALLBACK = '#legacy-url'
 
 export function isLegacyPercentEncodedUrl(value: string) {
-  if (!value.includes('%')) return false
+  const safeUrl = sanitizeLinkTarget(value)
+  if (!safeUrl || !/^https?:\/\//i.test(safeUrl) || !safeUrl.includes('%')) return false
 
   try {
-    decodeURIComponent(value)
+    decodeURIComponent(safeUrl)
     return false
   } catch {
     return true

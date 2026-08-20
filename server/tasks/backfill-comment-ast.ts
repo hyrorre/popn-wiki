@@ -1,10 +1,9 @@
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { db } from '@nuxthub/db'
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { commentsTable } from '../db/schema'
 import { parseBackfillCommentAstPayload } from '../utils/adminTaskPayload'
 import { invalidateCommentListCache } from '../utils/commentCache'
-import { mdcParseOptions } from '../utils/markdown'
+import { parseSafeMarkdown } from '../utils/markdown'
 
 export default defineTask({
   meta: {
@@ -35,10 +34,10 @@ export default defineTask({
 
     for (const comment of comments) {
       try {
-        const ast = await parseMarkdown(comment.body, mdcParseOptions)
+        const { sanitizedMarkdown, ast } = await parseSafeMarkdown(comment.body)
         await db
           .update(commentsTable)
-          .set({ bodyAst: JSON.stringify(ast) })
+          .set({ body: sanitizedMarkdown, bodyAst: JSON.stringify(ast) })
           .where(eq(commentsTable.id, comment.id))
           .execute()
 

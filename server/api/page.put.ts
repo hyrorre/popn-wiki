@@ -1,8 +1,7 @@
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { resolvePageTitle } from '../utils/page'
 import { replacePageSearchIndex } from '../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
-import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
+import { parseSafeMarkdown } from '~/server/utils/markdown'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
 import { requireApiUser } from '~/server/utils/authorization'
 import { invalidatePageMutationCaches } from '~/server/utils/mutationCache'
@@ -13,16 +12,13 @@ export default defineEventHandler(async (event) => {
 
   const payload = await readZodBody(event, updatePageSchema)
   const { path, body, baseRevision } = payload
-  const sanitizedBody = sanitizeDangerousMarkdownHtml(body)
+  const { sanitizedMarkdown: sanitizedBody, ast } = await parseSafeMarkdown(body)
 
   const latestRevision = await getLatestPageRevision(path)
   assertPageBaseRevision(baseRevision, latestRevision)
 
   const nextRevision = latestRevision + 1
   const now = new Date().toISOString()
-
-  // Markdown を解析
-  const ast = await parseMarkdown(sanitizedBody, mdcParseOptions)
 
   const title = resolvePageTitle(sanitizedBody, path)
 

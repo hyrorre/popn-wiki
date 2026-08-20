@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { sanitizeUnknownMdcDocument } from '~/utils/markdown-security'
+
 const { items } = useNavigation()
 
 const { data: page } = await useFetch('/api/page', {
@@ -9,7 +11,8 @@ const { data: page } = await useFetch('/api/page', {
 const mdcAst = computed(() => {
   if (!page.value?.bodyAst) return null
   try {
-    return typeof page.value.bodyAst === 'string' ? JSON.parse(page.value.bodyAst) : page.value.bodyAst
+    const parsed = typeof page.value.bodyAst === 'string' ? JSON.parse(page.value.bodyAst) : page.value.bodyAst
+    return sanitizeUnknownMdcDocument(parsed)
   } catch {
     return null
   }

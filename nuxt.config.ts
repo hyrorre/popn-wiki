@@ -53,6 +53,9 @@ export default defineNuxtConfig({
       rehypeLegacyUrl: {
         src: '~/utils/rehype-legacy-url'
       },
+      rehypeSecurity: {
+        src: '~/utils/rehype-security'
+      },
       'rehype-external-links': {
         src: 'rehype-external-links',
         options: {

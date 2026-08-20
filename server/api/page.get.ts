@@ -1,8 +1,7 @@
 import { pagesTable } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
-import { mdcParseOptions } from '~/server/utils/markdown'
+import { parseSafeMarkdown } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
 import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
@@ -112,7 +111,8 @@ async function readLatestPage(event: H3Event, query: PageQuery) {
 
 async function ensureBodyAst(event: H3Event, data: typeof pagesTable.$inferSelect) {
   if (!data.bodyAst && data.body) {
-    const ast = await parseMarkdown(data.body, mdcParseOptions)
+    const { sanitizedMarkdown, ast } = await parseSafeMarkdown(data.body)
+    data.body = sanitizedMarkdown
     data.bodyAst = JSON.stringify(ast)
 
     const updateTask = db

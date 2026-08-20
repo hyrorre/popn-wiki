@@ -1,10 +1,9 @@
 import { commentsTable, usersTable } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { readZodBody } from '~/server/utils/validation'
-import { sanitizeDangerousMarkdownHtml, mdcParseOptions } from '~/server/utils/markdown'
+import { parseSafeMarkdown } from '~/server/utils/markdown'
 import { updateCommentSchema } from '~/shared/zod'
 import { requireApiUser } from '~/server/utils/authorization'
 import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
@@ -14,14 +13,14 @@ export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
 
   const { id, body } = await readZodBody(event, updateCommentSchema)
-  const sanitizedBody = sanitizeDangerousMarkdownHtml(body).trim()
+  const { sanitizedMarkdown, ast } = await parseSafeMarkdown(body)
+  const sanitizedBody = sanitizedMarkdown.trim()
 
   if (!sanitizedBody) {
     throw createError({ statusCode: 400, message: 'Invalid payload.' })
   }
 
   const now = new Date().toISOString()
-  const ast = await parseMarkdown(sanitizedBody, mdcParseOptions)
 
   const updated = await db
     .update(commentsTable)

@@ -1,4 +1,5 @@
 import type { MDCParseOptions } from '@nuxtjs/mdc'
+import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import remarkBreaks from 'remark-breaks'
 import remarkLegacyUrl from '~/utils/remark-legacy-url'
 import remarkTableMerge from '~/utils/remark-table-merge'
@@ -6,6 +7,8 @@ import remarkTableColor from '~/utils/remark-table-color'
 import remarkDefinitionList from '~/utils/remark-definition-list'
 import rehypeLegacyUrl from '~/utils/rehype-legacy-url'
 import rehypeExternalLinks from 'rehype-external-links'
+import rehypeSecurity from '~/utils/rehype-security'
+import { sanitizeMdcParserResult } from '~/utils/markdown-security'
 
 export const mdcParseOptions: MDCParseOptions = {
   remark: {
@@ -20,12 +23,20 @@ export const mdcParseOptions: MDCParseOptions = {
   rehype: {
     plugins: {
       rehypeLegacyUrl: { instance: rehypeLegacyUrl },
+      rehypeSecurity: { instance: rehypeSecurity },
       rehypeExternalLinks: {
         instance: rehypeExternalLinks,
         options: { target: '_blank', rel: ['noopener', 'noreferrer'] }
       }
     }
   }
+}
+
+export async function parseSafeMarkdown(markdown: string) {
+  const sanitizedMarkdown = sanitizeDangerousMarkdownHtml(markdown)
+  const ast = sanitizeMdcParserResult(await parseMarkdown(sanitizedMarkdown, mdcParseOptions))
+
+  return { sanitizedMarkdown, ast }
 }
 
 const BLOCKED_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'form', 'base', 'link', 'meta', 'style'])

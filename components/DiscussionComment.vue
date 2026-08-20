@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
 import type { Comment } from '~/shared/types'
+import { sanitizeUnknownMdcDocument } from '~/utils/markdown-security'
 
 const props = withDefaults(
   defineProps<{
@@ -36,7 +37,9 @@ const editTextareaRef = ref<ComponentPublicInstance | null>(null)
 const commentBodyAst = computed(() => {
   if (!props.comment.bodyAst) return null
   try {
-    return typeof props.comment.bodyAst === 'string' ? JSON.parse(props.comment.bodyAst) : props.comment.bodyAst
+    const parsed =
+      typeof props.comment.bodyAst === 'string' ? JSON.parse(props.comment.bodyAst) : props.comment.bodyAst
+    return sanitizeUnknownMdcDocument(parsed)
   } catch {
     return null
   }
