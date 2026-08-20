@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from 'bun:test'
-import { runBestEffortCacheInvalidations } from '../server/utils/mutationCache'
+import { runBestEffortCacheInvalidations, runRequiredCacheInvalidations } from '../server/utils/mutationCache'
 
 describe('mutation cache invalidation', () => {
   test('reports success when every invalidation succeeds', async () => {
@@ -61,5 +61,28 @@ describe('mutation cache invalidation', () => {
     } finally {
       warning.mockRestore()
     }
+  })
+
+  test('attempts every required invalidation and rejects when one fails', async () => {
+    const calls: string[] = []
+
+    await expect(
+      runRequiredCacheInvalidations('RequiredCache', [
+        {
+          name: 'failed cache',
+          run: async () => {
+            calls.push('failed')
+            throw new Error('write failed')
+          }
+        },
+        {
+          name: 'healthy cache',
+          run: async () => {
+            calls.push('healthy')
+          }
+        }
+      ])
+    ).rejects.toThrow('[RequiredCache] Cache invalidation failed: failed cache: write failed')
+    expect(calls).toEqual(['failed', 'healthy'])
   })
 })

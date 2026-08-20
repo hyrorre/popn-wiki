@@ -20,10 +20,13 @@ type CacheInvalidationOperation = {
 }
 
 export async function invalidatePageMutationCaches(event: H3Event, path: string): Promise<boolean> {
-  return runBestEffortCacheInvalidations('PageMutationCache', [
+  await runRequiredCacheInvalidations('PageMutationCache', [
     { name: 'latest page cache', run: () => invalidateLatestPageCache(path) },
     { name: 'recent pages cache', run: () => invalidateRecentPagesCache() },
-    { name: 'recent comments cache', run: () => invalidateRecentCommentsCache() },
+    { name: 'recent comments cache', run: () => invalidateRecentCommentsCache() }
+  ])
+
+  return runBestEffortCacheInvalidations('PageMutationExternalCache', [
     {
       name: 'Workers Cache',
       run: () => purgeWorkersCache(event, getPageMutationWorkersCachePurgeOptions(path))
@@ -37,13 +40,14 @@ export async function invalidateCommentMutationCaches(
   path: string,
   mutation: 'create' | 'update' | 'delete'
 ): Promise<boolean> {
-  return runBestEffortCacheInvalidations('CommentMutationCache', [
+  await runRequiredCacheInvalidations('CommentMutationCache', [
     { name: 'comment list cache', run: () => invalidateCommentListCache(path) },
     ...(mutation === 'update'
       ? []
-      : [{ name: 'recent comments cache', run: () => invalidateRecentCommentsCache() }]),
-    { name: 'external comment caches', run: () => purgeCommentMutationExternalCaches(event, path) }
+      : [{ name: 'recent comments cache', run: () => invalidateRecentCommentsCache() }])
   ])
+
+  return purgeCommentMutationExternalCaches(event, path)
 }
 
 export async function purgeCommentMutationExternalCaches(event: H3Event, paths: string | string[]) {
@@ -61,13 +65,7 @@ export async function runBestEffortCacheInvalidations(
   operations: CacheInvalidationOperation[]
 ): Promise<boolean> {
   const results = await Promise.allSettled(operations.map((operation) => operation.run()))
-  const failures = results.flatMap((result, index) => {
-    if (result.status === 'rejected') {
-      return [`${operations[index]?.name}: ${getErrorMessage(result.reason)}`]
-    }
-
-    return result.value === false ? [operations[index]?.name ?? 'unknown'] : []
-  })
+  const failures = collectCacheInvalidationFailures(operations, results)
 
   if (failures.length > 0) {
     console.warn(`[${scope}] Cache invalidation did not fully succeed: ${failures.join('; ')}`)
@@ -75,6 +73,31 @@ export async function runBestEffortCacheInvalidations(
   }
 
   return true
+}
+
+export async function runRequiredCacheInvalidations(
+  scope: string,
+  operations: CacheInvalidationOperation[]
+): Promise<void> {
+  const results = await Promise.allSettled(operations.map((operation) => operation.run()))
+  const failures = collectCacheInvalidationFailures(operations, results)
+
+  if (failures.length > 0) {
+    throw new Error(`[${scope}] Cache invalidation failed: ${failures.join('; ')}`)
+  }
+}
+
+function collectCacheInvalidationFailures(
+  operations: CacheInvalidationOperation[],
+  results: PromiseSettledResult<unknown>[]
+) {
+  return results.flatMap((result, index) => {
+    if (result.status === 'rejected') {
+      return [`${operations[index]?.name}: ${getErrorMessage(result.reason)}`]
+    }
+
+    return result.value === false ? [operations[index]?.name ?? 'unknown'] : []
+  })
 }
 
 function getErrorMessage(error: unknown) {

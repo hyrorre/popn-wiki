@@ -1,4 +1,3 @@
-import { removePageSearchIndex } from '../utils/pageSearchIndex'
 import { assertPageBaseRevision, getLatestPage, insertPageRevision } from '../utils/pageRevision'
 import { requireApiUser } from '../utils/authorization'
 import { invalidatePageMutationCaches } from '../utils/mutationCache'
@@ -38,7 +37,6 @@ export default defineEventHandler(async (event) => {
     updatedBy: user.id
   })
 
-  await removePageSearchIndex(path)
   await invalidatePageMutationCaches(event, path)
 
   return inserted

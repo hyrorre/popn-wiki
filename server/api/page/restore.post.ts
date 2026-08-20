@@ -2,7 +2,6 @@ import { pagesTable } from '../../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseSafeMarkdown } from '../../utils/markdown'
-import { replacePageSearchIndex } from '../../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
 import { restorePageSchema } from '~/shared/zod'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
@@ -45,7 +44,6 @@ export default defineEventHandler(async (event) => {
     updatedBy: user.id
   })
 
-  await replacePageSearchIndex(inserted)
   await invalidatePageMutationCaches(event, path)
 
   return inserted

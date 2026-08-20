@@ -25,56 +25,6 @@ export type RebuildPageSearchIndexResult = {
   skipped?: string
 }
 
-export async function replacePageSearchIndex(entry: PageSearchIndexEntry) {
-  try {
-    const removed = await removePageSearchIndex(entry.path)
-    if (!removed) {
-      return
-    }
-
-    if (!entry.body) {
-      return
-    }
-
-    await insertPageSearchIndexEntry(entry)
-  } catch (error) {
-    if (isMissingPageSearchIndex(error)) {
-      console.warn('[PageSearchIndex] page_search_fts table is missing. Skipped index update.')
-      return
-    }
-
-    if (isPageSearchIndexError(error)) {
-      console.warn(
-        `[PageSearchIndex] Failed to update page_search_fts. Skipped index update: ${getErrorMessage(error)}`
-      )
-      return
-    }
-
-    throw error
-  }
-}
-
-export async function removePageSearchIndex(path: string): Promise<boolean> {
-  try {
-    await db.run(sql`DELETE FROM page_search_fts WHERE path = ${path}`)
-    return true
-  } catch (error) {
-    if (isMissingPageSearchIndex(error)) {
-      console.warn('[PageSearchIndex] page_search_fts table is missing. Skipped index removal.')
-      return false
-    }
-
-    if (isPageSearchIndexError(error)) {
-      console.warn(
-        `[PageSearchIndex] Failed to remove from page_search_fts. Skipped index removal: ${getErrorMessage(error)}`
-      )
-      return false
-    }
-
-    throw error
-  }
-}
-
 export async function rebuildPageSearchIndex(
   options: RebuildPageSearchIndexOptions = {}
 ): Promise<RebuildPageSearchIndexResult> {

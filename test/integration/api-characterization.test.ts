@@ -923,6 +923,36 @@ describe('API characterization', async () => {
       expect(Number(secondRows.rows[0]?.count)).toBe(Number(firstRows.rows[0]?.count))
     })
 
+    test('rolls back a page revision when its search index update fails', async () => {
+      const path = 'characterization/atomic-page-index'
+      await database.execute('DROP TABLE page_search_fts')
+
+      let failedWrite: Awaited<ReturnType<typeof requestJson>>
+      let stored: Awaited<ReturnType<Client['execute']>>
+
+      try {
+        failedWrite = await requestJson('/api/page', {
+          method: 'PUT',
+          headers: withSession('editor'),
+          body: { path, body: '# Must roll back', baseRevision: 0 }
+        })
+        stored = await database.execute({
+          sql: 'SELECT count(*) AS count FROM pages WHERE path = ?',
+          args: [path]
+        })
+      } finally {
+        const rebuilt = await requestJson('/api/admin/rebuild-page-search-fts', {
+          method: 'POST',
+          headers: withSession('admin'),
+          body: { limit: 9999, reset: true }
+        })
+        expect(rebuilt.response.status).toBe(200)
+      }
+
+      expect(failedWrite.response.status).toBe(500)
+      expect(Number(stored.rows[0]?.count)).toBe(0)
+    })
+
     test('reports missing internal pages and images without flagging an existing image', async () => {
       const path = 'characterization/admin-broken-source'
       await requestJson<PageResponse>('/api/page', {

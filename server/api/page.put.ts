@@ -1,5 +1,4 @@
 import { resolvePageTitle } from '../utils/page'
-import { replacePageSearchIndex } from '../utils/pageSearchIndex'
 import { readZodBody } from '~/server/utils/validation'
 import { parseSafeMarkdown } from '~/server/utils/markdown'
 import { assertPageBaseRevision, getLatestPageRevision, insertPageRevision } from '~/server/utils/pageRevision'
@@ -36,7 +35,6 @@ export default defineEventHandler(async (event) => {
     updatedBy: user.id
   })
 
-  await replacePageSearchIndex(inserted)
   await invalidatePageMutationCaches(event, path)
 
   return inserted

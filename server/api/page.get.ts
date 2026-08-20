@@ -3,7 +3,11 @@ import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseSafeMarkdown } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
-import { getLatestPageCacheKey, getRevisionPageCacheKey } from '~/server/utils/pageCache'
+import {
+  getLatestPageCacheKey,
+  getLatestPageCacheVersion,
+  getRevisionPageCacheKey
+} from '~/server/utils/pageCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getPageResponseWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
 import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
@@ -43,7 +47,8 @@ export default defineEventHandler(async (event) => {
 })
 
 async function withLatestCache(event: H3Event, query: PageQuery) {
-  const key = getLatestPageCacheKey(query.path)
+  const version = await getLatestPageCacheVersion(query.path)
+  const key = getLatestPageCacheKey(query.path, version)
   const cached = await useStorage('cache').getItem<CachedPage>(key)
   if (cached) return cached
 
