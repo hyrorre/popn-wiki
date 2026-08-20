@@ -29,6 +29,19 @@ export default defineEventHandler(async (event) => {
     })
     .get()
 
+  if (!updated) {
+    await clearUserSession(event)
+    throw createError({ statusCode: 401, message: 'Unauthorized.' })
+  }
+
+  await setUserSession(event, {
+    user: {
+      ...user,
+      name: updated.name,
+      avatar: updated.avatar
+    }
+  })
+
   await invalidateCommentAuthorCaches(event, commentPaths)
   return updated
 })

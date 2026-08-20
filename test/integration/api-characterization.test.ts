@@ -318,6 +318,73 @@ describe('API characterization', async () => {
       })
       expect(profile.response.status).toBe(401)
     })
+
+    test('rejects an existing session when the account is no longer confirmed', async () => {
+      const staleCookie = sessions.editor
+      if (!staleCookie) {
+        throw new Error('Missing editor session')
+      }
+
+      await database.execute({
+        sql: 'UPDATE users SET confirmed = 0 WHERE id = ?',
+        args: [users.editor.id]
+      })
+
+      try {
+        const profile = await requestJson('/api/profile', {
+          headers: { cookie: staleCookie }
+        })
+        const session = await requestJson<Record<string, unknown>>('/api/_auth/session', {
+          headers: { cookie: staleCookie }
+        })
+
+        expect(profile.response.status).toBe(401)
+        expect(profile.response.headers.get('set-cookie')).toBeTruthy()
+        expect(session.response.status).toBe(200)
+        expect(session.payload).not.toHaveProperty('user')
+        expect(session.response.headers.get('set-cookie')).toBeTruthy()
+      } finally {
+        await database.execute({
+          sql: 'UPDATE users SET confirmed = 1 WHERE id = ?',
+          args: [users.editor.id]
+        })
+      }
+    })
+
+    test('uses the current database role instead of stale administrator claims', async () => {
+      const staleCookie = sessions.admin
+      if (!staleCookie) {
+        throw new Error('Missing admin session')
+      }
+
+      await database.execute({
+        sql: "UPDATE users SET role = 'user' WHERE id = ?",
+        args: [users.admin.id]
+      })
+
+      try {
+        const adminRequest = await requestJson('/api/admin/backfill-comment-ast', {
+          method: 'POST',
+          headers: { cookie: staleCookie },
+          body: { limit: 1 }
+        })
+        const session = await requestJson<{ user?: { role?: string } }>('/api/_auth/session', {
+          headers: { cookie: staleCookie }
+        })
+
+        expect(adminRequest.response.status).toBe(403)
+        expect(adminRequest.response.headers.get('set-cookie')).toBeTruthy()
+        expect(session.response.status).toBe(200)
+        expect(session.payload.user?.role).toBe('user')
+        expect(session.response.headers.get('set-cookie')).toBeTruthy()
+      } finally {
+        await database.execute({
+          sql: "UPDATE users SET role = 'admin' WHERE id = ?",
+          args: [users.admin.id]
+        })
+        await login('admin', '203.0.113.24')
+      }
+    })
   })
 
   describe.sequential('registration and email delivery contracts', () => {
@@ -526,6 +593,14 @@ describe('API characterization', async () => {
       expect(updated.payload).not.toHaveProperty('password')
       expect(updated.payload).not.toHaveProperty('confirmed')
       expect(updated.payload).not.toHaveProperty('role')
+
+      const setCookie = updated.response.headers.get('set-cookie')
+      expect(setCookie).toBeTruthy()
+      const refreshedCookie = setCookie?.split(';', 1)[0]
+      const session = await requestJson<{ user?: { name?: string; avatar?: string | null } }>('/api/_auth/session', {
+        headers: { cookie: refreshedCookie ?? '' }
+      })
+      expect(session.payload.user).toMatchObject({ name: 'Legacy Updated', avatar })
     })
 
     test('reads the updated avatar from the database instead of the stale session', async () => {
@@ -574,6 +649,11 @@ describe('API characterization', async () => {
     })
 
     test('removes only the account and its tokens while preserving authored content', async () => {
+      const staleCookie = sessions.deletable
+      if (!staleCookie) {
+        throw new Error('Missing deletable session')
+      }
+
       await requestJson<PageResponse>('/api/page', {
         method: 'PUT',
         headers: withSession('deletable'),
@@ -638,6 +718,18 @@ describe('API characterization', async () => {
         headers: { cookie: clearedCookie }
       })
       expect(afterClearedSession.response.status).toBe(401)
+
+      const staleProfile = await requestJson('/api/profile', {
+        headers: { cookie: staleCookie }
+      })
+      const staleSession = await requestJson<Record<string, unknown>>('/api/_auth/session', {
+        headers: { cookie: staleCookie }
+      })
+      expect(staleProfile.response.status).toBe(401)
+      expect(staleProfile.response.headers.get('set-cookie')).toBeTruthy()
+      expect(staleSession.response.status).toBe(200)
+      expect(staleSession.payload).not.toHaveProperty('user')
+      expect(staleSession.response.headers.get('set-cookie')).toBeTruthy()
     })
   })
 

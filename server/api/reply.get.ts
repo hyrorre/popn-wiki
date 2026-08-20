@@ -2,10 +2,11 @@ import { commentsTable, usersTable, pagesTable } from '../db/schema'
 import { eq, desc, and, isNull, sql, ne, aliasedTable, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
+import { requireApiUser } from '~/server/utils/authorization'
 
 export default defineEventHandler(async (event) => {
-  const session = await requireUserSession(event)
-  const userId = session.user.id
+  const user = await requireApiUser(event)
+  const userId = user.id
   const query = getQuery(event)
   const type = (query.type as string) || 'direct'
 
