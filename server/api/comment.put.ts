@@ -1,5 +1,5 @@
 import { commentsTable, usersTable } from '../db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { readZodBody } from '~/server/utils/validation'
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
       bodyAst: JSON.stringify(ast),
       updatedAt: now
     })
-    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id)))
+    .where(and(eq(commentsTable.id, id), eq(commentsTable.userId, user.id), isNull(commentsTable.deletedAt)))
     .returning()
     .get()
 

@@ -1,5 +1,5 @@
 import { commentsTable } from '../db/schema'
-import { eq, and, isNull } from 'drizzle-orm'
+import { eq, and, isNull, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { requireApiUser } from '~/server/utils/authorization'
 import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
@@ -34,20 +34,29 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date().toISOString()
 
-  const updated = await db
-    .update(commentsTable)
-    .set({
-      deletedAt: now
-    })
-    .where(eq(commentsTable.id, id))
-    .returning()
-    .get()
+  const deleted = await db.all<{ id: number; path: string }>(sql`
+    WITH RECURSIVE subtree(id) AS (
+      SELECT id
+      FROM comments
+      WHERE id = ${id}
+        AND deleted_at IS NULL
+      UNION
+      SELECT child.id
+      FROM comments AS child
+      INNER JOIN subtree ON child.reply_to = subtree.id
+    )
+    UPDATE comments
+    SET deleted_at = ${now}
+    WHERE id IN (SELECT id FROM subtree)
+      AND deleted_at IS NULL
+    RETURNING id, path
+  `)
 
-  if (!updated) {
+  if (deleted.length === 0) {
     throw createError({ statusCode: 404, message: 'Comment not found or not owned by user.' })
   }
 
-  await invalidateCommentMutationCaches(event, updated.path, 'delete')
+  await invalidateCommentMutationCaches(event, target.path, 'delete')
 
-  return { success: true }
+  return { success: true, deletedCount: deleted.length }
 })

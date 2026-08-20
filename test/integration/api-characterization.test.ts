@@ -1528,7 +1528,7 @@ describe('API characterization', async () => {
     })
 
     test('an admin can soft-delete another user reply', async () => {
-      const deleted = await requestJson<{ success: boolean }>(`/api/comment?id=${replyId}`, {
+      const deleted = await requestJson<{ success: boolean; deletedCount: number }>(`/api/comment?id=${replyId}`, {
         method: 'DELETE',
         headers: withSession('admin')
       })
@@ -1540,9 +1540,61 @@ describe('API characterization', async () => {
         args: [replyId]
       })
 
-      expect(deleted.payload).toEqual({ success: true })
+      expect(deleted.payload).toEqual({ success: true, deletedCount: 1 })
       expect(row.rows[0]?.deleted_at).toBeTruthy()
       expect(list.payload.comments.map((comment) => comment.id)).toEqual([rootCommentId])
+    })
+
+    test('soft-deletes an entire reply subtree and rejects further mutations', async () => {
+      const cascadeRoot = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.46' }),
+        body: { path, body: 'cascade root marker' }
+      })
+      const cascadeChild = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('other', { 'cf-connecting-ip': '203.0.113.47' }),
+        body: { path, body: 'cascade child marker', replyTo: cascadeRoot.payload.id }
+      })
+      const cascadeGrandchild = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('admin', { 'cf-connecting-ip': '203.0.113.48' }),
+        body: { path, body: 'cascade grandchild marker', replyTo: cascadeChild.payload.id }
+      })
+
+      const deleted = await requestJson<{ success: boolean; deletedCount: number }>(
+        `/api/comment?id=${cascadeRoot.payload.id}`,
+        { method: 'DELETE', headers: withSession('editor') }
+      )
+      const stored = await database.execute({
+        sql: 'SELECT id, deleted_at FROM comments WHERE id IN (?, ?, ?) ORDER BY id',
+        args: [cascadeRoot.payload.id, cascadeChild.payload.id, cascadeGrandchild.payload.id]
+      })
+      const list = await requestJson<{ comments: CommentResponse[]; total: number }>(
+        `/api/comment?path=${encodeURIComponent(path)}&fresh=1`
+      )
+      const search = await requestJson<{ total: number }>('/api/comment/search?q=cascade%20grandchild')
+      const reply = await requestJson<{ message: string }>('/api/comment', {
+        method: 'POST',
+        headers: withSession('other', { 'cf-connecting-ip': '203.0.113.49' }),
+        body: { path, body: 'must not survive', replyTo: cascadeGrandchild.payload.id }
+      })
+      const edit = await requestJson<{ message: string }>('/api/comment', {
+        method: 'PUT',
+        headers: withSession('admin', { 'cf-connecting-ip': '203.0.113.50' }),
+        body: { id: cascadeGrandchild.payload.id, body: 'must not be editable' }
+      })
+
+      expect(deleted.payload).toEqual({ success: true, deletedCount: 3 })
+      expect(stored.rows).toHaveLength(3)
+      expect(stored.rows.every((row) => Boolean(row.deleted_at))).toBe(true)
+      expect(list.payload.comments.map((comment) => comment.id)).not.toEqual(
+        expect.arrayContaining([cascadeRoot.payload.id, cascadeChild.payload.id, cascadeGrandchild.payload.id])
+      )
+      expect(search.payload.total).toBe(0)
+      expect(reply.response.status).toBe(400)
+      expect(reply.payload.message).toBe('Invalid reply target.')
+      expect(edit.response.status).toBe(404)
     })
 
     test('rejects a reply to a soft-deleted comment', async () => {
