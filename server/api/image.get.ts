@@ -7,7 +7,7 @@ const FALLBACK_CURSOR_PREFIX = 'offset:'
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const limit = parseClampedInteger(query.limit, { fallback: MAX_LIMIT, minimum: 1, maximum: MAX_LIMIT })
-  const cursor = query.cursor as string | undefined
+  const cursor = parseCursor(query.cursor)
   const fallbackOffset = parseFallbackCursor(cursor)
 
   const config = useRuntimeConfig()
@@ -43,4 +43,11 @@ function parseFallbackCursor(value: unknown) {
 
   const offset = Number(value.slice(FALLBACK_CURSOR_PREFIX.length))
   return Number.isInteger(offset) && offset >= 0 ? offset : null
+}
+
+function parseCursor(value: unknown) {
+  if (value === undefined) return undefined
+  if (typeof value === 'string') return value
+
+  throw createError({ statusCode: 400, message: 'Invalid cursor.' })
 }

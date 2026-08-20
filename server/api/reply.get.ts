@@ -8,9 +8,9 @@ export default defineEventHandler(async (event) => {
   const user = await requireApiUser(event)
   const userId = user.id
   const query = getQuery(event)
-  const type = (query.type as string) || 'direct'
+  const type = query.type ?? 'direct'
 
-  if (type !== 'direct' && type !== 'thread') {
+  if (typeof type !== 'string' || (type !== 'direct' && type !== 'thread')) {
     throw createError({ statusCode: 400, message: 'Invalid reply type.' })
   }
 

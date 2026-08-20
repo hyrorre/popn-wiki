@@ -100,7 +100,7 @@ const { data: pageData, status: pageStatus } = await useAsyncData<SearchResponse
       return emptyResponse.value
     }
 
-    return $fetch<SearchResponse>('/api/search' as string, {
+    return $fetch<SearchResponse>('/api/search', {
       query: {
         q: query.value,
         page: page.value,
@@ -120,7 +120,7 @@ const { data: commentData, status: commentStatus } = await useAsyncData<CommentS
       return emptyCommentResponse.value
     }
 
-    return $fetch<CommentSearchResponse>('/api/comment/search' as string, {
+    return $fetch<CommentSearchResponse>('/api/comment/search', {
       query: {
         q: query.value,
         page: page.value,

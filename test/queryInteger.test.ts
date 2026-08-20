@@ -14,6 +14,8 @@ describe('integer query parsing', () => {
     expect(parseClampedInteger('-5', options)).toBe(1)
     expect(parseClampedInteger('2.9', options)).toBe(2)
     expect(parseClampedInteger('100', options)).toBe(50)
+    expect(parseClampedInteger(['2'], options)).toBe(10)
+    expect(parseClampedInteger(true, options)).toBe(10)
   })
 
   test('truncates numeric values and falls back for malformed or undersized values', () => {
@@ -24,6 +26,8 @@ describe('integer query parsing', () => {
     expect(parseIntegerOrFallback('0.9', options)).toBe(1)
     expect(parseIntegerOrFallback('200', { ...options, maximum: 100 })).toBe(100)
     expect(parseIntegerOrFallback(undefined, options)).toBe(1)
+    expect(parseIntegerOrFallback(['2'], options)).toBe(1)
+    expect(parseIntegerOrFallback('', options)).toBe(1)
   })
 
   test('requires exact integers, applies defaults, and caps accepted values', () => {
@@ -34,6 +38,8 @@ describe('integer query parsing', () => {
     expect(parseStrictIntegerQuery('200', options)).toBe(100)
     expect(() => parseStrictIntegerQuery('2.5', options)).toThrow('Invalid pagination.')
     expect(() => parseStrictIntegerQuery('invalid', options)).toThrow('Invalid pagination.')
+    expect(() => parseStrictIntegerQuery(['25'], options)).toThrow('Invalid pagination.')
+    expect(() => parseStrictIntegerQuery(false, options)).toThrow('Invalid pagination.')
   })
 
   test('preserves endpoint-specific validation messages', () => {

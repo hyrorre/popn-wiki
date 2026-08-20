@@ -4,7 +4,7 @@ import { resetPasswordFormSchema, type ResetPasswordFormInput } from '~/shared/z
 
 const { app } = useAppConfig()
 const route = useRoute()
-const token = route.query.token as string
+const token = computed(() => (typeof route.query.token === 'string' ? route.query.token : ''))
 
 useSeoMeta({
   title: '新しいパスワードの設定',
@@ -27,7 +27,7 @@ const success = ref(false)
 const schema = resetPasswordFormSchema
 
 const submit = async (payload: FormSubmitEvent<ResetPasswordFormInput>) => {
-  if (!token) {
+  if (!token.value) {
     error_message.value = '無効なリクエストです。'
     return
   }
@@ -36,7 +36,7 @@ const submit = async (payload: FormSubmitEvent<ResetPasswordFormInput>) => {
     await $fetch('/api/auth/reset', {
       method: 'POST',
       body: {
-        token,
+        token: token.value,
         password: payload.data.password
       }
     })

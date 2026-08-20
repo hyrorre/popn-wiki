@@ -15,7 +15,7 @@ type StrictIntegerQueryOptions = IntegerBounds & {
 }
 
 export function parseClampedInteger(value: unknown, options: IntegerFallbackOptions) {
-  const parsed = Number(value)
+  const parsed = parseNumericValue(value)
   if (!Number.isFinite(parsed)) return options.fallback
 
   const integer = Math.max(Math.trunc(parsed), options.minimum)
@@ -23,7 +23,7 @@ export function parseClampedInteger(value: unknown, options: IntegerFallbackOpti
 }
 
 export function parseIntegerOrFallback(value: unknown, options: IntegerFallbackOptions) {
-  const parsed = Number(value)
+  const parsed = parseNumericValue(value)
 
   if (!Number.isFinite(parsed) || parsed < options.minimum) return options.fallback
 
@@ -34,10 +34,17 @@ export function parseIntegerOrFallback(value: unknown, options: IntegerFallbackO
 export function parseStrictIntegerQuery(value: unknown, options: StrictIntegerQueryOptions) {
   if (value === undefined && options.fallback !== undefined) return options.fallback
 
-  const parsed = Number(value)
+  const parsed = parseNumericValue(value)
   if (!Number.isInteger(parsed) || parsed < options.minimum) {
     throw createError({ statusCode: 400, message: options.message ?? 'Invalid pagination.' })
   }
 
   return options.maximum === undefined ? parsed : Math.min(parsed, options.maximum)
+}
+
+function parseNumericValue(value: unknown) {
+  if (typeof value !== 'string' && typeof value !== 'number') return Number.NaN
+  if (typeof value === 'string' && value.trim() === '') return Number.NaN
+
+  return Number(value)
 }

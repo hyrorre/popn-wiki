@@ -3,7 +3,7 @@ definePageMeta({
   middleware: [
     async function (to) {
       const nuxtApp = useNuxtApp()
-      const token = to.query.token as string
+      const token = typeof to.query.token === 'string' ? to.query.token : ''
 
       if (!token) {
         return navigateTo('/signin')
