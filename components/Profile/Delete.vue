@@ -5,19 +5,26 @@ const form = reactive({
   del: ''
 })
 const message = ref('')
+const isSubmitting = ref(false)
+const confirmationMatches = computed(() => form.del === 'Delete')
 
 const submit = async () => {
+  if (!confirmationMatches.value || isSubmitting.value) return
+
+  isSubmitting.value = true
+  message.value = ''
+
   try {
     await $fetch('/api/user/delete', {
       method: 'POST'
     })
     await clearSession()
-    message.value = 'Account deleted.'
-    alert('Account deleted.')
-    useRouter().push('/')
+    await navigateTo('/')
   } catch (err) {
-    const error = err as { message?: string }
-    message.value = error.message || 'Deletion failed'
+    const fetchError = err as { data?: { message?: string } }
+    message.value = fetchError.data?.message || 'アカウントの削除に失敗しました。'
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -27,7 +34,8 @@ const submit = async () => {
     <template #header>
       <h3>アカウントを削除</h3>
     </template>
-    <div>アカウントを削除すると、すべてのデータが削除されます。</div>
+    <div>アカウントを削除すると、プロフィールとログイン情報が削除されます。</div>
+    <p class="mt-2 text-sm text-muted">投稿したページやコメントは、投稿者情報なしで残ります。</p>
     <u-modal
       title="アカウントを削除"
       description='アカウントを削除してもよろしいですか？\n削除する場合は"Delete"と入力してください。'
@@ -44,8 +52,9 @@ const submit = async () => {
             <u-button
               color="error"
               type="submit"
-              :variant="!form.del.includes('Delete') ? 'outline' : 'solid'"
-              :disabled="!form.del.includes('Delete')"
+              :variant="confirmationMatches ? 'solid' : 'outline'"
+              :disabled="!confirmationMatches"
+              :loading="isSubmitting"
             >
               アカウントを削除
             </u-button>

@@ -214,7 +214,7 @@ watch(page, (newVal) => {
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 
-    <div v-else-if="false" class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div v-else class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="text-sm text-muted">
         表示形式:
         <span class="font-medium text-foreground">
@@ -254,7 +254,7 @@ watch(page, (newVal) => {
           v-if="comment.children.length"
           class="flex flex-col gap-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700 sm:pl-6"
         >
-          <div v-if="false">
+          <div>
             <u-button
               :icon="isThreadCollapsed(comment.id) ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'"
               size="xs"

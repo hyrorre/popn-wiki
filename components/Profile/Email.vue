@@ -1,11 +1,5 @@
 <script setup lang="ts">
 const { user } = useUserSession()
-
-const message = ref('')
-
-const submit = async () => {
-  message.value = 'Email update via nuxt-auth-utils would require custom logic. Not implemented yet.'
-}
 </script>
 
 <template>
@@ -13,15 +7,12 @@ const submit = async () => {
     <template #header>
       <h3>メールアドレス</h3>
     </template>
-    <div v-if="!user?.email">読込中...</div>
-    <u-form v-else :state="user" @submit="submit">
+    <div v-if="!user?.email">読み込み中...</div>
+    <div v-else>
       <u-form-field label="メールアドレス" name="email">
-        <u-input v-model="user.email" required autofocus class="w-full" size="lg" />
+        <u-input :model-value="user.email" disabled class="w-full" size="lg" />
       </u-form-field>
-      <div class="mt-4 flex justify-end items-center">
-        <div class="mr-4">{{ message }}</div>
-        <u-button type="submit">保存</u-button>
-      </div>
-    </u-form>
+      <p class="mt-2 text-sm text-muted">現在、メールアドレスは変更できません。</p>
+    </div>
   </u-card>
 </template>
