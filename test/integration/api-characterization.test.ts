@@ -241,22 +241,25 @@ describe('API characterization', async () => {
       expect(String(result.rows[0]?.password)).toMatch(/^\$scrypt\$/)
     })
 
-    test('verification tokens are valid only once', async () => {
+    test('verification tokens are valid only once even for concurrent requests', async () => {
       await database.execute({
         sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
         args: [users.unconfirmed.id, 'verify-once', 'verification', Date.now() + 60_000]
       })
 
-      const first = await requestJson<{ message: string }>('/api/auth/verify?token=verify-once')
-      const second = await requestJson<{ message: string }>('/api/auth/verify?token=verify-once')
+      const results = await Promise.all([
+        requestJson<{ message: string }>('/api/auth/verify?token=verify-once'),
+        requestJson<{ message: string }>('/api/auth/verify?token=verify-once')
+      ])
+      const [success] = results.filter(({ response }) => response.status === 200)
+      const [rejected] = results.filter(({ response }) => response.status === 400)
 
-      expect(first.response.status).toBe(200)
-      expect(first.payload.message).toBe('Email verified successfully.')
-      expect(second.response.status).toBe(400)
-      expect(second.payload.message).toBe('Invalid or expired token')
+      expect(results.map(({ response }) => response.status).sort()).toEqual([200, 400])
+      expect(success?.payload.message).toBe('Email verified successfully.')
+      expect(rejected?.payload.message).toBe('Invalid or expired token')
     })
 
-    test('a password reset confirms the account and consumes the token', async () => {
+    test('a password reset confirms the account and is atomic for concurrent requests', async () => {
       await database.execute({
         sql: 'UPDATE users SET confirmed = 0 WHERE id = ?',
         args: [users.unconfirmed.id]
@@ -266,11 +269,18 @@ describe('API characterization', async () => {
         args: [users.unconfirmed.id, 'reset-once', 'reset', Date.now() + 60_000]
       })
 
-      const result = await requestJson<{ message: string }>('/api/auth/reset', {
-        method: 'POST',
-        headers: { 'cf-connecting-ip': '203.0.113.23' },
-        body: { token: 'reset-once', password: 'brand-new-password!' }
-      })
+      const results = await Promise.all([
+        requestJson<{ message: string }>('/api/auth/reset', {
+          method: 'POST',
+          headers: { 'cf-connecting-ip': '203.0.113.23' },
+          body: { token: 'reset-once', password: 'brand-new-password!' }
+        }),
+        requestJson<{ message: string }>('/api/auth/reset', {
+          method: 'POST',
+          headers: { 'cf-connecting-ip': '203.0.113.25' },
+          body: { token: 'reset-once', password: 'brand-new-password!' }
+        })
+      ])
       const userResult = await database.execute({
         sql: 'SELECT confirmed, password FROM users WHERE id = ?',
         args: [users.unconfirmed.id]
@@ -280,8 +290,12 @@ describe('API characterization', async () => {
         args: ['reset-once']
       })
 
-      expect(result.response.status).toBe(200)
-      expect(result.payload.message).toBe('Password has been reset successfully.')
+      const [success] = results.filter(({ response }) => response.status === 200)
+      const [rejected] = results.filter(({ response }) => response.status === 400)
+
+      expect(results.map(({ response }) => response.status).sort()).toEqual([200, 400])
+      expect(success?.payload.message).toBe('Password has been reset successfully.')
+      expect(rejected?.payload.message).toBe('Invalid or expired token')
       expect(Number(userResult.rows[0]?.confirmed)).toBe(1)
       expect(String(userResult.rows[0]?.password)).toMatch(/^\$scrypt\$/)
       expect(Number(tokenResult.rows[0]?.count)).toBe(0)
@@ -394,7 +408,11 @@ describe('API characterization', async () => {
       const beforeEmails = capturedEmails().length
       const signup = await requestJson<{ message: string }>('/api/auth/signup', {
         method: 'POST',
-        headers: { 'cf-connecting-ip': '203.0.113.50' },
+        headers: {
+          'cf-connecting-ip': '203.0.113.50',
+          'x-forwarded-host': 'attacker.example',
+          'x-forwarded-proto': 'http'
+        },
         body: { name: 'New Account', email: signupEmail, password: 'safe-passphrase!' }
       })
       const user = await database.execute({
@@ -418,7 +436,10 @@ describe('API characterization', async () => {
         to: signupEmail,
         subject: expect.stringContaining('メールアドレスの確認')
       })
-      expect(emails.at(-1)?.payload.html).toContain(`/verify?token=${String(tokens.rows[0]?.token)}`)
+      expect(emails.at(-1)?.payload.html).toContain(
+        `https://popn.wiki/verify?token=${String(tokens.rows[0]?.token)}`
+      )
+      expect(emails.at(-1)?.payload.html).not.toContain('attacker.example')
     })
 
     test('duplicate signup does not create another token or send another email', async () => {
@@ -480,7 +501,11 @@ describe('API characterization', async () => {
       const beforeEmails = capturedEmails().length
       const existing = await requestJson<{ message: string }>('/api/auth/forgot', {
         method: 'POST',
-        headers: { 'cf-connecting-ip': '203.0.113.52' },
+        headers: {
+          'cf-connecting-ip': '203.0.113.52',
+          'x-forwarded-host': 'attacker.example',
+          'x-forwarded-proto': 'http'
+        },
         body: { email: ` ${users.other.email.toUpperCase()} ` }
       })
       const unknown = await requestJson<{ message: string }>('/api/auth/forgot', {
@@ -500,7 +525,10 @@ describe('API characterization', async () => {
       expect(resetTokens.rows).toHaveLength(1)
       expect(emails).toHaveLength(beforeEmails + 1)
       expect(emails.at(-1)?.payload.to).toBe(users.other.email)
-      expect(emails.at(-1)?.payload.html).toContain(`/reset?token=${String(resetTokens.rows[0]?.token)}`)
+      expect(emails.at(-1)?.payload.html).toContain(
+        `https://popn.wiki/reset?token=${String(resetTokens.rows[0]?.token)}`
+      )
+      expect(emails.at(-1)?.payload.html).not.toContain('attacker.example')
     })
 
     test('forgot password rejects malformed email payloads before lookup', async () => {

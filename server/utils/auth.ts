@@ -1,7 +1,6 @@
 import { db } from '@nuxthub/db'
 import { tokensTable } from '../db/schema'
 import { eq, and, gt, lte } from 'drizzle-orm'
-import type { H3Event } from 'h3'
 import cryptmd5 from 'cryptmd5'
 import bcrypt from 'bcryptjs'
 
@@ -25,11 +24,17 @@ export const generateToken = async (userId: number, type: 'verification' | 'rese
   return token
 }
 
-export const sendVerificationEmail = async (event: H3Event, email: string, token: string) => {
+function getAuthActionUrl(path: '/verify' | '/reset', token: string) {
+  const { app } = useAppConfig()
+  const url = new URL(path, app.url)
+  url.searchParams.set('token', token)
+  return url.toString()
+}
+
+export const sendVerificationEmail = async (email: string, token: string) => {
   const resend = useResend()
   const { app } = useAppConfig()
-  const origin = getRequestURL(event).origin
-  const url = `${origin}/verify?token=${token}`
+  const url = getAuthActionUrl('/verify', token)
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
 
   const { error } = await resend.emails.send({
@@ -48,11 +53,10 @@ export const sendVerificationEmail = async (event: H3Event, email: string, token
   }
 }
 
-export const sendResetPasswordEmail = async (event: H3Event, email: string, token: string) => {
+export const sendResetPasswordEmail = async (email: string, token: string) => {
   const resend = useResend()
   const { app } = useAppConfig()
-  const origin = getRequestURL(event).origin
-  const url = `${origin}/reset?token=${token}`
+  const url = getAuthActionUrl('/reset', token)
   const from = process.env.NUXT_RESEND_FROM || 'onboarding@resend.dev'
 
   const { error } = await resend.emails.send({
@@ -71,21 +75,20 @@ export const sendResetPasswordEmail = async (event: H3Event, email: string, toke
   }
 }
 
-export const verifyAndUseToken = async (token: string, type: 'verification' | 'reset') => {
-  const foundToken = await db
+export const findValidToken = async (token: string, type: 'verification' | 'reset') => {
+  return db
     .select()
     .from(tokensTable)
     .where(and(eq(tokensTable.token, token), eq(tokensTable.type, type), gt(tokensTable.expiresAt, Date.now())))
     .get()
+}
 
-  if (!foundToken) {
-    return null
-  }
-
-  // Delete token after use
-  await db.delete(tokensTable).where(eq(tokensTable.id, foundToken.id))
-
-  return foundToken
+export const verifyAndUseToken = async (token: string, type: 'verification' | 'reset') => {
+  return db
+    .delete(tokensTable)
+    .where(and(eq(tokensTable.token, token), eq(tokensTable.type, type), gt(tokensTable.expiresAt, Date.now())))
+    .returning()
+    .get()
 }
 
 export const verifyPasswordMD5Crypt = (hash: string, password: string) => {

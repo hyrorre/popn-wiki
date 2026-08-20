@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
 
   if (insertedUser) {
     const token = await generateToken(insertedUser.id, 'verification')
-    await sendVerificationEmail(event, email, token)
+    await sendVerificationEmail(email, token)
   }
 
   // Do NOT set session here, user must verify email first

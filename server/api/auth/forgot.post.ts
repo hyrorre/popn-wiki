@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   if (user) {
     const token = await generateToken(user.id, 'reset')
-    await sendResetPasswordEmail(event, email, token)
+    await sendResetPasswordEmail(email, token)
   }
 
   // Always return success to prevent email enumeration

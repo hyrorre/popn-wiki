@@ -1,7 +1,8 @@
 import { db } from '@nuxthub/db'
-import { tokensTable, usersTable } from '../../db/schema'
-import { and, eq, gt } from 'drizzle-orm'
+import { usersTable } from '../../db/schema'
+import { eq } from 'drizzle-orm'
 import { checkRateLimit } from '~/server/utils/rateLimit'
+import { findValidToken, verifyAndUseToken } from '~/server/utils/auth'
 import { readZodBody } from '~/server/utils/validation'
 import { getAccountPasswordValidationMessage, resetPasswordSchema } from '~/shared/zod'
 
@@ -9,11 +10,7 @@ export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'auth:reset', limit: 5 })
   const { token, password } = await readZodBody(event, resetPasswordSchema)
 
-  const tokenRecord = await db
-    .select()
-    .from(tokensTable)
-    .where(and(eq(tokensTable.token, token), eq(tokensTable.type, 'reset'), gt(tokensTable.expiresAt, Date.now())))
-    .get()
+  const tokenRecord = await findValidToken(token, 'reset')
   if (!tokenRecord) {
     throw createError({
       statusCode: 400,
@@ -23,7 +20,7 @@ export default defineEventHandler(async (event) => {
 
   const user = await db.select().from(usersTable).where(eq(usersTable.id, tokenRecord.userId)).get()
   if (!user) {
-    await db.delete(tokensTable).where(eq(tokensTable.id, tokenRecord.id))
+    await verifyAndUseToken(token, 'reset')
     throw createError({
       statusCode: 400,
       message: 'Invalid or expired token'
@@ -41,18 +38,23 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Update user password
+  const passwordHash = await hashPassword(password)
+  const usedToken = await verifyAndUseToken(token, 'reset')
+  if (!usedToken || usedToken.userId !== user.id) {
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid or expired token'
+    })
+  }
+
   await db
     .update(usersTable)
     .set({
-      password: await hashPassword(password),
+      password: passwordHash,
       confirmed: 1,
       updatedAt: new Date().toISOString()
     })
     .where(eq(usersTable.id, tokenRecord.userId))
-
-  // Delete token after successful password change.
-  await db.delete(tokensTable).where(eq(tokensTable.id, tokenRecord.id))
 
   return { message: 'Password has been reset successfully.' }
 })

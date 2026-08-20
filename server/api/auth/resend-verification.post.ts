@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
   // Generate new verification token and send email
   const token = await generateToken(user.id, 'verification')
-  await sendVerificationEmail(event, email, token)
+  await sendVerificationEmail(email, token)
 
   return { message: resendVerificationMessage }
 })
