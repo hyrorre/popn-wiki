@@ -144,8 +144,18 @@ export function sanitizeHastTree(tree: HastNode) {
 export function sanitizeMdcParserResult(result: MDCParserResult): MDCParserResult {
   return {
     ...result,
+    data: sanitizeMdcMetadata(result.data),
     body: sanitizeMdcRoot(result.body),
     ...(result.excerpt ? { excerpt: sanitizeMdcRoot(result.excerpt) } : {})
+  }
+}
+
+// Frontmatter must not choose renderer components or bypass sanitized node props.
+export function sanitizeMdcMetadata(data: Record<string, unknown> | undefined): MDCParserResult['data'] {
+  return {
+    ...Object.fromEntries(Object.entries(data ?? {}).filter(([key]) => key !== 'component' && key !== 'mdc')),
+    title: typeof data?.title === 'string' ? data.title : '',
+    description: typeof data?.description === 'string' ? data.description : ''
   }
 }
 
@@ -196,7 +206,7 @@ function sanitizeHastChildren(children: HastNode[]): HastNode[] {
   })
 }
 
-function sanitizeMdcRoot(root: MDCRoot): MDCRoot {
+export function sanitizeMdcRoot(root: MDCRoot): MDCRoot {
   return {
     ...root,
     type: 'root',

@@ -34,7 +34,7 @@ const mdcAst = computed(() => {
 
     <template v-if="page">
       <MDCRenderer v-if="mdcAst" :body="mdcAst.body" :data="mdcAst.data" class="content" />
-      <MDC v-else :value="page.body" class="content" />
+      <SafeMarkdown v-else :value="page.body" class="content" />
     </template>
   </aside>
 </template>

@@ -217,7 +217,7 @@ await loadHistory()
         <article
           class="border border-default rounded-lg p-6 bg-white dark:bg-gray-900 overflow-auto h-full max-h-[800px]"
         >
-          <MDC :value="body" class="content" />
+          <SafeMarkdown :value="body" class="content" />
         </article>
       </div>
     </div>
@@ -315,7 +315,7 @@ await loadHistory()
 
           <div class="max-h-[70vh] overflow-auto p-4 bg-muted/10 rounded-lg">
             <template v-if="selectedRevision">
-              <MDC
+              <SafeMarkdown
                 v-if="viewMode === 'preview'"
                 :value="selectedRevision.body"
                 class="content bg-white dark:bg-gray-900 p-4 rounded shadow-sm"

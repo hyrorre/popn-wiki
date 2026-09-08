@@ -170,7 +170,7 @@ const submitDelete = async () => {
           <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
             <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
           </div>
-          <MDC :value="editBody" class="content prose prose-sm dark:prose-invert max-w-none" />
+          <SafeMarkdown :value="editBody" class="content prose prose-sm dark:prose-invert max-w-none" />
         </div>
         <div class="flex justify-end gap-2 mt-2">
           <u-button size="sm" color="neutral" variant="ghost" @click="isEditingOpen = false">キャンセル</u-button>
@@ -185,7 +185,7 @@ const submitDelete = async () => {
           :data="commentBodyAst.data"
           class="content prose prose-sm dark:prose-invert max-w-none"
         />
-        <MDC v-else :value="comment.body" class="content prose prose-sm dark:prose-invert max-w-none" />
+        <SafeMarkdown v-else :value="comment.body" class="content prose prose-sm dark:prose-invert max-w-none" />
       </div>
 
       <!-- アクションボタン群 -->
@@ -226,7 +226,7 @@ const submitDelete = async () => {
           <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
             <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
           </div>
-          <MDC :value="replyBody" class="content prose prose-sm dark:prose-invert max-w-none" />
+          <SafeMarkdown :value="replyBody" class="content prose prose-sm dark:prose-invert max-w-none" />
         </div>
         <div class="flex justify-end gap-2 mt-2">
           <u-button size="sm" color="neutral" variant="ghost" @click="isReplyingOpen = false">キャンセル</u-button>

@@ -372,7 +372,7 @@ watch(page, (newVal) => {
         <div class="text-xs text-muted mb-2 font-medium flex items-center gap-1">
           <u-icon name="i-lucide-eye" class="w-3.5 h-3.5" />プレビュー
         </div>
-        <MDC :value="newCommentBody" class="prose prose-sm dark:prose-invert max-w-none" />
+        <SafeMarkdown :value="newCommentBody" class="prose prose-sm dark:prose-invert max-w-none" />
       </div>
 
       <div class="flex justify-end mt-3">

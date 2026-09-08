@@ -117,7 +117,7 @@ useSeoMeta({
       <template v-else-if="page">
         <!-- キャッシュされた AST があれば MDCRenderer を使用し、なければ MDC Components を使用（案Aのフォールバック） -->
         <MDCRenderer v-if="mdcAst" :body="mdcAst.body" :data="mdcAst.data" class="content" />
-        <MDC v-else :value="page.body" class="content" />
+        <SafeMarkdown v-else :value="page.body" class="content" />
 
         <!-- ディスカッション機能 -->
         <div v-if="hasDiscussion" class="mt-12 pt-8 border-t border-default">

@@ -84,6 +84,31 @@ describe('Markdown AST security', () => {
     ])
   })
 
+  test('removes frontmatter renderer overrides on both new and stored documents', async () => {
+    const { ast } = await parseSafeMarkdown([
+      '---',
+      'title: Safe title',
+      'component:',
+      '  name: div',
+      '  props:',
+      '    innerHTML: "<b>injected</b>"',
+      'mdc:',
+      '  components:',
+      '    p: iframe',
+      '---',
+      'Normal body'
+    ].join('\n'))
+    expect(ast.data.title).toBe('Safe title')
+    expect(ast.data).not.toHaveProperty('component')
+    expect(ast.data).not.toHaveProperty('mdc')
+
+    const stored = sanitizeUnknownMdcDocument({
+      ...ast,
+      data: { ...ast.data, component: 'iframe', mdc: { components: { p: 'iframe' } } }
+    })
+    expect(stored?.data).toEqual(ast.data)
+  })
+
   test('accepts safe navigation targets and rejects executable schemes', () => {
     expect(sanitizeLinkTarget('/wiki/path')).toBe('/wiki/path')
     expect(sanitizeLinkTarget('https://example.com/%A5')).toBe('https://example.com/%A5')
