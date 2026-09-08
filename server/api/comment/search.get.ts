@@ -1,6 +1,6 @@
 import { db } from '@nuxthub/db'
-import { aliasedTable, and, desc, eq, gt, isNull, notExists, sql } from 'drizzle-orm'
-import { commentsTable, pagesTable, usersTable } from '~/server/db/schema'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { commentsTable, usersTable } from '~/server/db/schema'
 import { searchQuerySchema } from '~/shared/zod'
 import { parseZodQuery } from '~/server/utils/validation'
 
@@ -24,7 +24,6 @@ export default defineEventHandler(async (event) => {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(commentsTable)
-    .innerJoin(pagesTable, eq(commentsTable.path, pagesTable.path))
     .where(where)
     .get()
 
@@ -37,14 +36,14 @@ export default defineEventHandler(async (event) => {
     .select({
       id: commentsTable.id,
       path: commentsTable.path,
-      pageTitle: pagesTable.title,
+      pageTitle: sql<string>`(SELECT title FROM pages
+        WHERE path = ${commentsTable.path} ORDER BY revision DESC LIMIT 1)`,
       body: commentsTable.body,
       createdAt: commentsTable.createdAt,
       updatedAt: commentsTable.updatedAt,
       userName: usersTable.name
     })
     .from(commentsTable)
-    .innerJoin(pagesTable, eq(commentsTable.path, pagesTable.path))
     .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
     .where(where)
     .orderBy(desc(commentsTable.createdAt))
@@ -66,17 +65,11 @@ export default defineEventHandler(async (event) => {
 })
 
 function buildCommentSearchWhere(terms: string[]) {
-  const newerRevision = aliasedTable(pagesTable, 'newer_revision')
-
   return and(
     isNull(commentsTable.deletedAt),
-    sql`${pagesTable.body} != ''`,
-    notExists(
-      db
-        .select({ one: sql`1` })
-        .from(newerRevision)
-        .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
-    ),
+    // Resolve one latest revision per comment instead of joining every historical revision.
+    sql`(SELECT body != '' FROM pages
+      WHERE path = ${commentsTable.path} ORDER BY revision DESC LIMIT 1)`,
     ...terms.map(buildTermCommentCondition)
   )
 }

@@ -1,4 +1,4 @@
-import { commentsTable, usersTable, pagesTable } from '../../db/schema'
+import { commentsTable, usersTable } from '../../db/schema'
 import { eq, desc, isNull, and, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import {
@@ -36,24 +36,14 @@ export default defineEventHandler(async (event) => {
     .groupBy(commentsTable.path)
     .as('latest_comment_per_path')
 
-  // path ごとの最新ページリビジョン（SQLite の bare column 挙動で MAX(revision) 行の title が取れる）
-  const latestPages = db
-    .select({
-      path: pagesTable.path,
-      title: pagesTable.title,
-      _rev: sql<number>`max(${pagesTable.revision})`
-    })
-    .from(pagesTable)
-    .where(sql`${pagesTable.body} != ''`)
-    .groupBy(pagesTable.path)
-    .as('latest_pages')
-
   // count(*) OVER () でページ総数を data クエリと同時取得（別途 count クエリ不要）
   const rows = await db
     .select({
       total: sql<number>`count(*) OVER ()`,
       path: commentsTable.path,
-      title: latestPages.title,
+      title: sql<string | null>`(SELECT title FROM pages
+        WHERE path = ${commentsTable.path} AND body != ''
+        ORDER BY revision DESC LIMIT 1)`,
       created_at: commentsTable.createdAt,
       commenter: sql<string>`coalesce(${usersTable.name}, '匿名')`
     })
@@ -63,7 +53,6 @@ export default defineEventHandler(async (event) => {
       and(eq(commentsTable.path, latestCommentPerPath.path), eq(commentsTable.id, latestCommentPerPath.maxId))
     )
     .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
-    .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
     .orderBy(desc(commentsTable.createdAt))
     .limit(limit)
     .offset(offset)

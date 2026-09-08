@@ -85,6 +85,13 @@
       "when": 1788827956627,
       "tag": "0011_add_auth_version",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788828804470,
+      "tag": "0012_optimize_comment_and_recent_reads",
+      "breakpoints": true
     }
   ]
 }

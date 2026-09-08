@@ -1,5 +1,5 @@
-import { commentsTable, usersTable, pagesTable } from '../db/schema'
-import { eq, desc, and, isNull, sql, ne, aliasedTable, inArray } from 'drizzle-orm'
+import { commentsTable, usersTable } from '../db/schema'
+import { eq, desc, sql, inArray } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { parseStrictIntegerQuery } from '~/server/utils/queryInteger'
 import { requireApiUser } from '~/server/utils/authorization'
@@ -21,16 +21,17 @@ export default defineEventHandler(async (event) => {
 
   if (type === 'direct') {
     // 1. 自分への直接返信
-    const myComments = aliasedTable(commentsTable, 'my_comments')
-    const results = await db
-      .select({ id: commentsTable.id })
-      .from(commentsTable)
-      .innerJoin(myComments, eq(commentsTable.replyTo, myComments.id))
-      .where(and(eq(myComments.userId, userId), ne(commentsTable.userId, userId), isNull(commentsTable.deletedAt)))
-      .orderBy(desc(commentsTable.createdAt))
-      .limit(limit)
-      .offset(offset)
-      .all()
+    // CROSS JOIN keeps the indexed user lookup before the reply lookup.
+    const results = await db.all<{ id: number }>(sql`
+      SELECT reply.id
+      FROM comments AS mine CROSS JOIN comments AS reply
+      WHERE mine.user_id = ${userId}
+        AND reply.reply_to = mine.id
+        AND reply.user_id != ${userId}
+        AND reply.deleted_at IS NULL
+      ORDER BY reply.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `)
     replyIds = results.map((r) => r.id)
   } else {
     replyIds = await readThreadReplyIds(userId, limit, offset)
@@ -40,30 +41,18 @@ export default defineEventHandler(async (event) => {
     return []
   }
 
-  // 詳細情報を取得（ページタイトル、ユーザー名など）
-  // ページタイトルは最新のレビジョンから取得
-  const latestPages = db
-    .select({
-      path: pagesTable.path,
-      title: pagesTable.title,
-      maxRev: sql`MAX(revision)`.as('max_rev')
-    })
-    .from(pagesTable)
-    .groupBy(pagesTable.path)
-    .as('latest_pages')
-
   const replies = await db
     .select({
       id: commentsTable.id,
       body: commentsTable.body,
       createdAt: commentsTable.createdAt,
       path: commentsTable.path,
-      pageTitle: latestPages.title,
+      pageTitle: sql<string | null>`(SELECT title FROM pages
+        WHERE path = ${commentsTable.path} ORDER BY revision DESC LIMIT 1)`,
       userName: usersTable.name
     })
     .from(commentsTable)
     .leftJoin(usersTable, eq(commentsTable.userId, usersTable.id))
-    .leftJoin(latestPages, eq(commentsTable.path, latestPages.path))
     .where(inArray(commentsTable.id, replyIds))
     .orderBy(desc(commentsTable.createdAt))
     .all()
@@ -117,9 +106,8 @@ async function readThreadReplyIds(userId: number, limit: number, offset: number)
       LIMIT ${MAX_REPLY_TREE_NODES}
     )
     SELECT hierarchy.id
-    FROM hierarchy
-    INNER JOIN comments ON comments.id = hierarchy.id
-    WHERE hierarchy.user_id != ${userId}
+    FROM hierarchy CROSS JOIN comments
+    WHERE comments.id = hierarchy.id AND hierarchy.user_id != ${userId}
       AND comments.deleted_at IS NULL
     ORDER BY comments.created_at DESC
     LIMIT ${limit}

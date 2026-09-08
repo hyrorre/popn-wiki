@@ -53,6 +53,12 @@ bun run build
 そのユーザーの旧セッションはすべて無効になり、再ログインが必要です。
 追加の環境変数はありません。
 
+コメント・最近の編集・返信一覧の読み取り最適化には、
+`0012_optimize_comment_and_recent_reads.sql` の適用が必要です。
+Worker更新前に `bun run db:migrate:remote` で適用してください。
+インデックスを5個追加するため、適用時のインデックス構築と以降の書き込み・ストレージの負荷が増えます。
+既存データの変更や追加の環境変数はありません。
+
 Locally preview production build:
 
 ```bash

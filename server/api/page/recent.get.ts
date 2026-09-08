@@ -1,5 +1,5 @@
 import { pagesTable } from '../../db/schema'
-import { eq, desc, and, or, isNull, aliasedTable, gt, notExists, sql } from 'drizzle-orm'
+import { eq, desc, and, aliasedTable, gt, notExists, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { getRecentPagesCacheKey, getRecentPagesCacheVersion, RECENT_PAGES_TTL } from '~/server/utils/recentPagesCache'
 import { CDN_CACHE_TTL, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   const newerDeletedRevision = aliasedTable(pagesTable, 'newer_deleted_revision')
 
   const visiblePage = sql`${pagesTable.body} != ''`
-  const majorRevision = or(isNull(pagesTable.minor), eq(pagesTable.minor, 0))
+  const majorRevision = sql`(${pagesTable.minor} IS NULL OR ${pagesTable.minor} = 0)`
 
   const whereClause = includeMinor
     ? and(
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
                 eq(newerVisibleRevision.path, pagesTable.path),
                 gt(newerVisibleRevision.revision, pagesTable.revision),
                 sql`${newerVisibleRevision.body} != ''`,
-                or(isNull(newerVisibleRevision.minor), eq(newerVisibleRevision.minor, 0))
+                sql`(${newerVisibleRevision.minor} IS NULL OR ${newerVisibleRevision.minor} = 0)`
               )
             )
         ),
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
               and(
                 eq(newerDeletedRevision.path, pagesTable.path),
                 gt(newerDeletedRevision.revision, pagesTable.revision),
-                eq(newerDeletedRevision.body, '')
+                sql`${newerDeletedRevision.body} = ''`
               )
             )
         )

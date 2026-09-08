@@ -171,10 +171,10 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
         name: usersTable.name
       },
       replyToName: parentProfiles.name,
-      hasMoreReplies: sql<boolean>`tree.depth = ${COMMENT_TREE_MAX_DEPTH} AND EXISTS (
+      hasMoreReplies: sql<boolean>`CASE WHEN tree.depth = ${COMMENT_TREE_MAX_DEPTH} THEN EXISTS (
         SELECT 1 FROM comments AS child
         WHERE child.reply_to = tree.id AND child.deleted_at IS NULL AND child.path = tree.path
-      )`
+      ) ELSE 0 END`
     })
     .from(tree)
     .leftJoin(usersTable, eq(tree.userId, usersTable.id))
