@@ -123,13 +123,6 @@ async function readLegacySearchResult(terms: string[], page: number, limit: numb
   const items = latestPages
     .map((entry) => buildSearchResult(entry, terms))
     .filter((entry): entry is SearchResultItem => entry !== null)
-    .sort((left, right) => {
-      if (right.score !== left.score) {
-        return right.score - left.score
-      }
-
-      return right.updatedAt.localeCompare(left.updatedAt)
-    })
 
   return {
     total,
@@ -161,7 +154,7 @@ async function readLatestVisiblePages(terms: string[], pagination: { limit: numb
     })
     .from(pagesTable)
     .where(buildLatestVisiblePageCondition(terms, newerRevision))
-    .orderBy(desc(pagesTable.updatedAt), pagesTable.path)
+    .orderBy(desc(buildLegacySearchScore(terms)), desc(pagesTable.updatedAt), pagesTable.path)
     .limit(pagination.limit)
     .offset(pagination.offset)
     .all()
@@ -176,23 +169,32 @@ function buildLatestVisiblePageCondition(terms: string[], newerRevision: typeof 
         .from(newerRevision)
         .where(and(eq(newerRevision.path, pagesTable.path), gt(newerRevision.revision, pagesTable.revision)))
     ),
-    ...terms.map(buildTermCandidateCondition)
+    sql`NOT EXISTS (
+      SELECT 1 FROM json_each(${JSON.stringify(terms)}) AS search_terms
+      WHERE instr(lower(${pagesTable.title}), search_terms.value) = 0
+        AND instr(lower(${pagesTable.path}), search_terms.value) = 0
+        AND instr(lower(${pagesTable.body}), search_terms.value) = 0
+    )`
   )
 }
 
-function buildTermCandidateCondition(term: string) {
-  const pattern = `%${escapeLikePattern(term)}%`
-  const escape = '\\'
-
-  return sql`(
-    lower(${pagesTable.title}) LIKE ${pattern} ESCAPE ${escape}
-    OR lower(${pagesTable.path}) LIKE ${pattern} ESCAPE ${escape}
-    OR lower(${pagesTable.body}) LIKE ${pattern} ESCAPE ${escape}
+function buildLegacySearchScore(terms: string[]) {
+  // Match calculateScore before pagination; JSON keeps the number of D1 bindings bounded.
+  const title = sql`lower(coalesce(nullif(${pagesTable.title}, ''), CASE
+    WHEN ${pagesTable.path} = '/' THEN 'Home'
+    ELSE substr(${pagesTable.path}, length(rtrim(${pagesTable.path}, replace(${pagesTable.path}, '/', ''))) + 1)
+  END))`
+  return sql<number>`(
+    SELECT coalesce(sum(
+      CASE WHEN instr(${title}, search_terms.value) > 0 THEN 40 ELSE 0 END
+      + CASE WHEN instr(${title}, search_terms.value) = 1 THEN 10 ELSE 0 END
+      + CASE WHEN instr(lower(${pagesTable.path}), search_terms.value) > 0 THEN 30 ELSE 0 END
+      + CASE WHEN instr(lower(${pagesTable.path}), search_terms.value) = 1
+          OR instr(lower(${pagesTable.path}), '/' || search_terms.value) > 0 THEN 10 ELSE 0 END
+      + CASE WHEN instr(lower(${pagesTable.body}), search_terms.value) > 0 THEN 10 ELSE 0 END
+    ), 0)
+    FROM json_each(${JSON.stringify(terms)}) AS search_terms
   )`
-}
-
-function escapeLikePattern(value: string) {
-  return value.replace(/[\\%_]/g, '\\$&')
 }
 
 function splitTerms(query: string) {

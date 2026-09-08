@@ -1865,6 +1865,34 @@ describe('API characterization', async () => {
     const recentPath = 'characterization/recent'
     const deletedPath = 'characterization/deleted'
 
+    test('ranks short-term search matches before splitting them into pages', async () => {
+      const entries = [
+        ['review/old-title', '階段', '練習の解説', '2025-01-01T00:00:00.000Z'],
+        ['review/new-body', '最近の記録', '今日は階段を練習した', '2026-09-08T00:00:00.000Z']
+      ]
+      try {
+        for (const [path, title, body, updatedAt] of entries) {
+          await database.execute({
+            sql: `INSERT INTO pages (path, title, body, revision, created_at, updated_at, created_by, updated_by)
+                  VALUES (?, ?, ?, 1, ?, ?, ?, ?)`,
+            args: [path!, title!, body!, updatedAt!, updatedAt!, users.editor.id, users.editor.id]
+          })
+        }
+        const first = await requestJson<{ total: number; items: Array<{ path: string; score: number }> }>(
+          '/api/search?q=階段&limit=1&page=1'
+        )
+        const second = await requestJson<{ items: Array<{ path: string; score: number }> }>(
+          '/api/search?q=階段&limit=1&page=2'
+        )
+        expect(first.response.status).toBe(200)
+        expect(first.payload.total).toBe(2)
+        expect(first.payload.items[0]).toMatchObject({ path: 'review/old-title', score: 50 })
+        expect(second.payload.items[0]).toMatchObject({ path: 'review/new-body', score: 10 })
+      } finally {
+        await database.execute("DELETE FROM pages WHERE path IN ('review/old-title', 'review/new-body')")
+      }
+    })
+
     test('search validates pagination and supports multiple exact terms', async () => {
       const invalid = await requestJson('/api/search?q=x')
       const invalidPage = await requestJson('/api/search?q=keyword&page=2abc')
