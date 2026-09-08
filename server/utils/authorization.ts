@@ -4,9 +4,10 @@ import type { H3Event } from 'h3'
 import type { User } from '#auth-utils'
 import { usersTable } from '~/server/db/schema'
 
-function toSessionUser(user: typeof usersTable.$inferSelect): User {
+export function toSessionUser(user: typeof usersTable.$inferSelect): User {
   return {
     id: user.id,
+    authVersion: user.authVersion,
     name: user.name,
     email: user.email,
     avatar: user.avatar,
@@ -18,6 +19,7 @@ function toSessionUser(user: typeof usersTable.$inferSelect): User {
 function isSameSessionUser(sessionUser: User, currentUser: User) {
   return (
     sessionUser.id === currentUser.id &&
+    sessionUser.authVersion === currentUser.authVersion &&
     sessionUser.name === currentUser.name &&
     sessionUser.email === currentUser.email &&
     sessionUser.avatar === currentUser.avatar &&
@@ -25,9 +27,9 @@ function isSameSessionUser(sessionUser: User, currentUser: User) {
   )
 }
 
-export async function findActiveApiUser(userId: number) {
+export async function findActiveApiUser(userId: number, authVersion = 0) {
   const user = await db.select().from(usersTable).where(eq(usersTable.id, userId)).get()
-  if (!user || user.confirmed !== 1) {
+  if (!user || user.confirmed !== 1 || !Number.isSafeInteger(authVersion) || user.authVersion !== authVersion) {
     return null
   }
 
@@ -42,7 +44,7 @@ export async function syncApiUserSession(event: H3Event, sessionUser: User, curr
 
 export async function requireApiUser(event: H3Event) {
   const session = await requireUserSession(event, { message: 'Unauthorized.' })
-  const user = await findActiveApiUser(session.user.id)
+  const user = await findActiveApiUser(session.user.id, session.user.authVersion)
 
   if (!user) {
     await clearUserSession(event)

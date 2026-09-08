@@ -6,7 +6,7 @@ export default defineNitroPlugin(() => {
       return
     }
 
-    const user = await findActiveApiUser(session.user.id)
+    const user = await findActiveApiUser(session.user.id, session.user.authVersion)
     if (!user) {
       delete session.user
       await clearUserSession(event)

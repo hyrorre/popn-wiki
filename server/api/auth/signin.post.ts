@@ -4,6 +4,7 @@ import { db } from '@nuxthub/db'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { readZodBody } from '~/server/utils/validation'
 import { signinSchema } from '~/shared/zod'
+import { toSessionUser } from '~/server/utils/authorization'
 
 export default defineEventHandler(async (event) => {
   await checkRateLimit(event, { key: 'auth:signin', limit: 10 })
@@ -38,13 +39,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const session = await setUserSession(event, {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      role: user.role as 'user' | 'admin'
-    }
+    user: toSessionUser(user)
   })
 
   return session.user

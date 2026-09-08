@@ -1,6 +1,6 @@
 import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { checkRateLimit } from '~/server/utils/rateLimit'
 import { findValidToken, verifyAndUseToken } from '~/server/utils/auth'
 import { readZodBody } from '~/server/utils/validation'
@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
     .update(usersTable)
     .set({
       password: passwordHash,
+      authVersion: sql`${usersTable.authVersion} + 1`,
       confirmed: 1,
       updatedAt: new Date().toISOString()
     })

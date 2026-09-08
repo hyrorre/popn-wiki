@@ -1,5 +1,8 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { IncomingMessage, ServerResponse } from 'node:http'
+import { Socket } from 'node:net'
+import { createEvent, useSession } from 'h3'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient, type Client } from '@libsql/client'
@@ -315,7 +318,7 @@ describe('API characterization', async () => {
         })
       ])
       const userResult = await database.execute({
-        sql: 'SELECT confirmed, password FROM users WHERE id = ?',
+        sql: 'SELECT confirmed, password, auth_version FROM users WHERE id = ?',
         args: [users.unconfirmed.id]
       })
       const tokenResult = await database.execute({
@@ -330,8 +333,71 @@ describe('API characterization', async () => {
       expect(success?.payload.message).toBe('Password has been reset successfully.')
       expect(rejected?.payload.message).toBe('Invalid or expired token')
       expect(Number(userResult.rows[0]?.confirmed)).toBe(1)
+      expect(Number(userResult.rows[0]?.auth_version)).toBe(1)
       expect(String(userResult.rows[0]?.password)).toMatch(/^\$scrypt\$/)
       expect(Number(tokenResult.rows[0]?.count)).toBe(0)
+    })
+
+    test('password reset revokes old and legacy cookies without affecting other users', async () => {
+      const email = 'reset-revoke@example.com'
+      const now = new Date().toISOString()
+      const inserted = await database.execute({
+        sql: `INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+              VALUES ('Reset subject', ?, ?, ?, ?, 1) RETURNING id`,
+        args: [email, legacyBcryptHash, now, now]
+      })
+      const userId = Number(inserted.rows[0]?.id)
+      const signedIn = await requestJson<Record<string, unknown>>('/api/auth/signin', {
+        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.90' }, body: { email, password }
+      })
+      expect(signedIn.response.status).toBe(200)
+      expect(signedIn.payload.authVersion).toBe(0)
+      const oldCookie = signedIn.response.headers.get('set-cookie')!.split(';', 1)[0]!
+
+      // Seal the pre-migration cookie shape using the test session password.
+      const request = new IncomingMessage(new Socket())
+      request.url = '/'
+      const response = new ServerResponse(request)
+      const localSession = await useSession(createEvent(request, response), {
+        name: 'nuxt-session', password: 'test-session-password-with-at-least-thirty-two-characters'
+      })
+      const legacyUser = { ...signedIn.payload }
+      delete legacyUser.authVersion
+      await localSession.update({ user: legacyUser })
+      const cookieHeader = response.getHeader('set-cookie')!
+      const legacyCookie = String(Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader).split(';', 1)[0]!
+      const beforeReset = await requestJson('/api/profile', { headers: { cookie: legacyCookie } })
+      expect(beforeReset.response.status).toBe(200)
+
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?)',
+        args: [userId, 'revoke-old-sessions', 'reset', Date.now() + 60_000]
+      })
+      const reset = await requestJson('/api/auth/reset', {
+        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.91' },
+        body: { token: 'revoke-old-sessions', password: 'fresh-security-password!' }
+      })
+      expect(reset.response.status).toBe(200)
+      // A profile change must not upgrade an invalid session to the current version.
+      await database.execute({ sql: "UPDATE users SET name = 'Changed subject' WHERE id = ?", args: [userId] })
+      for (const cookie of [oldCookie, legacyCookie]) {
+        const stale = await requestJson('/api/profile', { headers: { cookie } })
+        expect(stale.response.status).toBe(401)
+        const session = await requestJson<{ user?: unknown }>('/api/_auth/session', { headers: { cookie } })
+        expect(session.payload.user).toBeUndefined()
+      }
+      const unrelated = await requestJson('/api/profile', { headers: withSession('editor') })
+      expect(unrelated.response.status).toBe(200)
+      const newLogin = await requestJson<{ authVersion: number }>('/api/auth/signin', {
+        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.92' },
+        body: { email, password: 'fresh-security-password!' }
+      })
+      expect(newLogin.response.status).toBe(200)
+      expect(newLogin.payload.authVersion).toBe(1)
+      const fresh = await requestJson('/api/profile', {
+        headers: { cookie: newLogin.response.headers.get('set-cookie')!.split(';', 1)[0]! }
+      })
+      expect(fresh.response.status).toBe(200)
     })
 
     test('rate limits repeated signin attempts per client IP', async () => {

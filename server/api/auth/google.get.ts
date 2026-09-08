@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
 import { usersTable } from '../../db/schema'
 import type { H3Event } from 'h3'
+import { toSessionUser } from '~/server/utils/authorization'
 
 interface GoogleUser {
   email: string
@@ -56,15 +57,7 @@ export default defineOAuthGoogleEventHandler({
     }
 
     // セッションの設定
-    await setUserSession(event, {
-      user: {
-        id: existingUser.id,
-        name: existingUser.name,
-        email: existingUser.email,
-        avatar: existingUser.avatar,
-        role: existingUser.role as 'user' | 'admin'
-      }
-    })
+    await setUserSession(event, { user: toSessionUser(existingUser) })
 
     return sendRedirect(event, '/')
   },

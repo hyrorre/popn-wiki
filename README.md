@@ -47,6 +47,12 @@ Build the application for production:
 bun run build
 ```
 
+認証バージョンを導入するリリースでは、Workerの更新前に
+`0011_add_auth_version.sql` を本番D1へ適用してください（`bun run db:migrate:remote`）。
+既存セッションはバージョン0として継続利用できます。パスワードをリセットすると、
+そのユーザーの旧セッションはすべて無効になり、再ログインが必要です。
+追加の環境変数はありません。
+
 Locally preview production build:
 
 ```bash
