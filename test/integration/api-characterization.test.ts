@@ -35,6 +35,7 @@ const testDataDir = join(tmpdir(), `popn-wiki-api-test-${process.pid}`)
 const databasePath = join(testDataDir, 'db', 'sqlite.db')
 const emailCapturePath = join(testDataDir, 'resend.jsonl')
 const resendMockPath = fileURLToPath(new URL('../fixtures/resend-mock.ts', import.meta.url))
+const googleMockPath = fileURLToPath(new URL('../fixtures/google-mock.ts', import.meta.url))
 const password = 'test-password'
 const legacyBcryptHash = '$2y$04$abcdefghijklmnopqrstuuobFaEJANklW4I6zZpcLRbXjrME4Qa2m'
 
@@ -165,7 +166,7 @@ describe('API characterization', async () => {
       },
       nitro: {
         preset: 'node-server',
-        plugins: [resendMockPath]
+        plugins: [resendMockPath, googleMockPath]
       },
       hub: {
         dir: testDataDir,
@@ -186,6 +187,8 @@ describe('API characterization', async () => {
       NUXT_SESSION_PASSWORD: 'test-session-password-with-at-least-thirty-two-characters',
       NUXT_RESEND_API_KEY: 're_test_api_key',
       NUXT_RESEND_FROM: 'test@example.com',
+      NUXT_OAUTH_GOOGLE_CLIENT_ID: 'test-client',
+      NUXT_OAUTH_GOOGLE_CLIENT_SECRET: 'test-secret',
       NUXT_TEST_EMAIL_CAPTURE_PATH: emailCapturePath,
       NUXT_CLOUDFLARE_ZONE_ID: '',
       NUXT_CLOUDFLARE_CACHE_PURGE_TOKEN: ''
@@ -208,6 +211,36 @@ describe('API characterization', async () => {
   })
 
   describe.sequential('authentication contracts', () => {
+    test('Google login confirms an existing pending account and survives session refresh', async () => {
+      const now = new Date().toISOString()
+      await database.execute({
+        sql: `INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+              VALUES (?, ?, ?, ?, ?, 0)`,
+        args: ['Google pending', 'google-pending@example.com', legacyBcryptHash, now, now]
+      })
+      const response = await fetch('/api/auth/google?code=verified', { redirect: 'manual' })
+      expect(response.status).toBe(302)
+      expect(response.headers.get('location')).toBe('/')
+      const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
+      expect(cookie).toBeTruthy()
+      const refreshed = await requestJson<{ user?: { email: string } }>('/api/_auth/session', {
+        headers: { cookie: cookie! }
+      })
+      expect(refreshed.payload.user?.email).toBe('google-pending@example.com')
+      const record = await database.execute("SELECT confirmed FROM users WHERE email = 'google-pending@example.com'")
+      expect(record.rows[0]?.confirmed).toBe(1)
+    })
+
+    test('Google login rejects unverified or missing email verification claims', async () => {
+      for (const code of ['unverified', 'missing']) {
+        const response = await fetch(`/api/auth/google?code=${code}`, { redirect: 'manual' })
+        expect(response.headers.get('location')).toBe('/signin?error=google_failed')
+        expect(response.headers.get('set-cookie')).toBeNull()
+      }
+      const record = await database.execute("SELECT id FROM users WHERE email = 'google-unverified@example.com'")
+      expect(record.rows).toHaveLength(0)
+    })
+
     test('rejects invalid credentials without disclosing which field was wrong', async () => {
       const { response, payload } = await requestJson<{ message: string }>('/api/auth/signin', {
         method: 'POST',

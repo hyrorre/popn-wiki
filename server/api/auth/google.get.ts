@@ -5,6 +5,7 @@ import type { H3Event } from 'h3'
 
 interface GoogleUser {
   email: string
+  email_verified?: boolean
   name?: string
   picture?: string
 }
@@ -14,6 +15,10 @@ export default defineOAuthGoogleEventHandler({
     // google user object usually has: email, name, picture
     if (!user || !user.email) {
       return sendRedirect(event, '/signin?error=google_failed_no_email')
+    }
+
+    if (user.email_verified !== true) {
+      return sendRedirect(event, '/signin?error=google_failed')
     }
 
     let existingUser = await db.select().from(usersTable).where(eq(usersTable.email, user.email)).get()
@@ -41,6 +46,13 @@ export default defineOAuthGoogleEventHandler({
       if (!existingUser) {
         throw createError({ statusCode: 500, message: 'ユーザーの作成に失敗しました' })
       }
+    }
+
+    if (existingUser.confirmed !== 1) {
+      await db
+        .update(usersTable)
+        .set({ confirmed: 1, updatedAt: new Date().toISOString() })
+        .where(eq(usersTable.id, existingUser.id))
     }
 
     // セッションの設定
