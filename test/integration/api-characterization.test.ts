@@ -835,6 +835,49 @@ describe('API characterization', async () => {
       )
     })
 
+    test('redirects supported legacy image URLs while preserving filenames and queries', async () => {
+      for (const prefix of ['/score/start/', '/_media/score/start/']) {
+        for (const filename of [
+          'integration.png',
+          'second.gif',
+          'photo.jpg',
+          'photo.jpeg',
+          'photo.webp',
+          '日本語.GIF'
+        ]) {
+          const encodedFilename = encodeURIComponent(filename)
+          const response = await fetch(`${prefix}${encodedFilename}?download=1`, { redirect: 'manual' })
+
+          expect(response.status).toBe(301)
+          expect(response.headers.get('location')).toBe(`/api/image/${encodedFilename}?download=1`)
+        }
+      }
+    })
+
+    test('does not redirect unrelated paths or unsupported legacy image extensions', async () => {
+      for (const path of [
+        '/score/second.gif',
+        '/score/start/file.svg',
+        '/_media/score/start/file.txt',
+        '/score/start/second.gif/'
+      ]) {
+        const response = await fetch(path, { redirect: 'manual' })
+
+        expect(response.headers.get('location')).toBeNull()
+        expect(response.status).not.toBe(301)
+      }
+    })
+
+    test('serves GIF bytes unchanged through both legacy image URLs', async () => {
+      for (const path of ['/api/image/second.gif', '/score/start/second.gif', '/_media/score/start/second.gif']) {
+        const response = await fetch(path)
+
+        expect(response.status).toBe(200)
+        expect(response.headers.get('content-type')).toBe('image/gif')
+        expect(new Uint8Array(await response.arrayBuffer())).toEqual(gifBytes)
+      }
+    })
+
     test('serves image bytes with content type and immutable browser caching', async () => {
       const response = await fetch('/api/image/integration.png')
       const bytes = new Uint8Array(await response.arrayBuffer())

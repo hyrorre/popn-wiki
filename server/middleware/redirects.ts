@@ -1,14 +1,16 @@
 export default defineEventHandler((event) => {
-  const path = event.path
+  const { pathname, search } = getRequestURL(event)
 
-  // /score/start/*.png or /_media/score/start/*.png
-  if ((path.startsWith('/score/start/') || path.startsWith('/_media/score/start/')) && path.endsWith('.png')) {
-    const segments = path.split('/')
+  // 旧画像URLを、ファイル名とクエリを保持して画像APIへ転送する。
+  if (
+    (pathname.startsWith('/score/start/') || pathname.startsWith('/_media/score/start/')) &&
+    /\.(png|jpe?g|gif|webp)$/i.test(pathname)
+  ) {
+    const segments = pathname.split('/')
     const filename = segments[segments.length - 1]
 
-    // Redirect /score/start/filename.png -> /api/image/filename.png
     if (filename) {
-      return sendRedirect(event, `/api/image/${filename}`, 301)
+      return sendRedirect(event, `/api/image/${filename}${search}`, 301)
     }
   }
 })
