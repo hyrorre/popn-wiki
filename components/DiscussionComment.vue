@@ -81,7 +81,12 @@ const submitReply = async () => {
     emit('refresh')
   } catch (error) {
     console.error(error)
-    alert('返信の送信に失敗しました')
+    const status = (error as { statusCode?: number }).statusCode
+    alert(
+      status === 400
+        ? '返信先が無効か、返信の深さの上限に達しています。浅い階層のコメントへ返信してください。'
+        : '返信の送信に失敗しました'
+    )
   } finally {
     isReplying.value = false
   }

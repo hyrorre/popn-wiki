@@ -13,7 +13,13 @@ type FlatCommentThread = {
   root: Comment
   replies: Comment[]
 }
-type CommentListResponse = { comments: Comment[]; total: number; truncated?: boolean }
+type CommentListResponse = {
+  comments: Comment[]
+  total: number
+  truncated?: boolean
+  continuationIds?: number[]
+  nodeLimitReached?: boolean
+}
 
 const { user } = useUserSession()
 
@@ -36,6 +42,41 @@ const { data: commentData } = await useFetch<CommentListResponse>('/api/comment'
   }
 })
 
+const additionalComments = ref<Comment[]>([])
+const continuationIds = ref<number[]>([])
+const nodeLimitReached = ref(false)
+const loadingMore = ref(false)
+
+watch(
+  commentData,
+  (value) => {
+    additionalComments.value = []
+    continuationIds.value = value?.continuationIds ?? []
+    nodeLimitReached.value = value?.nodeLimitReached ?? (value?.truncated === true && !continuationIds.value.length)
+  },
+  { immediate: true }
+)
+
+const loadMoreReplies = async () => {
+  const threadId = continuationIds.value[0]
+  if (threadId === undefined || loadingMore.value) return
+  const initialData = commentData.value
+  loadingMore.value = true
+  try {
+    const loaded = await $fetch<CommentListResponse>('/api/comment', {
+      query: { path: props.path, threadId }
+    })
+    if (commentData.value !== initialData) return
+    additionalComments.value.push(...loaded.comments)
+    continuationIds.value = [...new Set([...continuationIds.value.slice(1), ...(loaded.continuationIds ?? [])])]
+    nodeLimitReached.value ||= loaded.nodeLimitReached === true
+  } catch {
+    alert('返信の読み込みに失敗しました。もう一度お試しください。')
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 const refreshComments = async () => {
   commentData.value = await $fetch<CommentListResponse>('/api/comment', {
     query: {
@@ -56,7 +97,11 @@ const refreshCommentsAfterMutation = async () => {
   }
 }
 
-const comments = computed(() => commentData.value?.comments || [])
+const comments = computed(() => [
+  ...new Map(
+    [...(commentData.value?.comments ?? []), ...additionalComments.value].map((comment) => [comment.id, comment])
+  ).values()
+])
 const totalRoots = computed(() => commentData.value?.total || 0)
 const maxPage = computed(() => Math.ceil(totalRoots.value / itemsPerPage))
 
@@ -205,12 +250,16 @@ watch(page, (newVal) => {
     </h3>
 
     <u-alert
-      v-if="commentData?.truncated"
+      v-if="nodeLimitReached || continuationIds.length"
       class="mb-6"
       color="warning"
       variant="soft"
-      title="返信数が多いため、一部のコメントを省略しています。"
+      title="返信が多いか深いため、一部のコメントを省略しています。"
     />
+
+    <u-button v-if="continuationIds.length" class="mb-6" :loading="loadingMore" @click="loadMoreReplies">
+      続きの返信を読み込む
+    </u-button>
 
     <div v-if="!comments.length" class="text-muted mb-6">コメントはまだありません。</div>
 

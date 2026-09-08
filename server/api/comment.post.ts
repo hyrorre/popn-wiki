@@ -5,6 +5,7 @@ import { checkRateLimit } from '~/server/utils/rateLimit'
 import { readZodBody } from '~/server/utils/validation'
 import { parseSafeMarkdown } from '~/server/utils/markdown'
 import { createCommentSchema } from '~/shared/zod'
+import { COMMENT_TREE_MAX_DEPTH } from '~/shared/commentLimits'
 import { requireApiUser } from '~/server/utils/authorization'
 import { invalidateCommentMutationCaches } from '~/server/utils/mutationCache'
 
@@ -61,6 +62,15 @@ export default defineEventHandler(async (event) => {
 
 async function insertReplyIfParentIsActive(values: typeof commentsTable.$inferInsert, replyTo: number) {
   const rows = await db.all<typeof commentsTable.$inferSelect>(sql`
+    WITH RECURSIVE ancestors(id, reply_to, depth) AS (
+      SELECT id, reply_to, 0 FROM comments
+      WHERE id = ${replyTo} AND path = ${values.path} AND deleted_at IS NULL
+      UNION ALL
+      SELECT parent.id, parent.reply_to, ancestors.depth + 1
+      FROM comments AS parent INNER JOIN ancestors ON parent.id = ancestors.reply_to
+      WHERE parent.path = ${values.path} AND parent.deleted_at IS NULL
+        AND ancestors.depth < ${COMMENT_TREE_MAX_DEPTH}
+    )
     INSERT INTO comments (path, body, body_ast, reply_to, user_id, created_at, updated_at, deleted_at)
     SELECT
       ${values.path},
@@ -72,11 +82,8 @@ async function insertReplyIfParentIsActive(values: typeof commentsTable.$inferIn
       ${values.updatedAt},
       NULL
     WHERE EXISTS (
-      SELECT 1
-      FROM comments AS parent
-      WHERE parent.id = ${replyTo}
-        AND parent.path = ${values.path}
-        AND parent.deleted_at IS NULL
+      SELECT 1 FROM ancestors
+      WHERE reply_to IS NULL AND depth < ${COMMENT_TREE_MAX_DEPTH}
     )
     RETURNING
       id,

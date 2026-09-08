@@ -5,13 +5,14 @@ import type { H3Event } from 'h3'
 import { getCommentListCacheRawKey, getCommentListCacheVersion } from '~/server/utils/commentCache'
 import { CDN_CACHE_TTL, setNoStoreCacheHeaders, setPublicCdnCacheHeaders } from '~/server/utils/cacheHeaders'
 import { getCommentListWorkersCacheTags, setWorkersCacheTags } from '~/server/utils/workersCache'
-import { parseIntegerOrFallback } from '~/server/utils/queryInteger'
+import { parseStrictIntegerQuery, parseIntegerOrFallback } from '~/server/utils/queryInteger'
 import { parseZodValue } from '~/server/utils/validation'
 import { wikiPathSchema } from '~/shared/zod'
+import { COMMENT_TREE_MAX_DEPTH } from '~/shared/commentLimits'
 
 const COMMENT_LIST_MAX_AGE = 60 * 60 * 2
 const COMMENT_LIST_MAX_LIMIT = 100
-const COMMENT_TREE_MAX_DEPTH = 100
+
 const COMMENT_TREE_MAX_NODES = 5_000
 
 type CommentListQuery = {
@@ -19,6 +20,7 @@ type CommentListQuery = {
   page: number
   limit: number
   fresh: boolean
+  threadId?: number
 }
 
 const cachedCommentListHandler = defineCachedEventHandler(
@@ -33,7 +35,7 @@ const cachedCommentListHandler = defineCachedEventHandler(
     getKey: async (event) => {
       const query = getCommentListQuery(event)
       const version = await getCommentListCacheVersion(query.path)
-      return getCommentListCacheRawKey(query.path, query.page, query.limit, version)
+      return `${getCommentListCacheRawKey(query.path, query.page, query.limit, version)}:tree-v2`
     }
   }
 )
@@ -42,7 +44,7 @@ export default defineEventHandler(async (event) => {
   event.context.commentListQuery = parseCommentListQuery(event)
 
   const query = getCommentListQuery(event)
-  if (query.fresh) {
+  if (query.fresh || query.threadId !== undefined) {
     const result = await readCommentList(event, query)
     setNoStoreCacheHeaders(event)
     return result
@@ -78,28 +80,37 @@ function parseCommentListQuery(event: H3Event): CommentListQuery {
       minimum: 1,
       maximum: COMMENT_LIST_MAX_LIMIT
     }),
+    threadId: query.threadId === undefined ? undefined : parseStrictIntegerQuery(query.threadId, { minimum: 1 }),
     fresh: query.fresh !== undefined
   }
 }
 
 async function readCommentList(event: H3Event, query: CommentListQuery) {
   const offset = (query.page - 1) * query.limit
+  const rootCondition = and(
+    eq(commentsTable.path, query.path),
+    query.threadId === undefined ? isNull(commentsTable.replyTo) : eq(commentsTable.id, query.threadId),
+    isNull(commentsTable.deletedAt)
+  )
 
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, query.path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
+    .where(rootCondition)
     .get()
   const total = countResult?.count ?? 0
 
   if (total === 0) {
+    if (query.threadId !== undefined) {
+      throw createError({ statusCode: 404, message: 'Comment not found.' })
+    }
     return { comments: [], total: 0 }
   }
 
   const rootIds = db
     .select({ id: commentsTable.id })
     .from(commentsTable)
-    .where(and(eq(commentsTable.path, query.path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
+    .where(rootCondition)
     .orderBy(desc(commentsTable.createdAt))
     .limit(query.limit)
     .offset(offset)
@@ -159,7 +170,11 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
         id: usersTable.id,
         name: usersTable.name
       },
-      replyToName: parentProfiles.name
+      replyToName: parentProfiles.name,
+      hasMoreReplies: sql<boolean>`tree.depth = ${COMMENT_TREE_MAX_DEPTH} AND EXISTS (
+        SELECT 1 FROM comments AS child
+        WHERE child.reply_to = tree.id AND child.deleted_at IS NULL AND child.path = tree.path
+      )`
     })
     .from(tree)
     .leftJoin(usersTable, eq(tree.userId, usersTable.id))
@@ -168,9 +183,14 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
     .orderBy(desc(sql`tree.rootCreatedAt`), asc(tree.createdAt))
     .all()
 
+  const visibleComments = comments.slice(0, COMMENT_TREE_MAX_NODES)
+  const continuationIds = visibleComments.filter((comment) => comment.hasMoreReplies).map((comment) => comment.id)
+  const nodeLimitReached = comments.length > COMMENT_TREE_MAX_NODES
   return {
-    comments: comments.slice(0, COMMENT_TREE_MAX_NODES),
+    comments: visibleComments,
     total,
-    truncated: comments.length > COMMENT_TREE_MAX_NODES
+    continuationIds,
+    nodeLimitReached,
+    truncated: nodeLimitReached || continuationIds.length > 0
   }
 }

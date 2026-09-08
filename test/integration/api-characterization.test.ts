@@ -1515,6 +1515,66 @@ describe('API characterization', async () => {
       expect(ninetyNine.payload.comments).toHaveLength(99)
     })
 
+    test('reports depth truncation, loads legacy continuations, and rejects deeper new replies', async () => {
+      const deepPath = 'characterization/deep-comments'
+      const max = await database.execute('SELECT coalesce(max(id), 0) AS id FROM comments')
+      const base = Number(max.rows[0]?.id) + 1
+      const now = '2026-08-14T00:00:00.000Z'
+      try {
+        await database.batch(
+          Array.from({ length: 202 }, (_, depth) => ({
+            sql: `INSERT INTO comments (id, path, body, reply_to, user_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+              base + depth,
+              deepPath,
+              `depth ${depth}`,
+              depth === 0 ? null : base + depth - 1,
+              users.editor.id,
+              now,
+              now
+            ]
+          })),
+          'write'
+        )
+        type TreeResponse = { comments: CommentResponse[]; continuationIds: number[]; truncated: boolean }
+        const initial = await requestJson<TreeResponse>(`/api/comment?path=${deepPath}`)
+        expect(initial.payload.comments).toHaveLength(101)
+        expect(initial.payload.truncated).toBe(true)
+        expect(initial.payload.continuationIds).toEqual([base + 100])
+        const next = await requestJson<TreeResponse>(`/api/comment?path=${deepPath}&threadId=${base + 100}`)
+        expect(next.response.headers.get('cloudflare-cdn-cache-control')).toBe('no-store')
+        expect(next.payload.continuationIds).toEqual([base + 200])
+        const last = await requestJson<TreeResponse>(`/api/comment?path=${deepPath}&threadId=${base + 200}`)
+        expect(last.payload.truncated).toBe(false)
+        expect(last.payload.comments.at(-1)?.id).toBe(base + 201)
+        expect(
+          new Set(
+            [...initial.payload.comments, ...next.payload.comments, ...last.payload.comments].map(
+              (comment) => comment.id
+            )
+          ).size
+        ).toBe(202)
+
+        const wrongPath = await requestJson(`/api/comment?path=another-path&threadId=${base + 100}`)
+        expect(wrongPath.response.status).toBe(404)
+        const tooDeep = await requestJson('/api/comment', {
+          method: 'POST',
+          headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.85' }),
+          body: { path: deepPath, body: 'too deep', replyTo: base + 100 }
+        })
+        expect(tooDeep.response.status).toBe(400)
+        const boundary = await requestJson('/api/comment', {
+          method: 'POST',
+          headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.86' }),
+          body: { path: deepPath, body: 'allowed depth 100', replyTo: base + 99 }
+        })
+        expect(boundary.response.status).toBe(200)
+      } finally {
+        await database.execute({ sql: 'DELETE FROM comments WHERE path = ?', args: [deepPath] })
+      }
+    })
+
     test('creates a sanitized root comment with its public profile', async () => {
       const { response, payload } = await requestJson<CommentResponse>('/api/comment', {
         method: 'POST',
