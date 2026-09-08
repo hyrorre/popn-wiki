@@ -96,20 +96,13 @@ async function readCommentList(event: H3Event, query: CommentListQuery) {
     return { comments: [], total: 0 }
   }
 
-  const rootIdsResult = await db
+  const rootIds = db
     .select({ id: commentsTable.id })
     .from(commentsTable)
     .where(and(eq(commentsTable.path, query.path), isNull(commentsTable.replyTo), isNull(commentsTable.deletedAt)))
     .orderBy(desc(commentsTable.createdAt))
     .limit(query.limit)
     .offset(offset)
-    .all()
-
-  const rootIds = rootIdsResult.map((result) => result.id)
-
-  if (rootIds.length === 0) {
-    return { comments: [], total }
-  }
 
   const tree = db.$with('tree').as(
     db

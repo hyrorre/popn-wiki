@@ -1457,6 +1457,18 @@ describe('API characterization', async () => {
       expect(listed.payload.total).toBe(101)
       expect(listed.payload.comments).toHaveLength(100)
       expect(malformedLimit.payload.comments).toHaveLength(20)
+
+      const lastPage = await requestJson<{ comments: CommentResponse[]; total: number }>(
+        `/api/comment?path=${encodeURIComponent(limitedPath)}&limit=100&page=2&fresh=1`
+      )
+      const ninetyNine = await requestJson<{ comments: CommentResponse[] }>(
+        `/api/comment?path=${encodeURIComponent(limitedPath)}&limit=99&fresh=1`
+      )
+      expect(lastPage.response.status).toBe(200)
+      expect(lastPage.payload.total).toBe(101)
+      expect(lastPage.payload.comments).toHaveLength(1)
+      expect(ninetyNine.response.status).toBe(200)
+      expect(ninetyNine.payload.comments).toHaveLength(99)
     })
 
     test('creates a sanitized root comment with its public profile', async () => {
