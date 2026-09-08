@@ -1844,6 +1844,42 @@ describe('API characterization', async () => {
       expect(secondPage.payload).toEqual([expect.objectContaining({ id: directReplyId })])
     })
 
+    test('deduplicates shared ancestors before applying the traversal limit', async () => {
+      const targetPath = 'characterization/shared-ancestors'
+      try {
+        let parent: number | undefined
+        for (let depth = 0; depth < 10; depth++) {
+          parent = await insertComment({
+            body: `ancestor ${depth}`, userId: users.other.id, replyTo: parent,
+            createdAt: '2099-01-01T00:00:00.000Z', targetPath
+          })
+        }
+        await database.batch(Array.from({ length: 1000 }, () => ({
+          sql: `INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
+                VALUES (?, 'participation', ?, ?, '2099-01-02T00:00:00.000Z', '2099-01-02T00:00:00.000Z')`,
+          args: [targetPath, parent!, users.editor.id]
+        })), 'write')
+        const own = await database.execute({ sql: 'SELECT id FROM comments WHERE path = ? AND user_id = ? LIMIT 1', args: [targetPath, users.editor.id] })
+        const replyId = await insertComment({
+          body: 'visible reply', userId: users.other.id, replyTo: Number(own.rows[0]?.id),
+          createdAt: '2099-01-03T00:00:00.000Z', targetPath
+        })
+        const replies = await requestJson<Array<{ id: number; path: string }>>('/api/reply?type=thread', {
+          headers: withSession('editor')
+        })
+        expect(replies.response.status).toBe(200)
+        expect(replies.payload).toContainEqual(expect.objectContaining({ id: replyId }))
+        expect(replies.payload.filter((reply) => reply.path === targetPath)).toHaveLength(11)
+
+        // Corrupt legacy cycles must still terminate after removing the depth column.
+        await database.execute({ sql: 'UPDATE comments SET reply_to = id WHERE id = ?', args: [Number(own.rows[0]?.id)] })
+        const cyclic = await requestJson<Array<{ id: number }>>('/api/reply?type=thread', { headers: withSession('editor') })
+        expect(cyclic.response.status).toBe(200)
+      } finally {
+        await database.execute({ sql: 'DELETE FROM comments WHERE path = ?', args: [targetPath] })
+      }
+    })
+
     test('requires authentication and rejects unsupported types or negative pagination', async () => {
       const anonymous = await requestJson('/api/reply?type=thread')
       const invalidType = await requestJson('/api/reply?type=unknown', { headers: withSession('migration') })

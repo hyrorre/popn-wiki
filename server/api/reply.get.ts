@@ -90,14 +90,13 @@ async function readThreadReplyIds(userId: number, limit: number, offset: number)
       ORDER BY created_at DESC
       LIMIT ${MAX_PARTICIPATION_SEEDS}
     ),
-    ancestry(id, reply_to, depth) AS (
-      SELECT id, reply_to, 0
+    ancestry(id, reply_to) AS (
+      SELECT id, reply_to
       FROM recent_participation
-      UNION ALL
-      SELECT parent.id, parent.reply_to, ancestry.depth + 1
+      UNION
+      SELECT parent.id, parent.reply_to
       FROM comments AS parent
       INNER JOIN ancestry ON ancestry.reply_to = parent.id
-      WHERE ancestry.depth < ${MAX_REPLY_TREE_DEPTH}
       LIMIT ${MAX_REPLY_TREE_NODES}
     ),
     my_roots AS (
