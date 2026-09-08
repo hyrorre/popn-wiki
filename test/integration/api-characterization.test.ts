@@ -830,6 +830,17 @@ describe('API characterization', async () => {
       expect(duplicate.payload.message).toContain('同名のファイルが既に存在します')
     })
 
+    test('serves encoded filenames using the canonical name and rejects aliases', async () => {
+      const uploaded = await uploadImage('encoded%20chart.png', pngBytes, 'editor', '203.0.113.80')
+      expect(uploaded.response.status).toBe(200)
+      expect(uploaded.payload.url).toBe('encoded chart.png')
+      const served = await fetch(`/api/image/${encodeURIComponent(uploaded.payload.url!)}`)
+      expect(served.status).toBe(200)
+      expect(new Uint8Array(await served.arrayBuffer())).toEqual(pngBytes)
+      const duplicate = await uploadImage('encoded chart.png', pngBytes, 'editor', '203.0.113.81')
+      expect(duplicate.response.status).toBe(409)
+    })
+
     test('allows only one of two concurrent uploads with the same filename', async () => {
       const results = await Promise.all([
         uploadImage('concurrent.png', pngBytes, 'editor', '203.0.113.66'),

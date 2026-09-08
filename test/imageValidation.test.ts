@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { createError } from 'h3'
+import { createBlobStorage } from '@nuxthub/core/blob'
+import { createDriver } from '@nuxthub/core/blob/drivers/cloudflare-r2'
 import {
   ensureImageFilenameAvailable,
   putImageIfAbsent,
@@ -24,6 +26,50 @@ describe('Image upload validation', () => {
     expect(() => validateImageFilename('\\evil.png')).toThrow()
     expect(() => validateImageFilename('.hidden.png')).toThrow()
     expect(() => validateImageFilename('image.exe')).toThrow()
+  })
+
+  test('normalizes encoded names before validation and rejects ambiguous encodings', () => {
+    expect(validateImageFilename('chart%20copy.png').filename).toBe('chart copy.png')
+    for (const filename of ['%2e%2e%2fsecret.png', 'foo%5cbar.png', 'foo%00.png', 'bad%.png', 'chart%2520copy.png']) {
+      expect(() => validateImageFilename(filename)).toThrow()
+    }
+  })
+
+  test('uses the canonical key for R2 writes and alias conflicts', async () => {
+    const objects = new Map<string, Uint8Array>()
+    const storage = {
+      async head() { throw new Error('R2 uses conditional writes') },
+      async put() { throw new Error('R2 uses conditional writes') }
+    }
+    const bucket = {
+      async put(key: string, body: Uint8Array) {
+        if (objects.has(key)) return null
+        objects.set(key, body)
+        return { key }
+      }
+    }
+    const result = await putImageIfAbsent(storage, 'chart%20copy.png', png, 'image/png', bucket)
+    expect(result.pathname).toBe('chart copy.png')
+    const binding = '__IMAGE_ROUNDTRIP_TEST_BUCKET__'
+    Object.defineProperty(globalThis, binding, {
+      configurable: true,
+      value: {
+        async get(key: string) {
+          const bytes = objects.get(key)
+          return bytes ? { arrayBuffer: async () => bytes.buffer, httpMetadata: { contentType: 'image/png' } } : null
+        }
+      }
+    })
+    try {
+      const reader = createBlobStorage(createDriver({ binding }))
+      const image = await reader.get(result.pathname)
+      expect(image).not.toBeNull()
+      expect(new Uint8Array(await image!.arrayBuffer())).toEqual(png)
+    } finally {
+      Reflect.deleteProperty(globalThis, binding)
+    }
+    await expect(putImageIfAbsent(storage, 'chart copy.png', png, 'image/png', bucket))
+      .rejects.toMatchObject({ statusCode: 409 })
   })
 
   test('detects image content types from magic bytes', () => {

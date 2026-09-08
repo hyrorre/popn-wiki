@@ -115,6 +115,7 @@ export async function putImageIfAbsent(
   contentType: string,
   r2Bucket?: ConditionalR2Bucket
 ) {
+  filename = validateImageFilename(filename).filename
   if (r2Bucket) {
     const uploaded = await r2Bucket.put(filename, body, {
       onlyIf: { etagDoesNotMatch: '*' },
@@ -200,7 +201,12 @@ function throwImageSizeError(): never {
 }
 
 export function validateImageFilename(filename: string) {
-  const trimmed = filename.trim()
+  let trimmed: string
+  try {
+    trimmed = decodeURIComponent(filename.trim())
+  } catch {
+    throw createError({ statusCode: 400, message: 'ファイル名のエンコードが不正です。' })
+  }
 
   if (!trimmed || trimmed.length > MAX_FILENAME_LENGTH) {
     throw createError({ statusCode: 400, message: 'ファイル名が不正です。' })
@@ -208,6 +214,7 @@ export function validateImageFilename(filename: string) {
 
   if (
     trimmed.startsWith('.') ||
+    trimmed.includes('%') ||
     trimmed.includes('/') ||
     trimmed.includes('\\') ||
     trimmed.includes('\0') ||
