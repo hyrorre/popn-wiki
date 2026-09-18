@@ -5,9 +5,7 @@ import { isLegacyPercentEncodedUrl } from '../utils/legacy-url'
 
 describe('Markdown AST security', () => {
   test('removes entity-encoded javascript URLs and SVG from raw HTML', async () => {
-    const { ast } = await parseSafeMarkdown(
-      '<svg><a xlink:href="jav&#x61;script:alert(1)">unsafe</a></svg><p>safe</p>'
-    )
+    const { ast } = await parseSafeMarkdown('<svg><a xlink:href="jav&#x61;script:alert(1)">unsafe</a></svg><p>safe</p>')
 
     expect(JSON.stringify(ast)).not.toContain('javascript:')
     expect(JSON.stringify(ast)).not.toContain('"tag":"svg"')
@@ -86,19 +84,21 @@ describe('Markdown AST security', () => {
   })
 
   test('removes frontmatter renderer overrides on both new and stored documents', async () => {
-    const { ast } = await parseSafeMarkdown([
-      '---',
-      'title: Safe title',
-      'component:',
-      '  name: div',
-      '  props:',
-      '    innerHTML: "<b>injected</b>"',
-      'mdc:',
-      '  components:',
-      '    p: iframe',
-      '---',
-      'Normal body'
-    ].join('\n'))
+    const { ast } = await parseSafeMarkdown(
+      [
+        '---',
+        'title: Safe title',
+        'component:',
+        '  name: div',
+        '  props:',
+        '    innerHTML: "<b>injected</b>"',
+        'mdc:',
+        '  components:',
+        '    p: iframe',
+        '---',
+        'Normal body'
+      ].join('\n')
+    )
     expect(ast.data.title).toBe('Safe title')
     expect(ast.data).not.toHaveProperty('component')
     expect(ast.data).not.toHaveProperty('mdc')
@@ -117,4 +117,17 @@ describe('Markdown AST security', () => {
     expect(sanitizeLinkTarget('java\nscript:alert(1)')).toBeNull()
     expect(isLegacyPercentEncodedUrl('javascript:alert%281%29//%FF')).toBe(false)
   })
+})
+
+test('only permits validated Shiki variables and keeps arbitrary stylesheets blocked', async () => {
+  const { ast } = await parseSafeMarkdown(
+    '<span style="--shiki-light:#AABBCC;--shiki-default-font-weight:700;--shiki-dark:url(https://example.com);--shiki-dark-font-style:expression(alert(1));--unrelated:red">code</span><style>body { display:none }</style>'
+  )
+  const serialized = JSON.stringify(ast.body)
+  expect(serialized).toContain('--shiki-light: #AABBCC')
+  expect(serialized).toContain('--shiki-default-font-weight: 700')
+  expect(serialized).not.toContain('url(')
+  expect(serialized).not.toContain('expression(')
+  expect(serialized).not.toContain('--unrelated')
+  expect(serialized).not.toContain('"tag":"style"')
 })

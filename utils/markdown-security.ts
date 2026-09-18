@@ -1,7 +1,7 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
 export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
-export const MARKDOWN_RENDER_VERSION = 1
+export const MARKDOWN_RENDER_VERSION = 2
 
 type HastNode = {
   type?: string
@@ -131,18 +131,10 @@ const URL_PROPERTIES = new Set([
   'xlinkhref'
 ])
 
-const BLOCKED_PROPERTIES = new Set([
-  'as',
-  'innerhtml',
-  'is',
-  'outerhtml',
-  'srcdoc',
-  'xmlns'
-])
+const BLOCKED_PROPERTIES = new Set(['as', 'innerhtml', 'is', 'outerhtml', 'srcdoc', 'xmlns'])
 
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
-const SAFE_COLOR_PATTERN =
-  /^(?:[a-zA-Z]+|#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.%\s,]+\)|hsla?\(\s*[0-9.%\s,]+\))$/
+const SAFE_COLOR_PATTERN = /^(?:[a-zA-Z]+|#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.%\s,]+\)|hsla?\(\s*[0-9.%\s,]+\))$/
 
 export function sanitizeHastTree(tree: HastNode) {
   tree.children = sanitizeHastChildren(tree.children ?? [])
@@ -343,6 +335,11 @@ function sanitizeStyle(tag: string, value: unknown) {
       return [`${property}: ${styleValue}`]
     }
 
+    // Shiki's CSS is supplied by the application; only its bounded token values survive.
+    if ((tag === 'span' || tag === 'pre') && isSafeHighlightStyle(property, styleValue)) {
+      return [`${property}: ${styleValue}`]
+    }
+
     if (tag === 'td' || tag === 'th') {
       const keyword = styleValue.toLowerCase()
       if (
@@ -358,6 +355,21 @@ function sanitizeStyle(tag: string, value: unknown) {
   })
 
   return declarations.join('; ')
+}
+
+function isSafeHighlightStyle(property: string, value: string) {
+  const match = property.match(/^--shiki-(?:light|default|dark)(-bg|-font-style|-font-weight|-text-decoration)?$/)
+  if (!match) return false
+  switch (match[1]) {
+    case '-font-style':
+      return /^(normal|italic|oblique)$/.test(value)
+    case '-font-weight':
+      return /^(normal|bold|[1-9]00)$/.test(value)
+    case '-text-decoration':
+      return /^(none|underline|line-through)$/.test(value)
+    default:
+      return SAFE_COLOR_PATTERN.test(value)
+  }
 }
 
 function decodeHtmlCharacterReferences(value: string) {
