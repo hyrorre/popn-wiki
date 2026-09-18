@@ -1,0 +1,61 @@
+export const mixedTable = [
+  '| 名前 | 補足 | 状態 |',
+  '| --- | --- | --- |',
+  '| @yellow:**{{ label }}** [詳細](/guide) | > | [注意]{color="red"} |',
+  '| ~ | ~ | `<script>example()</script>` |',
+  '| ~ | > | <ruby>曲<rt>きょく</rt></ruby> |'
+].join('\n')
+
+export const mixedMarkdown = [
+  '---',
+  'title: 組み合わせの確認',
+  'description: 記法を混在させたテスト',
+  'label: 結合セル',
+  'discussion: true',
+  '---',
+  '# 組み合わせの確認',
+  '',
+  mixedTable,
+  '',
+  '; **用語**',
+  ': [解説](/guide) と `code`',
+  '',
+  '- [x] 確認済み',
+  '- [ ] 未確認',
+  '',
+  '> 引用内の **強調** と [外部リンク](https://example.com/guide)',
+  '',
+  '脚注[^note] と [旧Wiki](http://www.wikihouse.com/popnwakaba/index.php?%A5%E9)',
+  '',
+  '[^note]: **補足** と [詳細](/guide)',
+  '',
+  '```html',
+  '<script>example()</script>',
+  '<img src="/example.png" onerror="example()">',
+  '```'
+].join('\n')
+
+export const nestedMarkdown = [
+  '---',
+  'label: 結合セル',
+  '---',
+  '::tabs',
+  '  :::tabs-item{label="一覧"}',
+  ...mixedTable.split('\n').map((line) => `    ${line}`),
+  '  :::',
+  '  :::tabs-item{label="説明"}',
+  '    ::::collapsible',
+  '      :::::card',
+  '      #title',
+  '      **見出し** :badge[新規]',
+  '      #default',
+  '      [詳細](/guide) と {{ label }}',
+  '',
+  '      ```ts',
+  '      const value = "<script>example()</script>"',
+  '      ```',
+  '      :::::',
+  '    ::::',
+  '  :::',
+  '::'
+].join('\n')

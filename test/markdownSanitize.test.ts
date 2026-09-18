@@ -85,4 +85,16 @@ describe('literal Markdown content', () => {
     const source = '```html\n<script>example</script>\n```\n\n<script>unsafe()</script>'
     expect(sanitizeDangerousMarkdownHtml(source)).toBe('```html\n<script>example</script>\n```\n\n')
   })
+
+  test.each([
+    '> ```html\n> <script>example()</script>\n> ```',
+    '- Example\n\n  ```html\n  <img onerror="example()">\n  ```',
+    '---\nlabel: "<script>example()</script>"\n---\n\n`<iframe>literal</iframe>`',
+    '---\r\nlabel: "<script>example()</script>"\r\n---\r\n\r\n```html\r\n<script>example()</script>\r\n```'
+  ])('preserves nested examples and metadata beside actual unsafe HTML: %s', (literal) => {
+    const source = `${literal}\n\n<script>unsafe()</script>\n\n<img src="/safe.png" onerror="unsafe()">`
+    const expected = `${literal}\n\n\n\n<img src="/safe.png">`
+    expect(sanitizeDangerousMarkdownHtml(source)).toBe(expected)
+    expect(sanitizeDangerousMarkdownHtml(expected)).toBe(expected)
+  })
 })

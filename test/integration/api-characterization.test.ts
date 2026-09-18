@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url'
 import { createClient, type Client } from '@libsql/client'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { fetch, setup, useTestContext } from '@nuxt/test-utils/e2e'
+import type { MDCElement, MDCNode } from '@nuxtjs/mdc'
+import { sanitizeUnknownMdcDocument } from '../../utils/markdown-security'
+import { mixedMarkdown } from '../fixtures/markdown-combinations'
 
 type JsonRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown
@@ -1233,6 +1236,76 @@ describe('API characterization', async () => {
       expect(comment.response.status).toBe(200)
       expect(comment.payload.body).toBe(body)
       expect(JSON.stringify(JSON.parse(comment.payload.bodyAst ?? '{}').body)).not.toContain('"tag":"script"')
+    })
+
+    test('preserves combined Markdown through page edits, history, restore and comment edits', async () => {
+      const mixedPath = 'characterization/mixed-markdown'
+      const editedBody = mixedMarkdown.replace('label: 結合セル', 'label: 編集後のセル')
+      const elements = (nodes: MDCNode[]): MDCElement[] =>
+        nodes.flatMap((node) => (node.type === 'element' ? [node, ...elements(node.children)] : []))
+      const assertDocument = (payload: PageResponse | CommentResponse, body: string, label: string) => {
+        expect(payload.body).toBe(body)
+        const document = sanitizeUnknownMdcDocument(JSON.parse(payload.bodyAst ?? '{}'))
+        expect(document).not.toBeNull()
+        expect(document!.data).toMatchObject({ title: '組み合わせの確認', discussion: true, label })
+        const nodes = elements(document!.body.children)
+        const firstCell = nodes.find((node) => node.tag === 'td')!
+        expect(Number(firstCell.props?.colSpan)).toBe(2)
+        expect(Number(firstCell.props?.rowSpan)).toBe(3)
+        expect(JSON.stringify(firstCell.children)).toContain(label)
+        expect(firstCell.props?.style).toContain('background-color: yellow')
+        expect(nodes.some((node) => node.tag === 'span' && String(node.props?.style).includes('color: red'))).toBe(true)
+        expect(nodes.filter((node) => ['script', 'iframe', 'style'].includes(node.tag))).toEqual([])
+        expect(nodes.find((node) => node.tag === 'pre')?.props?.code).toContain('<script>example()</script>')
+        return document
+      }
+      const create = await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path: mixedPath, body: mixedMarkdown, baseRevision: 0 }
+      })
+      expect(create.response.status).toBe(200)
+      const originalDocument = assertDocument(create.payload, mixedMarkdown, '結合セル')
+      const edit = await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path: mixedPath, body: editedBody, baseRevision: 1 }
+      })
+      expect(edit.response.status).toBe(200)
+      assertDocument(edit.payload, editedBody, '編集後のセル')
+      const history = await requestJson<PageResponse>(`/api/page?path=${mixedPath}&revision=1`)
+      expect(history.response.status).toBe(200)
+      expect(assertDocument(history.payload, mixedMarkdown, '結合セル')).toEqual(originalDocument)
+      const restore = await requestJson<PageResponse>('/api/page/restore', {
+        method: 'POST',
+        headers: withSession('editor'),
+        body: { path: mixedPath, targetRevision: 1, baseRevision: 2 }
+      })
+      expect(restore.response.status).toBe(200)
+      expect(restore.payload.revision).toBe(3)
+      expect(assertDocument(restore.payload, mixedMarkdown, '結合セル')).toEqual(originalDocument)
+      const read = await requestJson<PageResponse>(`/api/page?path=${mixedPath}&fresh=1`)
+      expect(read.response.status).toBe(200)
+      expect(assertDocument(read.payload, mixedMarkdown, '結合セル')).toEqual(originalDocument)
+
+      const comment = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.181' }),
+        body: { path: mixedPath, body: mixedMarkdown }
+      })
+      expect(comment.response.status).toBe(200)
+      assertDocument(comment.payload, mixedMarkdown, '結合セル')
+      const updateComment = await requestJson<CommentResponse>('/api/comment', {
+        method: 'PUT',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.181' }),
+        body: { id: comment.payload.id, body: editedBody }
+      })
+      expect(updateComment.response.status).toBe(200)
+      assertDocument(updateComment.payload, editedBody, '編集後のセル')
+      const comments = await requestJson<{ comments: CommentResponse[] }>(`/api/comment?path=${mixedPath}&fresh=1`)
+      expect(comments.response.status).toBe(200)
+      expect(comments.payload.comments).toHaveLength(1)
+      assertDocument(comments.payload.comments[0]!, editedBody, '編集後のセル')
     })
 
     test('creates revision 1, sanitizes Markdown, and updates the search index', async () => {
