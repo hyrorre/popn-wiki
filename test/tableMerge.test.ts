@@ -10,6 +10,68 @@ function cells(nodes: MDCNode[]): MDCElement[] {
 }
 
 describe('safe Markdown table layout', () => {
+  test.each(['~ | ~', '~ | >'])('merges rectangles with continuation row %s', async (continuation) => {
+    const { ast } = await parseSafeMarkdown(
+      [
+        '| A | B | C |',
+        '| --- | --- | --- |',
+        '| @yellow:**Block** | > | One |',
+        `| ${continuation} | Two |`,
+        `| ${continuation} | Three |`
+      ].join('\n')
+    )
+    const parsed = cells(ast.body.children)
+    expect(Number(parsed[3]?.props?.colSpan)).toBe(2)
+    expect(Number(parsed[3]?.props?.rowSpan)).toBe(3)
+    expect(parsed[3]?.props?.style).toBe('text-align: center; vertical-align: middle; background-color: yellow')
+    for (const index of [4, 6, 7, 9, 10]) {
+      expect(parsed[index]?.props?.style).toBe('display: none')
+      expect(parsed[index]?.children).toEqual([])
+    }
+    expect(parsed.slice(0, 3).every((cell) => !cell.props?.rowSpan)).toBe(true)
+    expect(sanitizeUnknownMdcDocument(JSON.parse(JSON.stringify(ast)))?.body).toEqual(ast.body)
+  })
+
+  test('keeps invalid merges and code examples visible without crossing the header boundary', async () => {
+    const { ast } = await parseSafeMarkdown(
+      ['| A | B | C |', '| --- | --- | --- |', '| ~ | Literal | `>` |', '| > | `~` | End |'].join('\n')
+    )
+    const parsed = cells(ast.body.children)
+    expect(parsed.every((cell) => !cell.props?.rowSpan && !cell.props?.colSpan && !cell.props?.style)).toBe(true)
+    expect(parsed[3]?.children).toEqual([{ type: 'text', value: '~' }])
+    expect(parsed[5]?.children[0]).toMatchObject({ type: 'element', tag: 'code' })
+    expect(parsed[6]?.children).toEqual([{ type: 'text', value: '>' }])
+    expect(parsed[7]?.children[0]).toMatchObject({ type: 'element', tag: 'code' })
+  })
+
+  test('keeps adjacent rectangles with different heights independent', async () => {
+    const { ast } = await parseSafeMarkdown(
+      [
+        '| H1 | H2 | H3 | H4 |',
+        '| --- | --- | --- | --- |',
+        '| A | > | B | > |',
+        '| ~ | > | ~ | ~ |',
+        '| C | > | ~ | > |'
+      ].join('\n')
+    )
+    const parsed = cells(ast.body.children)
+    expect(Number(parsed[4]?.props?.rowSpan)).toBe(2)
+    expect(Number(parsed[6]?.props?.rowSpan)).toBe(3)
+    expect(Number(parsed[12]?.props?.colSpan)).toBe(2)
+    expect(parsed[12]?.props?.rowSpan).toBeUndefined()
+    const visible = parsed.slice(4).filter((cell) => cell.props?.style !== 'display: none')
+    expect(visible.map((cell) => cell.children)).toEqual(['A', 'B', 'C'].map((value) => [{ type: 'text', value }]))
+  })
+
+  test('does not hide content when a vertical continuation covers only part of a wide cell', async () => {
+    const { ast } = await parseSafeMarkdown('| A | B |\n| --- | --- |\n| Wide | > |\n| ~ | Keep me |')
+    const parsed = cells(ast.body.children)
+    expect(Number(parsed[2]?.props?.colSpan)).toBe(2)
+    expect(parsed[2]?.props?.rowSpan).toBeUndefined()
+    expect(parsed[4]?.children).toEqual([{ type: 'text', value: '~' }])
+    expect(parsed[5]?.children).toEqual([{ type: 'text', value: 'Keep me' }])
+  })
+
   test('preserves horizontal and vertical merges including consecutive markers', async () => {
     const { ast } = await parseSafeMarkdown(
       [

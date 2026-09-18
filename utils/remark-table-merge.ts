@@ -11,6 +11,16 @@ interface CustomTableCell extends TableCell {
   data?: CustomData
 }
 
+interface GridCell {
+  node: CustomTableCell
+  row: number
+  col: number
+  colSpan: number
+  rowSpan: number
+  owner?: GridCell
+  marker?: string
+}
+
 function getText(node: Node | Parent): string {
   if (!node) return ''
   if ('value' in node && typeof (node as Text).value === 'string') return (node as Text).value
@@ -97,14 +107,16 @@ export default function remarkTableMerge() {
     visit(tree, 'table', (tableNode: Table) => {
       const rows = tableNode.children || []
 
-      // grid: 2D array storing references and span information
-      const grid = rows.map((row: TableRow) => {
-        return (row.children || []).map((cell: TableCell) => ({
+      // Keep the owning cell at every covered coordinate, including hidden placeholders.
+      const grid: GridCell[][] = rows.map((row: TableRow, r) => {
+        return (row.children || []).map((cell: TableCell, c) => ({
           node: cell as CustomTableCell,
+          row: r,
+          col: c,
           colSpan: 1,
           rowSpan: 1,
-          deleted: false,
-          text: getText(cell)
+          marker:
+            cell.children.length === 1 && cell.children[0]?.type === 'text' ? cell.children[0].value.trim() : undefined
         }))
       })
 
@@ -114,45 +126,37 @@ export default function remarkTableMerge() {
         if (!row) continue
         for (let c = 0; c < row.length; c++) {
           const cell = row[c]
-          if (!cell) continue
+          if (!cell || cell.owner) continue
 
-          if (cell.text === '>') {
-            let targetC = c - 1
-            // 削除済みのセルをスキップして左の有効な結合先を探す
-            while (targetC >= 0) {
-              const targetCell = row[targetC]
-              if (targetCell && targetCell.deleted) {
-                targetC--
-              } else {
-                break
-              }
+          if (cell.marker === '>') {
+            const left = row[c - 1]
+            const target = left?.owner ?? left
+            // Do not extend a span originating on an earlier row into unrelated cells.
+            if (target && target.row === r && target.marker !== '>' && target.marker !== '~') {
+              target.colSpan++
+              cell.owner = target
             }
-            if (targetC >= 0) {
-              const targetCell = row[targetC]
-              if (targetCell) {
-                targetCell.colSpan += cell.colSpan
-                cell.deleted = true
-              }
-            }
-          } else if (cell.text === '~') {
-            let targetR = r - 1
-            // 削除済みのセルをスキップして上の有効な結合先を探す
-            while (targetR >= 0) {
-              const targetRow = grid[targetR]
-              const targetCell = targetRow ? targetRow[c] : undefined
-              if (targetCell && targetCell.deleted) {
-                targetR--
-              } else {
-                break
-              }
-            }
-            if (targetR >= 0) {
-              const targetRow = grid[targetR]
-              const targetCell = targetRow ? targetRow[c] : undefined
-              if (targetCell) {
-                targetCell.rowSpan += cell.rowSpan
-                cell.deleted = true
-              }
+          } else if (cell.marker === '~' && r > 1) {
+            // HTML row spans cannot cross from thead into tbody.
+            const above = grid[r - 1]?.[c]
+            const target = above?.owner ?? above
+            if (!target || target.col !== c || target.marker === '~' || target.marker === '>') continue
+            const continuation = row.slice(c, c + target.colSpan)
+            // A vertical continuation must cover the entire width of the same rectangle.
+            // Both `~ | ~` and `~ | >` can continue a two-column merged cell.
+            if (
+              continuation.length === target.colSpan &&
+              continuation.every((part, offset) => {
+                const previous = grid[r - 1]?.[c + offset]
+                return (
+                  !part.owner &&
+                  (part.marker === '~' || (offset > 0 && part.marker === '>')) &&
+                  (previous?.owner ?? previous) === target
+                )
+              })
+            ) {
+              target.rowSpan++
+              for (const part of continuation) part.owner = target
             }
           }
         }
@@ -170,7 +174,7 @@ export default function remarkTableMerge() {
           node.data = node.data || {}
           node.data.hProperties = node.data.hProperties || {}
 
-          if (info.deleted) {
+          if (info.owner) {
             // physics削除すると mdast-util-to-hast が勝手に空セルを足りない分補完してしまい
             // 逆にテーブルレイアウトが壊れるため、論理的に display: none とする
             node.data.hProperties.style = 'display: none;'

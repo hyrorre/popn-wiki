@@ -1,7 +1,7 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
 export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
-export const MARKDOWN_RENDER_VERSION = 4
+export const MARKDOWN_RENDER_VERSION = 5
 
 type HastNode = {
   type?: string
