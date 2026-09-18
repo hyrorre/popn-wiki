@@ -1,6 +1,9 @@
 import type { MDCParseOptions } from '@nuxtjs/mdc'
 import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import remarkBreaks from 'remark-breaks'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import { visit } from 'unist-util-visit'
 import remarkLegacyUrl from '~/utils/remark-legacy-url'
 import remarkTableMerge from '~/utils/remark-table-merge'
 import remarkTableColor from '~/utils/remark-table-color'
@@ -52,8 +55,45 @@ type BlockedTag = {
   selfClosing: boolean
 }
 
+const htmlSourceParser = unified().use(remarkParse)
+
 export function sanitizeDangerousMarkdownHtml(markdown: string) {
-  return stripDangerousAttributes(removeBlockedTags(markdown))
+  const tree = htmlSourceParser.parse(markdown)
+  let result = ''
+  let cursor = 0
+
+  // Only edit actual HTML nodes. Code, escaped text and link titles are literal content.
+  const ranges: Array<{ start: number; end: number }> = []
+  visit(tree, 'html', (node) => {
+    const start = node.position?.start.offset
+    const end = node.position?.end.offset
+    if (start !== undefined && end !== undefined) ranges.push({ start, end })
+  })
+
+  for (let index = 0; index < ranges.length; index++) {
+    const range = ranges[index]!
+    let end = range.end
+    const fragment = markdown.slice(range.start, end)
+    const opening = readBlockedTag(fragment, 0)
+    // Inline HTML has separate opening/closing nodes. Remove the unsafe element's
+    // contents too, but only recognize closing tags parsed as real HTML.
+    if (opening && !opening.closing && !opening.selfClosing && opening.end === fragment.length - 1) {
+      const closingIndex = ranges.findIndex((candidate, candidateIndex) => {
+        if (candidateIndex <= index) return false
+        const tag = readBlockedTag(markdown.slice(candidate.start, candidate.end), 0)
+        return tag?.closing && tag.name === opening.name
+      })
+      if (closingIndex !== -1) {
+        end = ranges[closingIndex]!.end
+        index = closingIndex
+      }
+    }
+    result += markdown.slice(cursor, range.start)
+    result += stripDangerousAttributes(removeBlockedTags(markdown.slice(range.start, end)))
+    cursor = end
+  }
+
+  return result + markdown.slice(cursor)
 }
 
 function removeBlockedTags(markdown: string) {

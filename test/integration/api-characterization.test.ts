@@ -348,7 +348,9 @@ describe('API characterization', async () => {
       })
       const userId = Number(inserted.rows[0]?.id)
       const signedIn = await requestJson<Record<string, unknown>>('/api/auth/signin', {
-        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.90' }, body: { email, password }
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.90' },
+        body: { email, password }
       })
       expect(signedIn.response.status).toBe(200)
       expect(signedIn.payload.authVersion).toBe(0)
@@ -359,7 +361,8 @@ describe('API characterization', async () => {
       request.url = '/'
       const response = new ServerResponse(request)
       const localSession = await useSession(createEvent(request, response), {
-        name: 'nuxt-session', password: 'test-session-password-with-at-least-thirty-two-characters'
+        name: 'nuxt-session',
+        password: 'test-session-password-with-at-least-thirty-two-characters'
       })
       const legacyUser = { ...signedIn.payload }
       delete legacyUser.authVersion
@@ -374,7 +377,8 @@ describe('API characterization', async () => {
         args: [userId, 'revoke-old-sessions', 'reset', Date.now() + 60_000]
       })
       const reset = await requestJson('/api/auth/reset', {
-        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.91' },
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.91' },
         body: { token: 'revoke-old-sessions', password: 'fresh-security-password!' }
       })
       expect(reset.response.status).toBe(200)
@@ -389,7 +393,8 @@ describe('API characterization', async () => {
       const unrelated = await requestJson('/api/profile', { headers: withSession('editor') })
       expect(unrelated.response.status).toBe(200)
       const newLogin = await requestJson<{ authVersion: number }>('/api/auth/signin', {
-        method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.92' },
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.92' },
         body: { email, password: 'fresh-security-password!' }
       })
       expect(newLogin.response.status).toBe(200)
@@ -535,9 +540,7 @@ describe('API characterization', async () => {
         to: signupEmail,
         subject: expect.stringContaining('メールアドレスの確認')
       })
-      expect(emails.at(-1)?.payload.html).toContain(
-        `https://popn.wiki/verify?token=${String(tokens.rows[0]?.token)}`
-      )
+      expect(emails.at(-1)?.payload.html).toContain(`https://popn.wiki/verify?token=${String(tokens.rows[0]?.token)}`)
       expect(emails.at(-1)?.payload.html).not.toContain('attacker.example')
     })
 
@@ -1210,6 +1213,28 @@ describe('API characterization', async () => {
       expect(deletion.payload.message).toBe('Invalid payload.')
     })
 
+    test('keeps HTML examples as literal source when saving pages and comments', async () => {
+      const examplePath = 'characterization/code-examples'
+      const body = '```html\n<script>example()</script>\n<img src="/example" onerror="example()">\n```'
+      const saved = await requestJson<PageResponse>('/api/page', {
+        method: 'PUT',
+        headers: withSession('editor'),
+        body: { path: examplePath, body, baseRevision: 0 }
+      })
+      expect(saved.response.status).toBe(200)
+      expect(saved.payload.body).toBe(body)
+      const stored = await database.execute({ sql: 'SELECT body FROM pages WHERE path = ?', args: [examplePath] })
+      expect(stored.rows[0]?.body).toBe(body)
+      const comment = await requestJson<CommentResponse>('/api/comment', {
+        method: 'POST',
+        headers: withSession('editor', { 'cf-connecting-ip': '203.0.113.180' }),
+        body: { path: examplePath, body }
+      })
+      expect(comment.response.status).toBe(200)
+      expect(comment.payload.body).toBe(body)
+      expect(JSON.stringify(JSON.parse(comment.payload.bodyAst ?? '{}').body)).not.toContain('"tag":"script"')
+    })
+
     test('creates revision 1, sanitizes Markdown, and updates the search index', async () => {
       const { response, payload } = await requestJson<PageResponse>('/api/page', {
         method: 'PUT',
@@ -1300,9 +1325,7 @@ describe('API characterization', async () => {
         body: { path, body: '# Updated title\nupdated keyword', baseRevision: 1, minor: 1 }
       })
       const history = await requestJson<PageResponse[]>(`/api/page/history?path=${encodeURIComponent(path)}`)
-      const revisionOne = await requestJson<PageResponse>(
-        `/api/page?path=${encodeURIComponent(path)}&revision=1`
-      )
+      const revisionOne = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(path)}&revision=1`)
 
       expect(update.payload).toMatchObject({ revision: 2, title: 'Updated title', minor: 1 })
       expect(history.payload.map((entry) => entry.revision)).toEqual([2, 1])
@@ -1459,13 +1482,9 @@ describe('API characterization', async () => {
         args: [path]
       })
 
-      expect([updated.response.status, deleted.response.status].sort((left, right) => left - right)).toEqual([
-        200, 409
-      ])
+      expect([updated.response.status, deleted.response.status].sort((left, right) => left - right)).toEqual([200, 409])
       expect(rows.rows.map((row) => Number(row.revision))).toEqual([1, 2])
-      expect(
-        [updated, deleted].find(({ response }) => response.status === 409)?.payload.data?.latestRevision
-      ).toBe(2)
+      expect([updated, deleted].find(({ response }) => response.status === 409)?.payload.data?.latestRevision).toBe(2)
     })
 
     test('accepts only one of two simultaneous restores', async () => {
@@ -1733,9 +1752,7 @@ describe('API characterization', async () => {
         { headers: withSession('editor') }
       )
 
-      expect(replies.payload).toContainEqual(
-        expect.objectContaining({ id: replyId, path, userName: users.other.name })
-      )
+      expect(replies.payload).toContainEqual(expect.objectContaining({ id: replyId, path, userName: users.other.name }))
     })
 
     test('comment search excludes deleted comments and reports the latest page title', async () => {
@@ -1976,19 +1993,31 @@ describe('API characterization', async () => {
         let parent: number | undefined
         for (let depth = 0; depth < 10; depth++) {
           parent = await insertComment({
-            body: `ancestor ${depth}`, userId: users.other.id, replyTo: parent,
-            createdAt: '2099-01-01T00:00:00.000Z', targetPath
+            body: `ancestor ${depth}`,
+            userId: users.other.id,
+            replyTo: parent,
+            createdAt: '2099-01-01T00:00:00.000Z',
+            targetPath
           })
         }
-        await database.batch(Array.from({ length: 1000 }, () => ({
-          sql: `INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
+        await database.batch(
+          Array.from({ length: 1000 }, () => ({
+            sql: `INSERT INTO comments (path, body, reply_to, user_id, created_at, updated_at)
                 VALUES (?, 'participation', ?, ?, '2099-01-02T00:00:00.000Z', '2099-01-02T00:00:00.000Z')`,
-          args: [targetPath, parent!, users.editor.id]
-        })), 'write')
-        const own = await database.execute({ sql: 'SELECT id FROM comments WHERE path = ? AND user_id = ? LIMIT 1', args: [targetPath, users.editor.id] })
+            args: [targetPath, parent!, users.editor.id]
+          })),
+          'write'
+        )
+        const own = await database.execute({
+          sql: 'SELECT id FROM comments WHERE path = ? AND user_id = ? LIMIT 1',
+          args: [targetPath, users.editor.id]
+        })
         const replyId = await insertComment({
-          body: 'visible reply', userId: users.other.id, replyTo: Number(own.rows[0]?.id),
-          createdAt: '2099-01-03T00:00:00.000Z', targetPath
+          body: 'visible reply',
+          userId: users.other.id,
+          replyTo: Number(own.rows[0]?.id),
+          createdAt: '2099-01-03T00:00:00.000Z',
+          targetPath
         })
         const replies = await requestJson<Array<{ id: number; path: string }>>('/api/reply?type=thread', {
           headers: withSession('editor')
@@ -1998,8 +2027,13 @@ describe('API characterization', async () => {
         expect(replies.payload.filter((reply) => reply.path === targetPath)).toHaveLength(11)
 
         // Corrupt legacy cycles must still terminate after removing the depth column.
-        await database.execute({ sql: 'UPDATE comments SET reply_to = id WHERE id = ?', args: [Number(own.rows[0]?.id)] })
-        const cyclic = await requestJson<Array<{ id: number }>>('/api/reply?type=thread', { headers: withSession('editor') })
+        await database.execute({
+          sql: 'UPDATE comments SET reply_to = id WHERE id = ?',
+          args: [Number(own.rows[0]?.id)]
+        })
+        const cyclic = await requestJson<Array<{ id: number }>>('/api/reply?type=thread', {
+          headers: withSession('editor')
+        })
         expect(cyclic.response.status).toBe(200)
       } finally {
         await database.execute({ sql: 'DELETE FROM comments WHERE path = ?', args: [targetPath] })

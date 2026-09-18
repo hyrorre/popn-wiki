@@ -2,6 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import { sanitizeDangerousMarkdownHtml } from '../server/utils/markdown'
 
 describe('Markdown sanitizer', () => {
+  test('removes inline unsafe elements and their contents', () => {
+    expect(sanitizeDangerousMarkdownHtml('root <script>alert(1)</script> comment')).toBe('root  comment')
+  })
+
   test('removes script blocks with their content', () => {
     const markdown = '# Title\n<script>alert("xss")</script>\nbody'
 
@@ -61,5 +65,24 @@ describe('Markdown sanitizer', () => {
     expect(sanitizeDangerousMarkdownHtml('<img src="/image.png" alt="photo">')).toBe(
       '<img src="/image.png" alt="photo">'
     )
+  })
+})
+
+describe('literal Markdown content', () => {
+  test.each([
+    '`<script>example</script>`',
+    '``<script>`example`</script>``',
+    '```html\n<script>example</script>\n<img src="/x" onerror="example()">\n```',
+    '~~~html\n<iframe src="/example">Example</iframe>\n~~~',
+    '    <script>example</script>\n    <img onerror="example()">',
+    '\\<script>example\\</script>',
+    '[example](/safe "<script>example</script>")'
+  ])('preserves literal source: %s', (source) => {
+    expect(sanitizeDangerousMarkdownHtml(source)).toBe(source)
+  })
+
+  test('removes real HTML while preserving adjacent fenced examples', () => {
+    const source = '```html\n<script>example</script>\n```\n\n<script>unsafe()</script>'
+    expect(sanitizeDangerousMarkdownHtml(source)).toBe('```html\n<script>example</script>\n```\n\n')
   })
 })
