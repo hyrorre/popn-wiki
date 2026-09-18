@@ -1,6 +1,7 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
 export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
+export const MARKDOWN_RENDER_VERSION = 1
 
 type HastNode = {
   type?: string
@@ -70,6 +71,7 @@ const SAFE_HTML_TAGS = new Set([
 const SAFE_MDC_COMPONENTS = new Set([
   'accordion',
   'accordion-item',
+  'badge',
   'callout',
   'card',
   'card-group',
@@ -79,6 +81,7 @@ const SAFE_MDC_COMPONENTS = new Set([
   'code-icon',
   'code-preview',
   'code-tree',
+  'collapsible',
   'component-slot',
   'field',
   'field-group',
@@ -87,10 +90,13 @@ const SAFE_MDC_COMPONENTS = new Set([
   'image-list',
   'image-uploader',
   'note',
+  'prompt',
   'recent-comments',
   'recent-edits',
   'sortable',
   'steps',
+  'tabs',
+  'tabs-item',
   'tip',
   'warning'
 ])
@@ -169,6 +175,9 @@ export function sanitizeUnknownMdcDocument(value: unknown): MDCParserResult | nu
   if (!isRecord(value) || !isRecord(value.body) || value.body.type !== 'root') {
     return null
   }
+
+  // Unknown older transforms may have removed components or their content irreversibly.
+  if (value.renderVersion !== MARKDOWN_RENDER_VERSION) return null
 
   const result = value as unknown as MDCParserResult
   // Older stored ASTs may already have lost the styles that hide merged cells.

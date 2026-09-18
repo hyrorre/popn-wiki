@@ -11,7 +11,7 @@ import remarkDefinitionList from '~/utils/remark-definition-list'
 import rehypeLegacyUrl from '~/utils/rehype-legacy-url'
 import rehypeExternalLinks from 'rehype-external-links'
 import rehypeSecurity from '~/utils/rehype-security'
-import { MARKDOWN_TABLE_LAYOUT_VERSION, sanitizeMdcParserResult } from '~/utils/markdown-security'
+import { MARKDOWN_RENDER_VERSION, MARKDOWN_TABLE_LAYOUT_VERSION, sanitizeMdcParserResult } from '~/utils/markdown-security'
 
 export const mdcParseOptions: MDCParseOptions = {
   remark: {
@@ -39,7 +39,8 @@ export async function parseSafeMarkdown(markdown: string) {
   const sanitizedMarkdown = sanitizeDangerousMarkdownHtml(markdown)
   const ast = {
     ...sanitizeMdcParserResult(await parseMarkdown(sanitizedMarkdown, mdcParseOptions)),
-    tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+    tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION,
+    renderVersion: MARKDOWN_RENDER_VERSION
   }
 
   return { sanitizedMarkdown, ast }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { parseSafeMarkdown } from '../server/utils/markdown'
-import { sanitizeLinkTarget, sanitizeUnknownMdcDocument } from '../utils/markdown-security'
+import { MARKDOWN_RENDER_VERSION, sanitizeLinkTarget, sanitizeUnknownMdcDocument } from '../utils/markdown-security'
 import { isLegacyPercentEncodedUrl } from '../utils/legacy-url'
 
 describe('Markdown AST security', () => {
@@ -49,8 +49,9 @@ describe('Markdown AST security', () => {
     expect(serialized).toContain('"v-slot:title":""')
   })
 
-  test('sanitizes stored MDC ASTs created before the security plugin existed', () => {
+  test('sanitizes stored MDC ASTs even when marked with the current render version', () => {
     const document = sanitizeUnknownMdcDocument({
+      renderVersion: MARKDOWN_RENDER_VERSION,
       data: { title: '', description: '' },
       body: {
         type: 'root',
