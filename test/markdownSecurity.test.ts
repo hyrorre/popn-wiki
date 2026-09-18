@@ -131,3 +131,19 @@ test('only permits validated Shiki variables and keeps arbitrary stylesheets blo
   expect(serialized).not.toContain('--unrelated')
   expect(serialized).not.toContain('"tag":"style"')
 })
+
+test('rejects executable or indirect image sizing styles', async () => {
+  for (const value of [
+    'url(https://example.com)',
+    'expression(alert(1))',
+    'var(--external)',
+    'calc(100% + 1px)',
+    '-10px',
+    '100px !important'
+  ]) {
+    const { ast } = await parseSafeMarkdown(
+      `<img src="/example.png" style="width:${value};height:${value};max-width:${value}">`
+    )
+    expect(JSON.stringify(ast.body)).not.toContain('"style"')
+  }
+})

@@ -1,7 +1,7 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
 export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
-export const MARKDOWN_RENDER_VERSION = 3
+export const MARKDOWN_RENDER_VERSION = 4
 
 type HastNode = {
   type?: string
@@ -47,8 +47,12 @@ const SAFE_HTML_TAGS = new Set([
   'p',
   'pre',
   'q',
+  'rp',
+  'rt',
+  'ruby',
   's',
   'samp',
+  'section',
   'small',
   'span',
   'strong',
@@ -374,11 +378,29 @@ function sanitizeStyle(tag: string, value: unknown) {
       return [`${property}: ${styleValue}`]
     }
 
+    if (
+      SAFE_HTML_TAGS.has(tag) &&
+      property === 'text-align' &&
+      /^(left|center|right|justify|start|end)$/i.test(styleValue)
+    ) {
+      return [`${property}: ${styleValue.toLowerCase()}`]
+    }
+
+    if (tag === 'img' && /^(width|height|max-width|max-height)$/.test(property)) {
+      const size = styleValue.toLowerCase()
+      if (
+        /^(?:0|(?:\d{1,4}(?:\.\d{1,3})?|\.\d{1,3})(?:px|%|em|rem))$/.test(size) ||
+        (/^(width|height)$/.test(property) && size === 'auto') ||
+        (/^max-/.test(property) && size === 'none')
+      ) {
+        return [`${property}: ${size}`]
+      }
+    }
+
     if (tag === 'td' || tag === 'th') {
       const keyword = styleValue.toLowerCase()
       if (
         (property === 'display' && keyword === 'none') ||
-        (property === 'text-align' && /^(left|center|right)$/.test(keyword)) ||
         (property === 'vertical-align' && /^(top|middle|bottom)$/.test(keyword))
       ) {
         return [`${property}: ${keyword}`]

@@ -62,7 +62,7 @@ describe('safe Markdown table layout', () => {
     expect(sanitizeUnknownMdcDocument({ ...plain, tableLayoutVersion: undefined })).not.toBeNull()
   })
 
-  test('only allows fixed layout values on table cells and still strips unsafe CSS', async () => {
+  test('only allows fixed layout values and limits hiding to table cells', async () => {
     const { ast } = await parseSafeMarkdown(
       [
         '<div style="display:none; text-align:center; color:red; position:fixed">Visible</div>',
@@ -76,6 +76,6 @@ describe('safe Markdown table layout', () => {
     expect(parsed[0]?.props?.style).toBe('display: none; text-align: right; vertical-align: middle')
     expect(parsed[1]?.props?.style).toBe('color: red')
     const div = ast.body.children.find((node) => node.type === 'element' && node.tag === 'div') as MDCElement
-    expect(div.props?.style).toBe('color: red')
+    expect(div.props?.style).toBe('text-align: center; color: red')
   })
 })
