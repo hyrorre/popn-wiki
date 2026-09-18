@@ -161,6 +161,10 @@ export function sanitizeMdcMetadata(data: Record<string, unknown> | undefined): 
   }
 }
 
+export function sanitizeUnknownMdcMetadata(value: unknown): MDCParserResult['data'] {
+  return sanitizeMdcMetadata(isRecord(value) && isRecord(value.data) ? value.data : undefined)
+}
+
 export function sanitizeUnknownMdcDocument(value: unknown): MDCParserResult | null {
   if (!isRecord(value) || !isRecord(value.body) || value.body.type !== 'root') {
     return null

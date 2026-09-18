@@ -2,7 +2,7 @@
 import type { Page } from '~/shared/types'
 import { usePendingPage } from '~/composables/usePendingPage'
 import { selectNewestPage } from '~/utils/pageFreshness'
-import { sanitizeUnknownMdcDocument } from '~/utils/markdown-security'
+import { sanitizeUnknownMdcDocument, sanitizeUnknownMdcMetadata } from '~/utils/markdown-security'
 
 const route = useRoute()
 const { user } = useUserSession()
@@ -34,15 +34,18 @@ const pageNotFound = computed(() => !page.value && !!fetchError.value)
 const isDeleted = computed(() => page.value?.body === '')
 
 // AST をパースして保持（API からは JSON 文字列で届く）
-const mdcAst = computed(() => {
+const storedDocument = computed<unknown>(() => {
   if (!page.value?.bodyAst) return null
   try {
     const parsed = typeof page.value.bodyAst === 'string' ? JSON.parse(page.value.bodyAst) : page.value.bodyAst
-    return sanitizeUnknownMdcDocument(parsed)
+    return parsed
   } catch {
     return null
   }
 })
+
+const mdcAst = computed(() => sanitizeUnknownMdcDocument(storedDocument.value))
+const pageMetadata = computed(() => sanitizeUnknownMdcMetadata(storedDocument.value))
 
 watchEffect(() => {
   setCanEdit(!!user.value)
@@ -54,15 +57,15 @@ watchEffect(() => {
 })
 
 const hasDiscussion = computed(() => {
-  return mdcAst.value?.data?.discussion === true
+  return pageMetadata.value?.discussion === true
 })
 
 const discussionTitle = computed(() => {
-  return mdcAst.value?.data?.['discussion-title'] || mdcAst.value?.data?.discussionTitle
+  return pageMetadata.value?.['discussion-title'] || pageMetadata.value?.discussionTitle
 })
 
-const pageTitle = computed(() => mdcAst.value?.data?.title || (page.value ? path.value : 'Page Not Found'))
-const pageDescription = computed(() => mdcAst.value?.data?.description || app.description)
+const pageTitle = computed(() => pageMetadata.value?.title || (page.value ? path.value : 'Page Not Found'))
+const pageDescription = computed(() => pageMetadata.value?.description || app.description)
 const canonicalUrl = computed(() => `${app.url}${path.value === '/' ? '' : `/${path.value}`}`)
 
 useHead(() => ({
