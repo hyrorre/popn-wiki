@@ -1,10 +1,11 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
 export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
-export const MARKDOWN_RENDER_VERSION = 2
+export const MARKDOWN_RENDER_VERSION = 3
 
 type HastNode = {
   type?: string
+  value?: string
   tagName?: string
   properties?: Record<string, unknown>
   children?: HastNode[]
@@ -136,17 +137,18 @@ const BLOCKED_PROPERTIES = new Set(['as', 'innerhtml', 'is', 'outerhtml', 'srcdo
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
 const SAFE_COLOR_PATTERN = /^(?:[a-zA-Z]+|#[0-9a-fA-F]{3,8}|rgba?\(\s*[0-9.%\s,]+\)|hsla?\(\s*[0-9.%\s,]+\))$/
 
-export function sanitizeHastTree(tree: HastNode) {
-  tree.children = sanitizeHastChildren(tree.children ?? [])
+export function sanitizeHastTree(tree: HastNode, file?: { data?: Record<string, unknown> }) {
+  tree.children = sanitizeHastChildren(tree.children ?? [], sanitizeMdcMetadata(file?.data))
   return tree
 }
 
 export function sanitizeMdcParserResult(result: MDCParserResult): MDCParserResult {
+  const data = sanitizeMdcMetadata(result.data)
   return {
     ...result,
-    data: sanitizeMdcMetadata(result.data),
-    body: sanitizeMdcRoot(result.body),
-    ...(result.excerpt ? { excerpt: sanitizeMdcRoot(result.excerpt) } : {})
+    data,
+    body: sanitizeMdcRoot(result.body, data),
+    ...(result.excerpt ? { excerpt: sanitizeMdcRoot(result.excerpt, data) } : {})
   }
 }
 
@@ -205,18 +207,21 @@ export function sanitizeLinkTarget(value: unknown): string | null {
   return trimmed
 }
 
-function sanitizeHastChildren(children: HastNode[]): HastNode[] {
+function sanitizeHastChildren(children: HastNode[], data: Record<string, unknown>): HastNode[] {
   return children.flatMap((child) => {
     if (child.type !== 'element' || !child.tagName) {
       return [child]
     }
 
     const tag = child.tagName.toLowerCase()
+    if (tag === 'binding') {
+      return [{ type: 'text', value: resolveTextBinding(child.properties, data) }]
+    }
     if (DROP_WITH_CONTENT_TAGS.has(tag)) {
       return []
     }
 
-    child.children = sanitizeHastChildren(child.children ?? [])
+    child.children = sanitizeHastChildren(child.children ?? [], data)
     if (!isSafeTag(tag)) {
       return child.children
     }
@@ -227,26 +232,29 @@ function sanitizeHastChildren(children: HastNode[]): HastNode[] {
   })
 }
 
-export function sanitizeMdcRoot(root: MDCRoot): MDCRoot {
+export function sanitizeMdcRoot(root: MDCRoot, metadata?: Record<string, unknown>): MDCRoot {
   return {
     ...root,
     type: 'root',
-    children: sanitizeMdcChildren(Array.isArray(root.children) ? root.children : [])
+    children: sanitizeMdcChildren(Array.isArray(root.children) ? root.children : [], sanitizeMdcMetadata(metadata))
   }
 }
 
-function sanitizeMdcChildren(children: MDCNode[]): MDCNode[] {
+function sanitizeMdcChildren(children: MDCNode[], data: Record<string, unknown>): MDCNode[] {
   return children.flatMap((child) => {
     if (child.type !== 'element') {
       return [child]
     }
 
     const tag = child.tag.toLowerCase()
+    if (tag === 'binding') {
+      return [{ type: 'text', value: resolveTextBinding(child.props, data) }]
+    }
     if (DROP_WITH_CONTENT_TAGS.has(tag)) {
       return []
     }
 
-    const sanitizedChildren = sanitizeMdcChildren(Array.isArray(child.children) ? child.children : [])
+    const sanitizedChildren = sanitizeMdcChildren(Array.isArray(child.children) ? child.children : [], data)
     if (!isSafeTag(tag)) {
       return sanitizedChildren
     }
@@ -259,6 +267,32 @@ function sanitizeMdcChildren(children: MDCNode[]): MDCNode[] {
     }
     return [sanitized]
   })
+}
+
+function resolveTextBinding(properties: Record<string, unknown> | undefined, data: Record<string, unknown>) {
+  if (typeof properties?.value !== 'string') return ''
+  const path = properties.value
+    .trim()
+    .replace(/^\$(?:doc|document)\./, '')
+    .replace(/\[(\d+)\]/g, '.$1')
+  if (!/^[A-Za-z_][\w-]*(?:\.[\w-]+)*$/.test(path)) return ''
+  let value: unknown = data
+  for (const key of path.split('.')) {
+    if (['__proto__', 'prototype', 'constructor'].includes(key)) return ''
+    if (!isRecord(value)) {
+      value = undefined
+      break
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    // Read JSON data only: no prototype traversal, getters or function invocation.
+    value = descriptor && 'value' in descriptor ? descriptor.value : undefined
+  }
+  value ??= properties.defaultValue
+  return typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+    ? String(value)
+    : ''
 }
 
 function isSafeTag(tag: string) {

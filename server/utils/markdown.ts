@@ -3,6 +3,7 @@ import { parseMarkdown } from '@nuxtjs/mdc/runtime'
 import remarkBreaks from 'remark-breaks'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
+import { parseFrontMatter } from 'remark-mdc'
 import { visit } from 'unist-util-visit'
 import remarkLegacyUrl from '~/utils/remark-legacy-url'
 import remarkTableMerge from '~/utils/remark-table-merge'
@@ -11,7 +12,11 @@ import remarkDefinitionList from '~/utils/remark-definition-list'
 import rehypeLegacyUrl from '~/utils/rehype-legacy-url'
 import rehypeExternalLinks from 'rehype-external-links'
 import rehypeSecurity from '~/utils/rehype-security'
-import { MARKDOWN_RENDER_VERSION, MARKDOWN_TABLE_LAYOUT_VERSION, sanitizeMdcParserResult } from '~/utils/markdown-security'
+import {
+  MARKDOWN_RENDER_VERSION,
+  MARKDOWN_TABLE_LAYOUT_VERSION,
+  sanitizeMdcParserResult
+} from '~/utils/markdown-security'
 
 export const mdcParseOptions: MDCParseOptions = {
   remark: {
@@ -59,7 +64,9 @@ type BlockedTag = {
 const htmlSourceParser = unified().use(remarkParse)
 
 export function sanitizeDangerousMarkdownHtml(markdown: string) {
-  const tree = htmlSourceParser.parse(markdown)
+  const { content } = parseFrontMatter(markdown)
+  const contentOffset = markdown.length - content.length
+  const tree = htmlSourceParser.parse(content)
   let result = ''
   let cursor = 0
 
@@ -68,7 +75,8 @@ export function sanitizeDangerousMarkdownHtml(markdown: string) {
   visit(tree, 'html', (node) => {
     const start = node.position?.start.offset
     const end = node.position?.end.offset
-    if (start !== undefined && end !== undefined) ranges.push({ start, end })
+    if (start !== undefined && end !== undefined)
+      ranges.push({ start: start + contentOffset, end: end + contentOffset })
   })
 
   for (let index = 0; index < ranges.length; index++) {
