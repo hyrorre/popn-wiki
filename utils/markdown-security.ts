@@ -1,5 +1,7 @@
 import type { MDCElement, MDCNode, MDCParserResult, MDCRoot } from '@nuxtjs/mdc'
 
+export const MARKDOWN_TABLE_LAYOUT_VERSION = 1
+
 type HastNode = {
   type?: string
   tagName?: string
@@ -165,7 +167,21 @@ export function sanitizeUnknownMdcDocument(value: unknown): MDCParserResult | nu
   }
 
   const result = value as unknown as MDCParserResult
+  // Older stored ASTs may already have lost the styles that hide merged cells.
+  // Return null so existing callers render the original Markdown instead.
+  if (value.tableLayoutVersion !== MARKDOWN_TABLE_LAYOUT_VERSION && containsTable(result.body.children)) {
+    return null
+  }
   return sanitizeMdcParserResult(result)
+}
+
+function containsTable(children: MDCNode[]): boolean {
+  return (
+    Array.isArray(children) &&
+    children.some(
+      (child) => child.type === 'element' && (child.tag.toLowerCase() === 'table' || containsTable(child.children))
+    )
+  )
 }
 
 export function sanitizeLinkTarget(value: unknown): string | null {
@@ -266,7 +282,7 @@ function sanitizeProperties(tag: string, properties: Record<string, unknown> | n
     }
 
     if (normalizedName === 'style') {
-      const safeStyle = sanitizeStyle(value)
+      const safeStyle = sanitizeStyle(tag, value)
       if (safeStyle) sanitized[name] = safeStyle
       continue
     }
@@ -301,7 +317,7 @@ function normalizePropertyName(name: string) {
   return name.toLowerCase().replace(/[-_:]/g, '')
 }
 
-function sanitizeStyle(value: unknown) {
+function sanitizeStyle(tag: string, value: unknown) {
   if (typeof value !== 'string') return ''
 
   const declarations = value.split(';').flatMap((declaration) => {
@@ -309,12 +325,23 @@ function sanitizeStyle(value: unknown) {
     if (separator === -1) return []
 
     const property = declaration.slice(0, separator).trim().toLowerCase()
-    const color = declaration.slice(separator + 1).trim()
-    if ((property !== 'color' && property !== 'background-color') || !SAFE_COLOR_PATTERN.test(color)) {
-      return []
+    const styleValue = declaration.slice(separator + 1).trim()
+    if ((property === 'color' || property === 'background-color') && SAFE_COLOR_PATTERN.test(styleValue)) {
+      return [`${property}: ${styleValue}`]
     }
 
-    return [`${property}: ${color}`]
+    if (tag === 'td' || tag === 'th') {
+      const keyword = styleValue.toLowerCase()
+      if (
+        (property === 'display' && keyword === 'none') ||
+        (property === 'text-align' && /^(left|center|right)$/.test(keyword)) ||
+        (property === 'vertical-align' && /^(top|middle|bottom)$/.test(keyword))
+      ) {
+        return [`${property}: ${keyword}`]
+      }
+    }
+
+    return []
   })
 
   return declarations.join('; ')
