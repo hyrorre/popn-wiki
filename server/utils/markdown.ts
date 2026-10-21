@@ -9,6 +9,7 @@ import remarkLegacyUrl from '~/utils/remark-legacy-url'
 import remarkTableMerge from '~/utils/remark-table-merge'
 import remarkTableColor from '~/utils/remark-table-color'
 import remarkDefinitionList from '~/utils/remark-definition-list'
+import remarkInlineColor from '~/utils/remark-inline-color'
 import rehypeLegacyUrl from '~/utils/rehype-legacy-url'
 import rehypeExternalLinks from 'rehype-external-links'
 import rehypeSecurity from '~/utils/rehype-security'
@@ -18,6 +19,8 @@ import {
   sanitizeMdcParserResult
 } from '~/utils/markdown-security'
 
+// Inside Nuxt the parser also loads nuxt.config's `mdc` plugins under the same keys. Keep this list
+// in sync so scripts and unit tests that parse outside Nuxt produce the same AST.
 export const mdcParseOptions: MDCParseOptions = {
   remark: {
     plugins: {
@@ -25,7 +28,8 @@ export const mdcParseOptions: MDCParseOptions = {
       remarkLegacyUrl: { instance: remarkLegacyUrl },
       tableMerge: { instance: remarkTableMerge },
       tableColor: { instance: remarkTableColor },
-      definitionList: { instance: remarkDefinitionList }
+      definitionList: { instance: remarkDefinitionList },
+      inlineColor: { instance: remarkInlineColor }
     }
   },
   rehype: {
