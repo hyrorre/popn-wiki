@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, ne, sql } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { usersTable } from '../../db/schema'
+import { tokensTable, usersTable } from '../../db/schema'
 import type { H3Event } from 'h3'
 import { toSessionUser } from '~/server/utils/authorization'
 
@@ -50,10 +50,7 @@ export default defineOAuthGoogleEventHandler({
     }
 
     if (existingUser.confirmed !== 1) {
-      await db
-        .update(usersTable)
-        .set({ confirmed: 1, updatedAt: new Date().toISOString() })
-        .where(eq(usersTable.id, existingUser.id))
+      existingUser = await confirmPendingAccount(existingUser.id)
     }
 
     // セッションの設定
@@ -67,3 +64,29 @@ export default defineOAuthGoogleEventHandler({
     return sendRedirect(event, '/signin?error=google_failed')
   }
 })
+
+// 未確認アカウントのパスワードは、メールアドレスの所有者以外が登録した可能性がある。
+// Google でメールアドレスの所有を確認できた時点で、既存の認証情報を引き継がずに無効化する。
+async function confirmPendingAccount(userId: number) {
+  const [confirmedUsers] = await db.batch([
+    db
+      .update(usersTable)
+      .set({
+        password: await hashPassword(crypto.randomUUID()),
+        confirmed: 1,
+        authVersion: sql`${usersTable.authVersion} + 1`,
+        updatedAt: new Date().toISOString()
+      })
+      .where(and(eq(usersTable.id, userId), ne(usersTable.confirmed, 1)))
+      .returning(),
+    db.delete(tokensTable).where(eq(tokensTable.userId, userId))
+  ])
+
+  // 同時に確認済みになった場合は、二重に authVersion を進めず現在の行を使う。
+  const user = confirmedUsers[0] ?? (await db.select().from(usersTable).where(eq(usersTable.id, userId)).get())
+  if (!user) {
+    throw createError({ statusCode: 500, message: 'ユーザーの確認に失敗しました' })
+  }
+
+  return user
+}

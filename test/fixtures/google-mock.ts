@@ -11,10 +11,12 @@ export default defineNitroPlugin(() => {
     }
     if (url === 'https://www.googleapis.com/oauth2/v3/userinfo') {
       const token = new Headers(init?.headers).get('authorization')?.replace('Bearer ', '')
+      // `verified:<email>` returns a verified claim for an arbitrary address.
+      const verifiedEmail = token?.startsWith('verified:') ? token.slice('verified:'.length) : undefined
       return Response.json({
-        email: token === 'verified' ? 'google-pending@example.com' : 'google-unverified@example.com',
+        email: verifiedEmail ?? (token === 'verified' ? 'google-pending@example.com' : 'google-unverified@example.com'),
         name: 'Google user',
-        ...(token === 'missing' ? {} : { email_verified: token === 'verified' })
+        ...(token === 'missing' ? {} : { email_verified: token === 'verified' || verifiedEmail !== undefined })
       })
     }
     return originalFetch(...args)

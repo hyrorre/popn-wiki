@@ -237,6 +237,92 @@ describe('API characterization', async () => {
       expect(record.rows[0]?.confirmed).toBe(1)
     })
 
+    test('Google login discards credentials registered before the address was verified', async () => {
+      const email = 'google-preregistered@example.com'
+      const now = new Date().toISOString()
+      const inserted = await database.execute({
+        sql: `INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+              VALUES (?, ?, ?, ?, ?, 0) RETURNING id`,
+        args: ['Preregistered', email, legacyBcryptHash, now, now]
+      })
+      const userId = Number(inserted.rows[0]?.id)
+      await database.execute({
+        sql: 'INSERT INTO tokens (user_id, token, type, expires_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)',
+        args: [
+          userId,
+          'preregistered-verify',
+          'verification',
+          Date.now() + 60_000,
+          userId,
+          'preregistered-reset',
+          'reset',
+          Date.now() + 60_000
+        ]
+      })
+
+      const response = await fetch(`/api/auth/google?code=${encodeURIComponent(`verified:${email}`)}`, {
+        redirect: 'manual'
+      })
+      expect(response.headers.get('location')).toBe('/')
+      const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
+      expect(cookie).toBeTruthy()
+      const refreshed = await requestJson<{ user?: { email: string } }>('/api/_auth/session', {
+        headers: { cookie: cookie! }
+      })
+      expect(refreshed.payload.user?.email).toBe(email)
+
+      // The password chosen by whoever registered the address must stop working.
+      const signin = await requestJson<{ message: string }>('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.26' },
+        body: { email, password }
+      })
+      expect(signin.response.status).toBe(401)
+
+      const record = await database.execute({
+        sql: 'SELECT confirmed, password, auth_version FROM users WHERE id = ?',
+        args: [userId]
+      })
+      expect(record.rows[0]?.confirmed).toBe(1)
+      expect(record.rows[0]?.auth_version).toBe(1)
+      expect(String(record.rows[0]?.password)).not.toBe(legacyBcryptHash)
+      const tokens = await database.execute({
+        sql: 'SELECT count(*) AS count FROM tokens WHERE user_id = ?',
+        args: [userId]
+      })
+      expect(tokens.rows[0]?.count).toBe(0)
+    })
+
+    test('Google login keeps the credentials of an already confirmed account', async () => {
+      const email = 'google-confirmed@example.com'
+      const now = new Date().toISOString()
+      await database.execute({
+        sql: `INSERT INTO users (name, email, password, created_at, updated_at, confirmed)
+              VALUES (?, ?, ?, ?, ?, 1)`,
+        args: ['Confirmed', email, legacyBcryptHash, now, now]
+      })
+
+      const response = await fetch(`/api/auth/google?code=${encodeURIComponent(`verified:${email}`)}`, {
+        redirect: 'manual'
+      })
+      expect(response.headers.get('location')).toBe('/')
+
+      const record = await database.execute({
+        sql: 'SELECT password, auth_version FROM users WHERE email = ?',
+        args: [email]
+      })
+      expect(record.rows[0]?.password).toBe(legacyBcryptHash)
+      expect(record.rows[0]?.auth_version).toBe(0)
+
+      const signin = await requestJson<{ email?: string }>('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'cf-connecting-ip': '203.0.113.27' },
+        body: { email, password }
+      })
+      expect(signin.response.status).toBe(200)
+      expect(signin.payload.email).toBe(email)
+    })
+
     test('Google login rejects unverified or missing email verification claims', async () => {
       for (const code of ['unverified', 'missing']) {
         const response = await fetch(`/api/auth/google?code=${code}`, { redirect: 'manual' })
