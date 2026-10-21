@@ -31,7 +31,7 @@ After changing TypeScript/server logic: run `bun run tsc`. After changing DB sch
 
 `bun run lint` and `bun run format` **rewrite files in place**. Use `bunx eslint .` to check without modifying.
 
-Drizzle/Cloudflare D1 commands require `NUXT_HUB_CLOUDFLARE_ACCOUNT_ID`, `NUXT_HUB_CLOUDFLARE_DATABASE_ID`, and `NUXT_HUB_CLOUDFLARE_API_TOKEN` env vars. Tests require the `TEST_*` vars in `.env.example`.
+Drizzle/Cloudflare D1 commands require `NUXT_HUB_CLOUDFLARE_ACCOUNT_ID`, `NUXT_HUB_CLOUDFLARE_DATABASE_ID`, and `NUXT_HUB_CLOUDFLARE_API_TOKEN` env vars. Tests use a temporary SQLite DB and a local Nitro server; they need no external services or `.env` secrets.
 
 ## Architecture
 
