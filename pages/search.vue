@@ -185,10 +185,6 @@ useSeoMeta({
   robots: 'noindex'
 })
 
-function pageHref(path: string) {
-  return path === '/' ? '/' : `/${path}`
-}
-
 function badgeLabel(type: SearchResult['matchTypes'][number]) {
   switch (type) {
     case 'title':

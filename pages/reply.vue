@@ -42,7 +42,7 @@ useSeoMeta({
         <CommentPanel
           v-for="reply in replies"
           :key="reply.id"
-          :to="`/${reply.path}#comment-${reply.id}`"
+          :to="`${pageHref(reply.path)}#comment-${reply.id}`"
           :author-name="reply.userName ?? '名無しさん'"
           :author-alt="reply.userName ?? '名無しさん'"
           :created-at="reply.createdAt"

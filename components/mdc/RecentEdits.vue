@@ -55,7 +55,7 @@ watch(page, (newVal) => {
 
     <ul v-else>
       <li v-for="p in pages" :key="`${p.path}-${p.revision}`">
-        <NuxtLink :to="`/${p.path}`">
+        <NuxtLink :to="pageHref(p.path)">
           {{ p.title || p.path }}
         </NuxtLink>
         <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">{{ formatDate(p.updatedAt) }}</span>

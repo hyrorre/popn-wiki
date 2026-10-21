@@ -52,7 +52,7 @@ watch(page, (newVal) => {
 
     <ul v-else>
       <li v-for="comment in comments" :key="comment.path">
-        <NuxtLink :to="`/${comment.path}`">
+        <NuxtLink :to="pageHref(comment.path)">
           {{ comment.title || comment.path }}
         </NuxtLink>
         <span v-if="!hideDetail" class="ms-2 text-xs text-muted whitespace-nowrap">
