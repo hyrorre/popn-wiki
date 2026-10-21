@@ -38,8 +38,15 @@ export async function findActiveApiUser(userId: number, authVersion = 0) {
 
 export async function syncApiUserSession(event: H3Event, sessionUser: User, currentUser: User) {
   if (!isSameSessionUser(sessionUser, currentUser)) {
-    await setUserSession(event, { user: currentUser })
+    await replaceSessionUser(event, currentUser)
   }
+}
+
+// setUserSession は既存のセッションと defu でマージし、null の値を無視する。
+// avatar を null に戻した変更なども反映されるよう、ユーザー情報は丸ごと置き換える。
+export async function replaceSessionUser(event: H3Event, user: User) {
+  const { id: _sessionId, ...session } = await getUserSession(event)
+  await replaceUserSession(event, { ...session, user })
 }
 
 export async function requireApiUser(event: H3Event) {

@@ -857,6 +857,30 @@ describe('API characterization', async () => {
         avatar: 'https://example.com/avatar.png'
       })
     })
+
+    test('clears a removed avatar from the session instead of keeping the previous value', async () => {
+      const updated = await requestJson<{ avatar?: string | null }>('/api/profile', {
+        method: 'POST',
+        headers: withSession('migration'),
+        body: { name: 'Legacy Updated', avatar: null }
+      })
+      expect(updated.response.status).toBe(200)
+      expect(updated.payload.avatar).toBeNull()
+      const cookie = updated.response.headers.get('set-cookie')?.split(';', 1)[0]
+      expect(cookie).toBeTruthy()
+
+      // A session that already matches the database must not be rewritten on every request.
+      const profile = await requestJson<{ avatar?: string | null }>('/api/profile', { headers: { cookie: cookie! } })
+      expect(profile.response.status).toBe(200)
+      expect(profile.payload.avatar).toBeNull()
+      expect(profile.response.headers.get('set-cookie')).toBeNull()
+
+      const session = await requestJson<{ user?: { avatar?: string | null } }>('/api/_auth/session', {
+        headers: { cookie: cookie! }
+      })
+      expect(session.payload.user?.avatar).toBeNull()
+      expect(session.response.headers.get('set-cookie')).toBeNull()
+    })
   })
 
   describe.sequential('account deletion contracts', () => {
