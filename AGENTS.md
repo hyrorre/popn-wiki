@@ -13,10 +13,8 @@
 
 ## Runtime
 
-`mise.toml` の指定:
-
-- Node.js 24.15.0
-- Bun 1.3.13
+- Node.js: `.node-version`（26.12.1）。CI と Cloudflare Workers Builds はこのファイルを参照します。ローカルの `mise.toml` は Node 26 系を指定しています。
+- Bun: CI は 1.3.13、`mise.toml` は latest です。
 
 ## Common Commands
 

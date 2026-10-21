@@ -40,7 +40,7 @@
     }
   },
   "vars": {
-    "NODE_VERSION": "24.15.0",
+    "NODE_VERSION": "26.12.1",
     "BUN_VERSION": "1.3.13"
   }
 }
