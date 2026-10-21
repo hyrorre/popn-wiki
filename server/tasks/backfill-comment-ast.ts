@@ -4,17 +4,18 @@ import { commentsTable } from '../db/schema'
 import { parseBackfillCommentAstPayload } from '../utils/adminTaskPayload'
 import { invalidateCommentListCache } from '../utils/commentCache'
 import { parseSafeMarkdown } from '../utils/markdown'
+import { MARKDOWN_RENDER_VERSION, MARKDOWN_TABLE_LAYOUT_VERSION } from '~/utils/markdown-security'
 
 export default defineTask({
   meta: {
     name: 'backfill-comment-ast',
-    description: 'Backfill missing comment Markdown ASTs in small batches'
+    description: 'Backfill missing or outdated comment Markdown ASTs in small batches'
   },
   async run({ payload }) {
     const { limit, path } = parseBackfillCommentAstPayload(payload)
     const whereClause = path
-      ? and(isNull(commentsTable.bodyAst), isNull(commentsTable.deletedAt), eq(commentsTable.path, path), bodyIsNotEmpty())
-      : and(isNull(commentsTable.bodyAst), isNull(commentsTable.deletedAt), bodyIsNotEmpty())
+      ? and(bodyAstIsOutdated(), isNull(commentsTable.deletedAt), eq(commentsTable.path, path), bodyIsNotEmpty())
+      : and(bodyAstIsOutdated(), isNull(commentsTable.deletedAt), bodyIsNotEmpty())
 
     const comments = await db
       .select({
@@ -66,4 +67,18 @@ export default defineTask({
 
 function bodyIsNotEmpty() {
   return sql`${commentsTable.body} != ''`
+}
+
+// isMarkdownAstOutdated と同じ判定。CASE で順に評価し、不正な JSON を json_extract に渡さない。
+function bodyAstIsOutdated() {
+  const bodyAst = commentsTable.bodyAst
+  return sql`CASE
+    WHEN ${bodyAst} IS NULL OR json_valid(${bodyAst}) = 0 THEN 1
+    WHEN json_type(${bodyAst}) != 'object' THEN 1
+    WHEN json_type(${bodyAst}, '$.renderVersion') IS NOT 'integer'
+      OR json_extract(${bodyAst}, '$.renderVersion') < ${MARKDOWN_RENDER_VERSION} THEN 1
+    WHEN json_type(${bodyAst}, '$.tableLayoutVersion') IS NOT 'integer'
+      OR json_extract(${bodyAst}, '$.tableLayoutVersion') < ${MARKDOWN_TABLE_LAYOUT_VERSION} THEN 1
+    ELSE 0
+  END = 1`
 }

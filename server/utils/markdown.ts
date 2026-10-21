@@ -51,6 +51,30 @@ export async function parseSafeMarkdown(markdown: string) {
   return { sanitizedMarkdown, ast }
 }
 
+// 描画側は現在のバージョン以外の保存済みASTを破棄するため、古いASTはMarkdownから作り直す。
+// 新しいバージョンは古いとみなさない。段階的デプロイ中に旧Workerが上書きし合わないようにする。
+export function isMarkdownAstOutdated(bodyAst: string | null | undefined) {
+  if (!bodyAst) return true
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(bodyAst)
+  } catch {
+    return true
+  }
+  if (typeof parsed !== 'object' || parsed === null) return true
+
+  const { renderVersion, tableLayoutVersion } = parsed as Record<string, unknown>
+  return (
+    !isVersionAtLeast(renderVersion, MARKDOWN_RENDER_VERSION) ||
+    !isVersionAtLeast(tableLayoutVersion, MARKDOWN_TABLE_LAYOUT_VERSION)
+  )
+}
+
+function isVersionAtLeast(value: unknown, current: number) {
+  return Number.isInteger(value) && (value as number) >= current
+}
+
 const BLOCKED_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'form', 'base', 'link', 'meta', 'style'])
 
 type BlockedTag = {

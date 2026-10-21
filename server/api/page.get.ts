@@ -1,7 +1,7 @@
 import { pagesTable } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { db } from '@nuxthub/db'
-import { parseSafeMarkdown } from '~/server/utils/markdown'
+import { isMarkdownAstOutdated, parseSafeMarkdown } from '~/server/utils/markdown'
 import type { H3Event } from 'h3'
 import {
   getLatestPageCacheKey,
@@ -115,7 +115,7 @@ async function readLatestPage(event: H3Event, query: PageQuery) {
 }
 
 async function ensureBodyAst(event: H3Event, data: typeof pagesTable.$inferSelect) {
-  if (!data.bodyAst && data.body) {
+  if (data.body && isMarkdownAstOutdated(data.bodyAst)) {
     const { sanitizedMarkdown, ast } = await parseSafeMarkdown(data.body)
     data.body = sanitizedMarkdown
     data.bodyAst = JSON.stringify(ast)

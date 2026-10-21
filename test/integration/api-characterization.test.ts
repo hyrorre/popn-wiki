@@ -9,7 +9,11 @@ import { createClient, type Client } from '@libsql/client'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { fetch, setup, useTestContext } from '@nuxt/test-utils/e2e'
 import type { MDCElement, MDCNode } from '@nuxtjs/mdc'
-import { sanitizeUnknownMdcDocument } from '../../utils/markdown-security'
+import {
+  MARKDOWN_RENDER_VERSION,
+  MARKDOWN_TABLE_LAYOUT_VERSION,
+  sanitizeUnknownMdcDocument
+} from '../../utils/markdown-security'
 import { mixedMarkdown } from '../fixtures/markdown-combinations'
 
 type JsonRequestOptions = Omit<RequestInit, 'body'> & {
@@ -1149,6 +1153,64 @@ describe('API characterization', async () => {
       expect(JSON.parse(String(stored.rows[0]?.body_ast))).toHaveProperty('body')
     })
 
+    test('backfills outdated comment ASTs and keeps current or newer ones', async () => {
+      const path = 'characterization/admin-backfill-outdated'
+      const now = new Date().toISOString()
+      const emptyRoot = { body: { type: 'root', children: [] }, data: {} }
+      const currentAst = JSON.stringify({
+        ...emptyRoot,
+        renderVersion: MARKDOWN_RENDER_VERSION,
+        tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+      })
+      const newerAst = JSON.stringify({
+        ...emptyRoot,
+        renderVersion: MARKDOWN_RENDER_VERSION + 1,
+        tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+      })
+      const rows = [
+        { body: '**legacy**', bodyAst: JSON.stringify(emptyRoot) },
+        { body: '**malformed**', bodyAst: '{' },
+        { body: '**current**', bodyAst: currentAst },
+        { body: '**newer**', bodyAst: newerAst }
+      ]
+      for (const row of rows) {
+        await database.execute({
+          sql: `
+            INSERT INTO comments (path, body, body_ast, reply_to, user_id, created_at, updated_at, deleted_at)
+            VALUES (?, ?, ?, NULL, ?, ?, ?, NULL)
+          `,
+          args: [path, row.body, row.bodyAst, users.editor.id, now, now]
+        })
+      }
+
+      const first = await requestJson<{ scanned: number; updated: number; failed: unknown[] }>(
+        '/api/admin/backfill-comment-ast',
+        { method: 'POST', headers: withSession('admin'), body: { limit: 9999, path } }
+      )
+      const second = await requestJson<{ scanned: number; updated: number }>('/api/admin/backfill-comment-ast', {
+        method: 'POST',
+        headers: withSession('admin'),
+        body: { limit: 9999, path }
+      })
+      const stored = await database.execute({
+        sql: 'SELECT body, body_ast FROM comments WHERE path = ? ORDER BY id',
+        args: [path]
+      })
+      const storedAst = (body: string) => String(stored.rows.find((row) => row.body === body)?.body_ast)
+
+      expect(first.payload).toMatchObject({ scanned: 2, updated: 2, failed: [] })
+      expect(second.payload).toMatchObject({ scanned: 0, updated: 0 })
+      for (const body of ['**legacy**', '**malformed**']) {
+        expect(JSON.parse(storedAst(body))).toMatchObject({
+          renderVersion: MARKDOWN_RENDER_VERSION,
+          tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+        })
+        expect(storedAst(body)).toContain('"tag":"strong"')
+      }
+      expect(storedAst('**current**')).toBe(currentAst)
+      expect(storedAst('**newer**')).toBe(newerAst)
+    })
+
     test('rebuilds the search index repeatedly without duplicate rows', async () => {
       const first = await requestJson<{
         scanned: number
@@ -1300,6 +1362,59 @@ describe('API characterization', async () => {
       expect(history.payload.message).toBe('Path is required.')
       expect(comments.payload.message).toBe('Path is required.')
       expect(deletion.payload.message).toBe('Invalid payload.')
+    })
+
+    test('regenerates outdated stored ASTs when reading a page and keeps newer ones', async () => {
+      const outdatedPath = 'characterization/outdated-ast'
+      const now = new Date().toISOString()
+      const emptyRoot = { body: { type: 'root', children: [] }, data: {} }
+      const newerAst = JSON.stringify({
+        ...emptyRoot,
+        renderVersion: MARKDOWN_RENDER_VERSION + 1,
+        tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+      })
+      const revisions = [
+        { revision: 1, body: '**legacy**', bodyAst: JSON.stringify(emptyRoot) },
+        { revision: 2, body: '**newer**', bodyAst: newerAst },
+        { revision: 3, body: '**malformed**', bodyAst: '{' }
+      ]
+      for (const { revision, body, bodyAst } of revisions) {
+        await database.execute({
+          sql: `INSERT INTO pages (path, title, body, body_ast, revision, created_at, updated_at, created_by, updated_by)
+                VALUES (?, 'Outdated AST', ?, ?, ?, ?, ?, ?, ?)`,
+          args: [outdatedPath, body, bodyAst, revision, now, now, users.editor.id, users.editor.id]
+        })
+      }
+      const storedAst = async (revision: number) => {
+        const result = await database.execute({
+          sql: 'SELECT body_ast FROM pages WHERE path = ? AND revision = ?',
+          args: [outdatedPath, revision]
+        })
+        return String(result.rows[0]?.body_ast)
+      }
+      const currentVersions = {
+        renderVersion: MARKDOWN_RENDER_VERSION,
+        tableLayoutVersion: MARKDOWN_TABLE_LAYOUT_VERSION
+      }
+
+      const legacy = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(outdatedPath)}&revision=1`)
+      const newer = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(outdatedPath)}&revision=2`)
+      const latest = await requestJson<PageResponse>(`/api/page?path=${encodeURIComponent(outdatedPath)}&fresh=1`)
+
+      for (const page of [legacy, latest]) {
+        expect(page.response.status).toBe(200)
+        expect(JSON.parse(page.payload.bodyAst ?? '{}')).toMatchObject(currentVersions)
+        expect(page.payload.bodyAst).toContain('"tag":"strong"')
+      }
+      expect(newer.payload.bodyAst).toBe(newerAst)
+
+      // The regenerated AST is written back after the response, so later reads skip the Markdown parse.
+      for (const revision of [1, 3]) {
+        await expect
+          .poll(async () => JSON.parse(await storedAst(revision)), { timeout: 5_000 })
+          .toMatchObject(currentVersions)
+      }
+      expect(await storedAst(2)).toBe(newerAst)
     })
 
     test('keeps HTML examples as literal source when saving pages and comments', async () => {
