@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const limit = parseStrictIntegerQuery(query.limit, { fallback: 20, minimum: 1, maximum: 100 })
   const offset = parseStrictIntegerQuery(query.offset, { fallback: 0, minimum: 0, maximum: 1_000_000 })
 
-  let replyIds: number[] = []
+  let replyIds: number[]
 
   if (type === 'direct') {
     // 1. 自分への直接返信

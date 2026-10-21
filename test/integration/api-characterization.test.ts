@@ -149,6 +149,33 @@ function capturedEmails() {
     .map((line) => JSON.parse(line) as { url: string; payload: { to: string; subject: string; html: string } })
 }
 
+function responseCookie(response: Response, name: string) {
+  return response.headers
+    .getSetCookie()
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split(';', 1)[0]
+}
+
+// nuxt-auth-utils binds each OAuth callback to the one-time state cookie issued when login starts.
+async function startGoogleLogin() {
+  const response = await fetch('/api/auth/google', { redirect: 'manual' })
+  const state = new URL(response.headers.get('location') ?? '').searchParams.get('state')
+  const cookie = responseCookie(response, 'nuxt-auth-state')
+  if (!state || !cookie) {
+    throw new Error('Google login did not issue an OAuth state')
+  }
+
+  return { state, cookie }
+}
+
+async function completeGoogleLogin(code: string) {
+  const { state, cookie } = await startGoogleLogin()
+  return fetch(`/api/auth/google?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
+    redirect: 'manual',
+    headers: { cookie }
+  })
+}
+
 describe('API characterization', async () => {
   await setup({
     rootDir,
@@ -228,10 +255,10 @@ describe('API characterization', async () => {
               VALUES (?, ?, ?, ?, ?, 0)`,
         args: ['Google pending', 'google-pending@example.com', legacyBcryptHash, now, now]
       })
-      const response = await fetch('/api/auth/google?code=verified', { redirect: 'manual' })
+      const response = await completeGoogleLogin('verified')
       expect(response.status).toBe(302)
       expect(response.headers.get('location')).toBe('/')
-      const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
+      const cookie = responseCookie(response, 'nuxt-session')
       expect(cookie).toBeTruthy()
       const refreshed = await requestJson<{ user?: { email: string } }>('/api/_auth/session', {
         headers: { cookie: cookie! }
@@ -264,11 +291,9 @@ describe('API characterization', async () => {
         ]
       })
 
-      const response = await fetch(`/api/auth/google?code=${encodeURIComponent(`verified:${email}`)}`, {
-        redirect: 'manual'
-      })
+      const response = await completeGoogleLogin(`verified:${email}`)
       expect(response.headers.get('location')).toBe('/')
-      const cookie = response.headers.get('set-cookie')?.split(';', 1)[0]
+      const cookie = responseCookie(response, 'nuxt-session')
       expect(cookie).toBeTruthy()
       const refreshed = await requestJson<{ user?: { email: string } }>('/api/_auth/session', {
         headers: { cookie: cookie! }
@@ -306,9 +331,7 @@ describe('API characterization', async () => {
         args: ['Confirmed', email, legacyBcryptHash, now, now]
       })
 
-      const response = await fetch(`/api/auth/google?code=${encodeURIComponent(`verified:${email}`)}`, {
-        redirect: 'manual'
-      })
+      const response = await completeGoogleLogin(`verified:${email}`)
       expect(response.headers.get('location')).toBe('/')
 
       const record = await database.execute({
@@ -329,11 +352,33 @@ describe('API characterization', async () => {
 
     test('Google login rejects unverified or missing email verification claims', async () => {
       for (const code of ['unverified', 'missing']) {
-        const response = await fetch(`/api/auth/google?code=${code}`, { redirect: 'manual' })
+        const response = await completeGoogleLogin(code)
         expect(response.headers.get('location')).toBe('/signin?error=google_failed')
-        expect(response.headers.get('set-cookie')).toBeNull()
+        expect(responseCookie(response, 'nuxt-session')).toBeUndefined()
       }
       const record = await database.execute("SELECT id FROM users WHERE email = 'google-unverified@example.com'")
+      expect(record.rows).toHaveLength(0)
+    })
+
+    test('Google login rejects callbacks without the state issued when login started', async () => {
+      const email = 'google-forged-state@example.com'
+      const code = encodeURIComponent(`verified:${email}`)
+      const { state, cookie } = await startGoogleLogin()
+      const attempts: Array<{ query: string; cookie?: string }> = [
+        { query: `code=${code}` },
+        { query: `code=${code}&state=forged`, cookie },
+        { query: `code=${code}&state=${encodeURIComponent(state)}` }
+      ]
+
+      for (const attempt of attempts) {
+        const response = await fetch(`/api/auth/google?${attempt.query}`, {
+          redirect: 'manual',
+          headers: attempt.cookie ? { cookie: attempt.cookie } : {}
+        })
+        expect(response.headers.get('location')).toBe('/signin?error=google_failed')
+        expect(responseCookie(response, 'nuxt-session')).toBeUndefined()
+      }
+      const record = await database.execute({ sql: 'SELECT id FROM users WHERE email = ?', args: [email] })
       expect(record.rows).toHaveLength(0)
     })
 

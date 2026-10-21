@@ -95,7 +95,6 @@ const resendVerification = async () => {
     </h1>
     <div>
       <u-card class="mt-8 sm:max-w-md mx-auto" variant="subtle">
-        <!-- @vue-expect-error -->
         <u-auth-form
           title="ログイン"
           :fields="fields"
