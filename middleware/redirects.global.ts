@@ -1,3 +1,6 @@
+import { parseURL } from 'ufo'
+import { legacyImageRedirectPath } from '~/utils/legacyImage'
+
 export default defineNuxtRouteMiddleware((to) => {
   const path = to.path
 
@@ -15,18 +18,13 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo(`/難易度表/${difficultyLevelMatch[1]}`, { redirectCode: 301 })
   }
 
-  // /score/start/*.png or /_media/score/start/*.png
-  if ((path.startsWith('/score/start/') || path.startsWith('/_media/score/start/')) && path.endsWith('.png')) {
-    const segments = path.split('/')
-    const filename = segments[segments.length - 1]
-
-    // Redirect /score/start/filename.png -> /api/image/filename.png
-    // Navigate with external: true to force a browser request and escape the SPA router
-    if (filename) {
-      return navigateTo(`/api/image/${filename}`, {
-        external: true,
-        redirectCode: 301
-      })
-    }
+  // /score/start/*.{png,jpg,gif,webp} or /_media/score/start/*.* -> /api/image/*
+  // Navigate with external: true to force a browser request and escape the SPA router
+  const imagePath = legacyImageRedirectPath(path, parseURL(to.fullPath).search)
+  if (imagePath) {
+    return navigateTo(imagePath, {
+      external: true,
+      redirectCode: 301
+    })
   }
 })
