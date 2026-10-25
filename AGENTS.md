@@ -13,8 +13,8 @@
 
 ## Runtime
 
-- Node.js: `.node-version`（26.12.1）。CI と Cloudflare Workers Builds はこのファイルを参照します。ローカルの `mise.toml` は Node 26 系を指定しています。
-- Bun: CI は 1.3.13、`mise.toml` は latest です。
+- Node.js: CI は 26 系（`.github/workflows/ci.yml`）。リポジトリにバージョン指定ファイルは置いていません。
+- Bun: CI は 1.3.13 です。
 
 ## Common Commands
 
