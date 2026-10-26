@@ -14,7 +14,7 @@
 ## Runtime
 
 - Node.js: CI は 26 系（`.github/workflows/ci.yml`）。リポジトリにバージョン指定ファイルは置いていません。
-- Bun: CI は 1.3.13 です。
+- Bun: CI は最新版です。`bun.lock` は `lockfileVersion: 2` で、Bun 1.3 系では読めません。
 
 ## Common Commands
 
