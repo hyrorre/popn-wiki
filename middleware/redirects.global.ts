@@ -19,12 +19,15 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   // /score/start/*.{png,jpg,gif,webp} or /_media/score/start/*.* -> /api/image/*
-  // Navigate with external: true to force a browser request and escape the SPA router
   const imagePath = legacyImageRedirectPath(path, parseURL(to.fullPath).search)
   if (imagePath) {
-    return navigateTo(imagePath, {
-      external: true,
-      redirectCode: 301
-    })
+    if (import.meta.server) {
+      return navigateTo(imagePath, { external: true, redirectCode: 301 })
+    }
+    // navigateTo(external) stops the app scope before leaving, which drops head styles such as
+    // nuxt-ui-colors. The browser's back/forward cache then restores that broken page, so leave
+    // the current page intact and let the browser load the image.
+    window.location.assign(imagePath)
+    return abortNavigation()
   }
 })
